@@ -55,7 +55,7 @@ export function SettingsModal({ isOpen, onClose, userPreferences, aiConfig, onSa
     aiTone: 'Ramah',
     classroomDateRangeMonths: DEFAULT_DATE_RANGE_MONTHS,
   });
-  
+
   const [config, setConfig] = useState<AIConfig>(aiConfig || {
     provider: 'gemini',
     apiKey: '',
@@ -149,7 +149,7 @@ export function SettingsModal({ isOpen, onClose, userPreferences, aiConfig, onSa
 
         {/* Content */}
         <div className="p-6 overflow-y-auto space-y-7 flex-1">
-          
+
           {/* SECTION 1: Google Classroom Date Range Filter */}
           <section className="space-y-3.5">
             <div className="flex items-center justify-between">
@@ -160,7 +160,7 @@ export function SettingsModal({ isOpen, onClose, userPreferences, aiConfig, onSa
                 Filter Waktu
               </span>
             </div>
-            
+
             <p className="text-xs text-slate-600 leading-relaxed">
               Tentukan batas waktu tugas yang akan disinkronkan dan ditampilkan. Tugas yang memiliki tenggat waktu atau dibuat sebelum batas ini akan disembunyikan agar daftar tugas tetap relevan dan rapi.
             </p>
@@ -174,11 +174,10 @@ export function SettingsModal({ isOpen, onClose, userPreferences, aiConfig, onSa
                     key={opt.value}
                     type="button"
                     onClick={() => setPrefs({ ...prefs, classroomDateRangeMonths: opt.value })}
-                    className={`p-3.5 text-left rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-2 ${
-                      isSelected
-                        ? 'border-indigo-600 bg-indigo-50/60 ring-1 ring-indigo-500/20'
-                        : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
-                    }`}
+                    className={`p-3.5 text-left rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-2 ${isSelected
+                      ? 'border-indigo-600 bg-indigo-50/60 ring-1 ring-indigo-500/20'
+                      : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                      }`}
                   >
                     <div>
                       <div className={`text-xs font-bold ${isSelected ? 'text-indigo-950' : 'text-slate-800'}`}>
@@ -215,13 +214,13 @@ export function SettingsModal({ isOpen, onClose, userPreferences, aiConfig, onSa
             <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
               <BookOpen className="w-4 h-4 text-indigo-600" /> Preferensi Gaya Belajar & AI
             </h3>
-            
+
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">Gaya Belajar Personal</label>
-                <select 
-                  value={prefs.learningStyle} 
-                  onChange={e => setPrefs({...prefs, learningStyle: e.target.value})}
+                <select
+                  value={prefs.learningStyle}
+                  onChange={e => setPrefs({ ...prefs, learningStyle: e.target.value })}
                   className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition"
                 >
                   <option value="Netral">Netral / Umum</option>
@@ -233,9 +232,9 @@ export function SettingsModal({ isOpen, onClose, userPreferences, aiConfig, onSa
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">Gaya Bahasa (Tone) AI</label>
-                <select 
-                  value={prefs.aiTone} 
-                  onChange={e => setPrefs({...prefs, aiTone: e.target.value})}
+                <select
+                  value={prefs.aiTone}
+                  onChange={e => setPrefs({ ...prefs, aiTone: e.target.value })}
                   className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition"
                 >
                   <option value="Ramah">Ramah & Memotivasi</option>
@@ -258,23 +257,22 @@ export function SettingsModal({ isOpen, onClose, userPreferences, aiConfig, onSa
                 Aktif & Terhubung
               </span>
             </div>
-            
+
             {/* 3 Provider Options */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {[
-                { id: 'gemini', label: 'Gemini Bawaan', desc: 'Gratis & Siap Pakai (Server Env)', icon: Sparkles },
-                { id: 'gemini_custom', label: 'Gemini (API Key Sendiri)', desc: 'Gunakan API Key Pribadi & Pilih Model', icon: Key },
+                { id: 'gemini', label: 'Gemini Bawaan', desc: 'Gratis & Siap Pakai', icon: Sparkles },
+                { id: 'gemini_custom', label: 'Gemini', desc: 'Gunakan API Key Pribadi & Pilih Model', icon: Key },
                 { id: 'openai', label: 'OpenAI / OpenRouter', desc: 'GPT-4o / DeepSeek / Custom URL', icon: Server }
               ].map((opt) => (
                 <button
                   key={opt.id}
                   type="button"
                   onClick={() => handleProviderChange(opt.id as any)}
-                  className={`p-3.5 text-left rounded-2xl border transition-all cursor-pointer flex flex-col justify-between gap-2 ${
-                    config.provider === opt.id 
-                      ? 'border-indigo-600 bg-indigo-50/60 ring-1 ring-indigo-500/20' 
-                      : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
-                  }`}
+                  className={`p-3.5 text-left rounded-2xl border transition-all cursor-pointer flex flex-col justify-between gap-2 ${config.provider === opt.id
+                    ? 'border-indigo-600 bg-indigo-50/60 ring-1 ring-indigo-500/20'
+                    : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                    }`}
                 >
                   <div className="flex items-center justify-between w-full">
                     <opt.icon className={`w-4 h-4 ${config.provider === opt.id ? 'text-indigo-600' : 'text-slate-400'}`} />
@@ -350,7 +348,7 @@ export function SettingsModal({ isOpen, onClose, userPreferences, aiConfig, onSa
                   {!isCustomModel ? (
                     <div className="space-y-2">
                       <select
-                        value={config.model || 'gemini-3.1-flash-lite'}
+                        value={config.model || 'gemini-1.5-flash'}
                         onChange={(e) => {
                           if (e.target.value === '__CUSTOM__') {
                             setIsCustomModel(true);
@@ -373,7 +371,7 @@ export function SettingsModal({ isOpen, onClose, userPreferences, aiConfig, onSa
                       <div className="flex items-center gap-2">
                         <input
                           type="text"
-                          placeholder="e.g. gemini-3.1-flash-lite"
+                          placeholder="e.g. gemini-2.0-flash-exp"
                           value={config.model || ''}
                           onChange={(e) => setConfig({ ...config, model: e.target.value })}
                           className="flex-1 px-3.5 py-2.5 text-xs sm:text-sm bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none font-mono"
@@ -384,7 +382,7 @@ export function SettingsModal({ isOpen, onClose, userPreferences, aiConfig, onSa
                           size="sm"
                           onClick={() => {
                             setIsCustomModel(false);
-                            setConfig({ ...config, model: 'gemini-3.1-flash-lite' });
+                            setConfig({ ...config, model: 'gemini-1.5-flash' });
                           }}
                         >
                           Pilihan Standar
