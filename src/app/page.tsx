@@ -56,7 +56,9 @@ export default function App() {
 
     useEffect(() => {
         if (typeof window !== "undefined") {
-            const saved = localStorage.getItem(TASKS_STORAGE_KEY);
+            const profile = ClassroomService.getUserProfile();
+            const key = profile?.email ? `${TASKS_STORAGE_KEY}_${profile.email}` : TASKS_STORAGE_KEY;
+            const saved = localStorage.getItem(key);
             if (saved) {
                 try {
                     setTasks(JSON.parse(saved));
@@ -166,8 +168,11 @@ export default function App() {
 
     // Persist tasks to localStorage
     useEffect(() => {
-        localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(tasks));
-    }, [tasks]);
+        if (tasks.length > 0 || token) {
+            const key = userProfile?.email ? `${TASKS_STORAGE_KEY}_${userProfile.email}` : TASKS_STORAGE_KEY;
+            localStorage.setItem(key, JSON.stringify(tasks));
+        }
+    }, [tasks, userProfile, token]);
 
     // Persist preferences
     useEffect(() => {
@@ -413,6 +418,15 @@ export default function App() {
             if (result) {
                 setToken(result.token);
                 setUserProfile(result.profile);
+                
+                const key = result.profile.email ? `${TASKS_STORAGE_KEY}_${result.profile.email}` : TASKS_STORAGE_KEY;
+                const saved = localStorage.getItem(key);
+                if (saved) {
+                    try { setTasks(JSON.parse(saved)); } catch (e) {}
+                } else {
+                    setTasks([]);
+                }
+                
                 handleSyncWithToken(result.token);
             } else {
                 setLoginError("Gagal mendapatkan akses dari Google.");
@@ -432,6 +446,7 @@ export default function App() {
         ClassroomService.logout();
         setToken(null);
         setUserProfile(null);
+        setTasks([]);
         setSyncNotification("Koneksi Google Classroom diputuskan.");
     };
 
@@ -719,7 +734,7 @@ export default function App() {
             });
             const seed = ClassroomService.getInitialSeedTasks();
             setTasks(seed);
-            localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(seed));
+            localStorage.setItem(`${TASKS_STORAGE_KEY}_pelajar@contoh.com`, JSON.stringify(seed));
         };
         return (
             <LandingPage
