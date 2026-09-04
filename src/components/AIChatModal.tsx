@@ -39,16 +39,24 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({
     onSelectTaskContext,
     userPreferences,
 }) => {
-    const [messages, setMessages] = useState<ChatMessage[]>(() => {
-        return [
-            {
-                id: "msg-init",
-                role: "assistant",
-                content: `Halo! 👋 Saya adalah **Asisten AI Akademik** Anda.\n\nSaya siap membantu Anda memahami materi kuliah/sekolah, memecah instruksi tugas dari Google Classroom, menyusun outline jawaban, atau mencari referensi & rumus penting.\n\nPilih tugas di atas atau langsung tanyakan apa saja!`,
-                timestamp: Date.now(),
-            },
-        ];
-    });
+    const [sessions, setSessions] = useState<Record<string, ChatMessage[]>>({});
+    const currentSessionId = activeTaskId || "general";
+    const messages = sessions[currentSessionId] || [
+        {
+            id: "msg-init",
+            role: "assistant",
+            content: `Halo! 👋 Saya adalah **Asisten AI Akademik** Anda.\n\nSaya siap membantu Anda memahami materi kuliah/sekolah, memecah instruksi tugas dari Google Classroom, menyusun outline jawaban, atau mencari referensi & rumus penting.\n\nPilih tugas di atas atau langsung tanyakan apa saja!`,
+            timestamp: Date.now(),
+        }
+    ];
+
+    const setMessages = (action: React.SetStateAction<ChatMessage[]>) => {
+        setSessions((prev) => {
+            const current = prev[currentSessionId] || messages;
+            const next = typeof action === "function" ? (action as any)(current) : action;
+            return { ...prev, [currentSessionId]: next };
+        });
+    };
 
     const [inputPrompt, setInputPrompt] = useState("");
     const [isLoading, setIsLoading] = useState(false);
