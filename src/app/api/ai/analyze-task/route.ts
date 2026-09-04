@@ -1,17 +1,24 @@
 import { NextResponse } from "next/server";
 import { GoogleGenAI, Type } from "@google/genai";
+import { AIConfig } from "@/types";
 
-function getGeminiClient(): GoogleGenAI {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-        throw new Error("GEMINI_API_KEY environment variable is missing.");
-    }
-    return new GoogleGenAI({ apiKey });
-}
 export async function POST(req: Request) {
     try {
-        const { title, description, courseName, materials, userPreferences } =
-            await req.json();
+        const {
+            title,
+            description,
+            courseName,
+            materials,
+            userPreferences,
+            aiConfig,
+        } = (await req.json()) as {
+            title: string;
+            description?: string;
+            courseName?: string;
+            materials?: any[];
+            userPreferences?: any;
+            aiConfig?: AIConfig | null;
+        };
 
         if (!title) {
             return NextResponse.json(
@@ -69,20 +76,31 @@ TUGAS ANDA:
 
 Harap hasilkan output dalam format JSON sesuai schema yang ditentukan, dengan bahasa Indonesia yang ramah, jelas, edukatif, dan memotivasi.`;
 
-        const provider = process.env.AI_PROVIDER?.toLowerCase() || "gemini";
+        const provider = aiConfig?.provider || process.env.AI_PROVIDER?.toLowerCase() || "gemini";
         let responseText = "";
 
         if (provider === "openai") {
             const baseUrl =
-                process.env.OPENAI_BASE_URL || "https://api.openai.com/v1";
-            const apiKey = process.env.OPENAI_API_KEY || "";
-            const model = process.env.OPENAI_MODEL || "gpt-3.5-turbo";
+                aiConfig?.baseUrl ||
+                process.env.OPENAI_BASE_URL ||
+                "https://api.openai.com/v1";
+            const apiKey = aiConfig?.apiKey || process.env.OPENAI_API_KEY || "";
+            const model = aiConfig?.model || process.env.OPENAI_MODEL || "gpt-4o-mini";
+
+            if (!apiKey) {
+                return NextResponse.json(
+                    {
+                        error: "API Key OpenAI belum diisi. Silakan atur di menu Pengaturan Aplikasi.",
+                    },
+                    { status: 400 },
+                );
+            }
 
             const openAiRes = await fetch(`${baseUrl}/chat/completions`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+                    Authorization: `Bearer ${apiKey}`,
                 },
                 body: JSON.stringify({
                     model,
@@ -100,19 +118,39 @@ Harap hasilkan output dalam format JSON sesuai schema yang ditentukan, dengan ba
             });
 
             if (!openAiRes.ok) {
-                throw new Error(
-                    `OpenAI API Error: ${openAiRes.status} - ${await openAiRes.text()}`,
-                );
+                const errText = await openAiRes.text();
+                throw new Error(`OpenAI API Error (${openAiRes.status}): ${errText}`);
             }
 
             const data = await openAiRes.json();
             responseText = data.choices[0].message.content;
         } else {
-            const ai = getGeminiClient();
+            // Google Gemini Provider (Custom API Key or Default Server Key)
+            const apiKey =
+                provider === "gemini_custom"
+                    ? aiConfig?.apiKey
+                    : process.env.GEMINI_API_KEY;
+
+            if (!apiKey) {
+                return NextResponse.json(
+                    {
+                        error:
+                            provider === "gemini_custom"
+                                ? "API Key Google Gemini belum diisi. Silakan masukkan API Key Anda di menu Pengaturan."
+                                : "GEMINI_API_KEY environment variable belum diatur di server.",
+                    },
+                    { status: 400 },
+                );
+            }
+
+            const modelName =
+                (provider === "gemini_custom" && aiConfig?.model) ||
+                process.env.NEXT_PUBLIC_GEMINI_MODEL ||
+                "gemini-3.1-flash-lite";
+
+            const ai = new GoogleGenAI({ apiKey });
             const response = await ai.models.generateContent({
-                model:
-                    process.env.NEXT_PUBLIC_GEMINI_MODEL ||
-                    "gemini-3.1-flash-lite",
+                model: modelName,
                 contents: prompt,
                 config: {
                     systemInstruction:

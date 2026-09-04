@@ -1,7 +1,15 @@
 "use client";
 import React from 'react';
-import { X, Sparkles, FolderSync, PlusCircle, ArrowRight } from 'lucide-react';
+import { Sparkles, FolderSync, ArrowRight } from 'lucide-react';
 import { TodoTask } from '../types';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 
 interface SimulateTaskModalProps {
   isOpen: boolean;
@@ -61,35 +69,26 @@ export const SimulateTaskModal: React.FC<SimulateTaskModalProps> = ({
   onClose,
   onSimulate,
 }) => {
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
-      <div 
-        className="bg-white w-full max-w-xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-200"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="p-5 border-b border-slate-200 bg-amber-50/70 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-amber-600 text-white flex items-center justify-center shadow-xs">
-              <FolderSync className="w-4 h-4" />
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-xl p-0 overflow-hidden">
+        <DialogHeader className="p-5 border-b border-slate-200 bg-amber-50/70 pr-12">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-amber-600 text-white flex items-center justify-center shadow-xs shrink-0">
+              <FolderSync className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-slate-900 text-base">Simulasi Notifikasi Tugas Guru</h3>
-              <p className="text-xs text-amber-900/80">
+              <DialogTitle className="text-base font-bold text-slate-900">
+                Simulasi Notifikasi Tugas Guru
+              </DialogTitle>
+              <DialogDescription className="text-xs text-amber-900/80 mt-0.5">
                 Uji otomatisasi sinkronisasi Classroom & kurasi AI instan
-              </p>
+              </DialogDescription>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-700 bg-white border border-slate-200 rounded-lg"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+        </DialogHeader>
 
-        <div className="p-5 space-y-4">
+        <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
           <p className="text-xs text-slate-600 leading-relaxed">
             Pilih salah satu contoh tugas Google Classroom di bawah ini untuk melihat bagaimana sistem langsung membuat item to-do list baru dan menghubungkannya dengan Gemini AI untuk mengirimkan sumber referensi web serta link video YouTube:
           </p>
@@ -117,22 +116,23 @@ export const SimulateTaskModal: React.FC<SimulateTaskModalProps> = ({
                   </p>
                 </div>
 
-                <button
+                <Button
                   onClick={() => {
                     onSimulate(preset);
                     onClose();
                   }}
-                  className="w-full py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-2xs cursor-pointer"
+                  className="w-full"
+                  size="sm"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
                   <span>Kirim Tugas Ini & Auto-Sync dengan AI</span>
-                  <ArrowRight className="w-3.5 h-3.5 ml-1" />
-                </button>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Button>
               </div>
             ))}
           </div>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };

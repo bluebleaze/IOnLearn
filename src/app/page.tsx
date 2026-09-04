@@ -32,12 +32,22 @@ import { CreateManualTaskModal } from "../components/CreateManualTaskModal";
 import { SimulateTaskModal } from "../components/SimulateTaskModal";
 import { LandingPage } from "../components/LandingPage";
 import { OnboardingModal } from "../components/OnboardingModal";
-import { TodoTask, AIAnalysisResult, UserPreferences } from "../types";
+import { SettingsModal } from "../components/SettingsModal";
+import { Button } from "@/components/ui/button";
+import {
+    TodoTask,
+    AIAnalysisResult,
+    UserPreferences,
+    AIConfig,
+    DEFAULT_DATE_RANGE_MONTHS,
+    isTaskWithinDateRange,
+} from "../types";
 import { ClassroomService, UserProfile } from "../services/classroomService";
 import { analyzeTaskWithAI } from "../services/aiService";
 
 const TASKS_STORAGE_KEY = "classroom_ai_todo_tasks_v1";
 const PREFS_STORAGE_KEY = "classroom_ai_user_prefs_v1";
+const AI_CONFIG_STORAGE_KEY = "classroom_ai_config_v1";
 const ONBOARDING_DONE_KEY = "classroom_ai_onboarding_done_v1";
 
 export default function App() {
@@ -83,8 +93,34 @@ export default function App() {
             const saved = localStorage.getItem(PREFS_STORAGE_KEY);
             if (saved) {
                 try {
-                    setUserPreferences(JSON.parse(saved));
-                } catch (e) {}
+                    const parsed = JSON.parse(saved);
+                    setUserPreferences({
+                        ...parsed,
+                        classroomDateRangeMonths:
+                            parsed.classroomDateRangeMonths ??
+                            DEFAULT_DATE_RANGE_MONTHS,
+                    });
+                } catch (e) { }
+            } else {
+                setUserPreferences({
+                    learningStyle: "Netral",
+                    explanationDetail: "Netral",
+                    aiTone: "Ramah",
+                    classroomDateRangeMonths: DEFAULT_DATE_RANGE_MONTHS,
+                });
+            }
+        }
+    }, []);
+
+    const [aiConfig, setAiConfig] = useState<AIConfig | null>(null);
+
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            const saved = localStorage.getItem(AI_CONFIG_STORAGE_KEY);
+            if (saved) {
+                try {
+                    setAiConfig(JSON.parse(saved));
+                } catch (e) { }
             }
         }
     }, []);
@@ -112,7 +148,7 @@ export default function App() {
     const [selectedCourse, setSelectedCourse] = useState("all");
     const [statusFilter, setStatusFilter] = useState<
         "all" | "pending" | "completed" | "ai-ready"
-    >("all");
+    >("pending");
     const [sortBy, setSortBy] = useState<"due" | "newest" | "priority">("due");
 
     // Modals & Chat state
@@ -122,8 +158,9 @@ export default function App() {
     const [chatTaskId, setChatTaskId] = useState<string | undefined>(undefined);
     const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
     const [isSimulateOpen, setIsSimulateOpen] = useState(false);
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-    // Onboarding / Settings Mode
+    // Onboarding Mode
     const [isOnboardingModalOpen, setIsOnboardingModalOpen] = useState(false);
     const [isSettingsMode, setIsSettingsMode] = useState(false);
 
@@ -141,6 +178,16 @@ export default function App() {
             );
         }
     }, [userPreferences]);
+
+    // Persist AI Config
+    useEffect(() => {
+        if (aiConfig) {
+            localStorage.setItem(
+                AI_CONFIG_STORAGE_KEY,
+                JSON.stringify(aiConfig),
+            );
+        }
+    }, [aiConfig]);
 
     // Handle opening onboarding modal right after login if not completed
     useEffect(() => {
@@ -179,10 +226,10 @@ export default function App() {
                         setSelectedTask((prev) =>
                             prev
                                 ? {
-                                      ...prev,
-                                      aiAnalysis: parsedAnalysis,
-                                      aiLoading: false,
-                                  }
+                                    ...prev,
+                                    aiAnalysis: parsedAnalysis,
+                                    aiLoading: false,
+                                }
                                 : null,
                         );
                     }
@@ -212,6 +259,7 @@ export default function App() {
                 const analysisResult = await analyzeTaskWithAI(
                     targetTask,
                     userPreferences,
+                    aiConfig,
                 );
 
                 // Save to cache
@@ -235,10 +283,10 @@ export default function App() {
                     setSelectedTask((prev) =>
                         prev
                             ? {
-                                  ...prev,
-                                  aiAnalysis: analysisResult,
-                                  aiLoading: false,
-                              }
+                                ...prev,
+                                aiAnalysis: analysisResult,
+                                aiLoading: false,
+                            }
                             : null,
                     );
                 }
@@ -248,11 +296,11 @@ export default function App() {
                     prev.map((t) =>
                         t.id === taskId
                             ? {
-                                  ...t,
-                                  aiLoading: false,
-                                  aiError:
-                                      error.message || "Gagal memproses AI",
-                              }
+                                ...t,
+                                aiLoading: false,
+                                aiError:
+                                    error.message || "Gagal memproses AI",
+                            }
                             : t,
                     ),
                 );
@@ -260,10 +308,10 @@ export default function App() {
                     setSelectedTask((prev) =>
                         prev
                             ? {
-                                  ...prev,
-                                  aiLoading: false,
-                                  aiError: error.message,
-                              }
+                                ...prev,
+                                aiLoading: false,
+                                aiError: error.message,
+                            }
                             : null,
                     );
                 }
@@ -301,8 +349,15 @@ export default function App() {
     const handleSyncWithToken = async (activeToken: string) => {
         setIsSyncing(true);
         try {
+            const rangeMonths =
+                userPreferences?.classroomDateRangeMonths ??
+                DEFAULT_DATE_RANGE_MONTHS;
             const { updatedTasks, newCount } =
-                await ClassroomService.syncAllClassrooms(activeToken, tasks);
+                await ClassroomService.syncAllClassrooms(
+                    activeToken,
+                    tasks,
+                    rangeMonths,
+                );
             setTasks(updatedTasks);
 
             if (newCount > 0) {
@@ -316,12 +371,37 @@ export default function App() {
             }
         } catch (error: any) {
             console.error("Sync error:", error);
-            setSyncNotification(
-                `ℹ️ Menggunakan data sinkronisasi lokal: ${error.message || "Gagal terhubung ke API Classroom"}`,
-            );
+            const is401 =
+                error.message?.includes("401") ||
+                error.message?.includes("kadaluwarsa");
+            if (is401) {
+                setToken(null);
+                setUserProfile(null);
+                setLoginError(
+                    "Sesi token Google Classroom Anda telah kadaluwarsa (401). Silakan klik 'Masuk dengan Google' untuk memperbarui akses.",
+                );
+                setSyncNotification(
+                    "⚠️ Sesi Google kadaluwarsa. Silakan masuk kembali dengan akun Google Anda.",
+                );
+            } else {
+                setSyncNotification(
+                    `ℹ️ Menggunakan data sinkronisasi lokal: ${error.message || "Gagal terhubung ke API Classroom"}`,
+                );
+            }
         } finally {
             setIsSyncing(false);
         }
+    };
+
+    const handleSaveSettings = (
+        prefs: UserPreferences,
+        config: AIConfig,
+    ) => {
+        setUserPreferences(prefs);
+        setAiConfig(config);
+        localStorage.setItem(PREFS_STORAGE_KEY, JSON.stringify(prefs));
+        localStorage.setItem(AI_CONFIG_STORAGE_KEY, JSON.stringify(config));
+        setSyncNotification("⚙️ Pengaturan aplikasi dan filter tugas berhasil disimpan.");
     };
 
     const handleConnectGoogle = async () => {
@@ -341,7 +421,7 @@ export default function App() {
             console.warn("Google Auth Error:", error);
             setLoginError(
                 error.message ||
-                    "Gagal terhubung ke sistem login Google. Pastikan popup tidak diblokir atau buka di tab baru.",
+                "Gagal terhubung ke sistem login Google. Pastikan popup tidak diblokir atau buka di tab baru.",
             );
         } finally {
             setIsAuthenticating(false);
@@ -429,12 +509,12 @@ export default function App() {
             setSelectedTask((prev) =>
                 prev && prev.aiAnalysis
                     ? {
-                          ...prev,
-                          aiAnalysis: {
-                              ...prev.aiAnalysis,
-                              checklist: updatedChecklist,
-                          },
-                      }
+                        ...prev,
+                        aiAnalysis: {
+                            ...prev.aiAnalysis,
+                            checklist: updatedChecklist,
+                        },
+                    }
                     : null,
             );
         }
@@ -446,10 +526,10 @@ export default function App() {
             prev.map((t) =>
                 t.id === taskId
                     ? {
-                          ...t,
-                          customNotes: notes,
-                          updatedAt: new Date().toISOString(),
-                      }
+                        ...t,
+                        customNotes: notes,
+                        updatedAt: new Date().toISOString(),
+                    }
                     : t,
             ),
         );
@@ -565,28 +645,65 @@ export default function App() {
                 )
                     return false;
 
+                // Date range filter from Settings (default 2 months)
+                const dateRangeMonths =
+                    userPreferences?.classroomDateRangeMonths ??
+                    DEFAULT_DATE_RANGE_MONTHS;
+                if (!isTaskWithinDateRange(t, dateRangeMonths)) {
+                    return false;
+                }
+
                 return true;
             })
             .sort((a, b) => {
                 if (sortBy === "newest") {
-                    return (
-                        new Date(b.createdAt).getTime() -
-                        new Date(a.createdAt).getTime()
-                    );
+                    const getCreatedTime = (t: TodoTask) => {
+                        if (t.createdAt) {
+                            const parsed = new Date(t.createdAt).getTime();
+                            if (!isNaN(parsed) && parsed > 0) return parsed;
+                        }
+                        if (t.updatedAt) {
+                            const parsed = new Date(t.updatedAt).getTime();
+                            if (!isNaN(parsed) && parsed > 0) return parsed;
+                        }
+                        if (t.id.startsWith("manual_") || t.id.startsWith("sim_gc_")) {
+                            const parts = t.id.split("_");
+                            const ts = parseInt(parts[parts.length - 1], 10);
+                            if (!isNaN(ts) && ts > 0) return ts;
+                        }
+                        return t.dueTimestamp || 0;
+                    };
+
+                    const timeA = getCreatedTime(a);
+                    const timeB = getCreatedTime(b);
+                    if (timeB !== timeA) {
+                        return timeB - timeA; // Tugas paling baru berada di paling atas
+                    }
+                    return (b.dueTimestamp || 0) - (a.dueTimestamp || 0);
                 }
                 if (sortBy === "priority") {
                     const priorityScore = { high: 3, medium: 2, low: 1 };
-                    return (
-                        priorityScore[b.priority] - priorityScore[a.priority]
-                    );
+                    const scoreDiff = priorityScore[b.priority] - priorityScore[a.priority];
+                    if (scoreDiff !== 0) return scoreDiff;
+                    if (!a.dueTimestamp && !b.dueTimestamp) return 0;
+                    if (!a.dueTimestamp) return 1;
+                    if (!b.dueTimestamp) return -1;
+                    return a.dueTimestamp - b.dueTimestamp;
                 }
-                // default: 'due'
+                // default: 'due' (Batas Waktu Terdekat)
                 if (!a.dueTimestamp && !b.dueTimestamp) return 0;
                 if (!a.dueTimestamp) return 1;
                 if (!b.dueTimestamp) return -1;
                 return a.dueTimestamp - b.dueTimestamp;
             });
-    }, [tasks, searchQuery, selectedCourse, statusFilter, sortBy]);
+    }, [
+        tasks,
+        searchQuery,
+        selectedCourse,
+        statusFilter,
+        sortBy,
+        userPreferences?.classroomDateRangeMonths,
+    ]);
 
     const pendingTasksCount = tasks.filter((t) => !t.isCompleted).length;
 
@@ -627,43 +744,32 @@ export default function App() {
                 onOpenCreateTask={() => setIsCreateTaskOpen(true)}
                 onOpenChat={() => handleOpenChat()}
                 onSimulateNewTask={() => setIsSimulateOpen(true)}
-                onOpenSettings={() => {
-                    setIsSettingsMode(true);
-                    setIsOnboardingModalOpen(true);
-                }}
+                onOpenSettings={() => setIsSettingsOpen(true)}
                 pendingCount={pendingTasksCount}
             />
 
             {/* Main Container */}
-            <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+            <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-5 sm:py-6">
                 {/* Welcome / Header Brief */}
-                <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
-                        <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-                            Daftar Tugas & Asisten Belajar
+                        <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+                            {userProfile?.name
+                                ? `Halo, ${userProfile.name.split(" ")[0]}`
+                                : "Daftar Tugas & Belajar"}
                         </h2>
-                        <p className="text-slate-600 text-sm mt-1">
-                            Tersinkronisasi otomatis dari Google Classroom
-                            lengkap dengan kurasi materi, referensi YouTube, dan
-                            AI Tutor.
+                        <p className="text-slate-500 text-xs sm:text-sm mt-0.5">
+                            Semua tugas sekolah tersusun rapi dengan bantuan rangkuman materi & video belajar.
                         </p>
                     </div>
 
                     <div className="flex items-center gap-2">
                         <button
-                            id="main-simulate-task-btn"
-                            onClick={() => setIsSimulateOpen(true)}
-                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 transition cursor-pointer">
-                            <FolderSync className="w-4 h-4 text-amber-600" />
-                            <span>Simulasi Tugas Baru</span>
-                        </button>
-
-                        <button
                             id="main-open-ai-chat-btn"
                             onClick={() => handleOpenChat()}
-                            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition cursor-pointer">
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition cursor-pointer active:scale-95">
                             <MessageSquareText className="w-4 h-4" />
-                            <span>Buka Chatbot AI</span>
+                            <span>Tanya Asisten AI</span>
                         </button>
                     </div>
                 </div>
@@ -705,29 +811,65 @@ export default function App() {
                             />
                         ))}
                     </div>
-                ) : (
-                    <div className="bg-white rounded-3xl p-10 text-center border border-slate-200/90 shadow-xs max-w-lg mx-auto my-8 space-y-4">
+                ) : tasks.length === 0 ? (
+                    <div className="bg-white rounded-3xl p-8 sm:p-10 text-center border border-slate-200 shadow-2xs max-w-md mx-auto my-6 space-y-4">
                         <div className="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto">
+                            <Sparkles className="w-6 h-6 text-indigo-600" />
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-slate-900 text-base sm:text-lg">
+                                Belum Ada Catatan Tugas
+                            </h3>
+                            <p className="text-xs sm:text-sm text-slate-500 mt-1 leading-relaxed">
+                                Tambahkan tugas pertamamu atau sinkronkan tugas dari Google Classroom secara otomatis.
+                            </p>
+                        </div>
+                        <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+                            <Button
+                                onClick={() => setIsCreateTaskOpen(true)}
+                                variant="default"
+                                size="sm"
+                                className="font-bold gap-1.5"
+                            >
+                                <Plus className="w-4 h-4" />
+                                <span>Tambah Tugas Baru</span>
+                            </Button>
+                            <Button
+                                onClick={handleManualSync}
+                                variant="outline"
+                                size="sm"
+                                className="gap-1.5"
+                            >
+                                <RefreshCw className="w-3.5 h-3.5" />
+                                <span>Cek Google Classroom</span>
+                            </Button>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="bg-white rounded-3xl p-8 sm:p-10 text-center border border-slate-200 shadow-2xs max-w-md mx-auto my-6 space-y-4">
+                        <div className="w-14 h-14 rounded-2xl bg-slate-50 text-slate-500 flex items-center justify-center mx-auto">
                             <Search className="w-6 h-6" />
                         </div>
                         <div>
-                            <h3 className="font-bold text-slate-900 text-lg">
-                                Tidak ada tugas yang cocok
+                            <h3 className="font-bold text-slate-900 text-base sm:text-lg">
+                                Tidak ada tugas yang sesuai
                             </h3>
                             <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                                Coba ubah kata kunci pencarian atau reset filter
-                                mata pelajaran.
+                                Coba ganti kata kunci pencarian atau tampilkan semua tugas.
                             </p>
                         </div>
-                        <button
+                        <Button
                             onClick={() => {
                                 setSearchQuery("");
                                 setSelectedCourse("all");
                                 setStatusFilter("all");
                             }}
-                            className="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer">
-                            Reset Semua Filter
-                        </button>
+                            variant="primarySubtle"
+                            size="sm"
+                            className="font-bold"
+                        >
+                            Tampilkan Semua Tugas
+                        </Button>
                     </div>
                 )}
             </main>
@@ -750,6 +892,7 @@ export default function App() {
                 onToggleChecklistItem={handleToggleChecklistItem}
                 onSaveNotes={handleSaveNotes}
                 onOpenChat={handleOpenChat}
+                onToggleComplete={handleToggleComplete}
             />
 
             <AIChatModal
@@ -759,6 +902,7 @@ export default function App() {
                 activeTaskId={chatTaskId}
                 onSelectTaskContext={(id) => setChatTaskId(id)}
                 userPreferences={userPreferences}
+                aiConfig={aiConfig}
             />
 
             <CreateManualTaskModal
@@ -774,11 +918,24 @@ export default function App() {
                 onSimulate={handleSimulateNewTask}
             />
 
+            <SettingsModal
+                isOpen={isSettingsOpen}
+                onClose={() => setIsSettingsOpen(false)}
+                userPreferences={userPreferences}
+                aiConfig={aiConfig}
+                onSave={handleSaveSettings}
+            />
+
             <OnboardingModal
                 isOpen={isOnboardingModalOpen}
                 isSettingsMode={isSettingsMode}
                 onSave={(prefs) => {
-                    setUserPreferences(prefs);
+                    setUserPreferences({
+                        ...prefs,
+                        classroomDateRangeMonths:
+                            userPreferences?.classroomDateRangeMonths ??
+                            DEFAULT_DATE_RANGE_MONTHS,
+                    });
                     setHasCompletedOnboarding(true);
                     localStorage.setItem(ONBOARDING_DONE_KEY, "true");
                     setIsOnboardingModalOpen(false);
@@ -789,6 +946,9 @@ export default function App() {
                             learningStyle: "Netral",
                             explanationDetail: "Netral",
                             aiTone: "Ramah",
+                            classroomDateRangeMonths:
+                                userPreferences?.classroomDateRangeMonths ??
+                                DEFAULT_DATE_RANGE_MONTHS,
                         });
                         setHasCompletedOnboarding(true);
                         localStorage.setItem(ONBOARDING_DONE_KEY, "true");

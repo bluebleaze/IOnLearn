@@ -1,26 +1,36 @@
 "use client";
-import React, { useState } from 'react';
-import { 
-  X, 
-  Sparkles, 
-  ExternalLink, 
-  Youtube, 
-  BookOpen, 
-  CheckSquare, 
-  Square, 
-  Clock, 
-  GraduationCap, 
-  Lightbulb, 
-  MessageSquareText, 
-  Loader2, 
-  FileText, 
+import React, { useState } from "react";
+import {
+  Sparkles,
+  ExternalLink,
+  Youtube,
+  BookOpen,
+  CheckSquare,
+  Square,
+  Clock,
+  Lightbulb,
+  MessageSquareText,
+  Loader2,
+  FileText,
   Save,
-  Compass,
   CheckCircle2,
   Paperclip,
-  Share2
-} from 'lucide-react';
-import { TodoTask } from '../types';
+  ListChecks,
+  Check,
+  CheckCircle,
+  X,
+} from "lucide-react";
+import confetti from "canvas-confetti";
+import { TodoTask } from "../types";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 interface TaskDetailModalProps {
   task: TodoTask | null;
@@ -30,6 +40,7 @@ interface TaskDetailModalProps {
   onToggleChecklistItem: (taskId: string, checkId: string) => void;
   onSaveNotes: (taskId: string, notes: string) => void;
   onOpenChat: (taskId: string) => void;
+  onToggleComplete?: (taskId: string) => void;
 }
 
 export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
@@ -40,213 +51,336 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   onToggleChecklistItem,
   onSaveNotes,
   onOpenChat,
+  onToggleComplete,
 }) => {
-  if (!isOpen || !task) return null;
-
-  const [notes, setNotes] = useState(task.customNotes || '');
-  const [activeTab, setActiveTab] = useState<'overview' | 'checklist' | 'sources' | 'youtube' | 'tips'>('overview');
+  const [notes, setNotes] = useState(task?.customNotes || "");
+  const [activeTab, setActiveTab] = useState<
+    "summary" | "checklist" | "youtube" | "sources" | "materials" | "tips"
+  >("summary");
   const [isSavedNotes, setIsSavedNotes] = useState(false);
+  const [copiedConcept, setCopiedConcept] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (task?.customNotes !== undefined) {
+      setNotes(task.customNotes);
+    }
+  }, [task?.id, task?.customNotes]);
 
   const handleSaveNotes = () => {
+    if (!task) return;
     onSaveNotes(task.id, notes);
     setIsSavedNotes(true);
     setTimeout(() => setIsSavedNotes(false), 2000);
   };
 
+  const handleToggleTaskComplete = () => {
+    if (onToggleComplete && task) {
+      if (!task.isCompleted) {
+        try {
+          confetti({
+            particleCount: 50,
+            spread: 60,
+            origin: { y: 0.8 },
+            colors: ["#6366f1", "#10b981", "#f59e0b", "#ec4899"],
+          });
+        } catch (err) {}
+      }
+      onToggleComplete(task.id);
+    }
+  };
+
+  if (!isOpen || !task) return null;
+
   const ai = task.aiAnalysis;
+  const checklistTotal = ai?.checklist?.length || 0;
+  const checklistDone = ai?.checklist?.filter((c) => c.done)?.length || 0;
+  const checklistPercent =
+    checklistTotal > 0
+      ? Math.round((checklistDone / checklistTotal) * 100)
+      : 0;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
-      <div 
-        className="bg-white w-full max-w-4xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-200"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Modal Header */}
-        <div className="p-5 sm:p-6 border-b border-slate-200 bg-slate-50/80 flex items-start justify-between gap-4">
-          <div>
-            <div className="flex flex-wrap items-center gap-2 mb-2">
-              <span className="px-3 py-1 rounded-lg text-xs font-bold bg-indigo-100 text-indigo-800">
-                {task.courseName}
-              </span>
-              {task.dueDateStr && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-700">
-                  <Clock className="w-3.5 h-3.5 text-slate-500" />
-                  {task.dueDateStr}
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent hideCloseButton className="max-w-4xl h-[90vh] max-h-[850px] p-0 flex flex-col gap-0 overflow-hidden">
+        {/* Modal Top Header (TurboLearn Style) */}
+        <DialogHeader className="p-5 sm:p-6 border-b border-slate-200 bg-white shrink-0">
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-2 text-left">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="px-3 py-1 rounded-xl text-xs font-extrabold bg-indigo-50 text-indigo-700 border border-indigo-100">
+                  {task.courseName}
                 </span>
-              )}
-              {task.points !== undefined && (
-                <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-700">
-                  {task.points} Poin
-                </span>
-              )}
-              {task.syncSource === 'classroom' && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  Google Classroom
-                </span>
-              )}
+
+                {task.dueDateStr && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-semibold bg-slate-100 text-slate-700">
+                    <Clock className="w-3.5 h-3.5 text-slate-500" />
+                    {task.dueDateStr}
+                  </span>
+                )}
+
+                {task.points !== undefined && (
+                  <span className="px-2.5 py-1 rounded-xl text-xs font-semibold bg-slate-100 text-slate-700">
+                    {task.points} Poin
+                  </span>
+                )}
+
+                {task.syncSource === "classroom" && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    Google Classroom
+                  </span>
+                )}
+              </div>
+
+              <DialogTitle className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight leading-snug">
+                {task.title}
+              </DialogTitle>
+              <DialogDescription className="sr-only">
+                Detail tugas dan rangkuman materi pembelajaran
+              </DialogDescription>
             </div>
-            <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight leading-snug">
-              {task.title}
-            </h2>
-          </div>
 
-          <div className="flex items-center gap-2 shrink-0">
-            {task.classroomLink && (
-              <a
-                href={task.classroomLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-2 text-slate-500 hover:text-indigo-600 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl transition cursor-pointer"
-                title="Buka di Google Classroom"
+            {/* Actions Top Right */}
+            <div className="flex items-center gap-2 shrink-0">
+              {onToggleComplete && (
+                <Button
+                  onClick={handleToggleTaskComplete}
+                  variant={task.isCompleted ? "outline" : "emerald"}
+                  size="sm"
+                  className={task.isCompleted ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100" : ""}
+                  title={
+                    task.isCompleted
+                      ? "Tandai tugas belum selesai"
+                      : "Tandai tugas sudah selesai"
+                  }
+                >
+                  <CheckCircle className="w-4 h-4" />
+                  <span>{task.isCompleted ? "Sudah Selesai" : "Tandai Selesai"}</span>
+                </Button>
+              )}
+
+              {task.classroomLink && (
+                <a
+                  href={task.classroomLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2 text-slate-600 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200 transition cursor-pointer"
+                  title="Buka langsung di Google Classroom"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+              )}
+
+              <Button
+                variant="ghost"
+                size="iconSm"
+                onClick={onClose}
+                className="text-slate-400 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200 transition cursor-pointer"
+                title="Tutup jendela"
+                aria-label="Tutup jendela"
               >
-                <ExternalLink className="w-4 h-4" />
-              </a>
-            )}
-            <button
-              onClick={onClose}
-              className="p-2 text-slate-400 hover:text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl transition cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
-        </div>
 
-        {/* Navigation Tabs */}
-        <div className="px-6 border-b border-slate-200 bg-white flex items-center gap-2 overflow-x-auto no-scrollbar">
+          {/* Ask AI Copilot Ribbon inside Modal */}
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 p-3 bg-indigo-50 border border-indigo-100 rounded-2xl">
+            <div className="flex items-center gap-2 text-xs font-bold text-indigo-900">
+              <Sparkles className="w-4 h-4 text-indigo-600" />
+              <span>Butuh bantuan atau penjelasan materi lebih dalam?</span>
+            </div>
+            <Button
+              onClick={() => {
+                onClose();
+                onOpenChat(task.id);
+              }}
+              size="sm"
+              className="gap-1.5"
+            >
+              <MessageSquareText className="w-3.5 h-3.5" />
+              <span>Tanya Asisten AI</span>
+            </Button>
+          </div>
+        </DialogHeader>
+
+        {/* TurboLearn Tabs Bar */}
+        <div className="px-5 border-b border-slate-200 bg-white flex items-center gap-1 overflow-x-auto no-scrollbar shrink-0">
           <button
-            onClick={() => setActiveTab('overview')}
-            className={`py-3 px-3 text-xs sm:text-sm font-semibold border-b-2 transition whitespace-nowrap cursor-pointer ${
-              activeTab === 'overview'
-                ? 'border-indigo-600 text-indigo-600'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
+            onClick={() => setActiveTab("summary")}
+            className={`py-3 px-3.5 text-xs sm:text-sm font-bold border-b-2 transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+              activeTab === "summary"
+                ? "border-indigo-600 text-indigo-600"
+                : "border-transparent text-slate-500 hover:text-slate-800"
             }`}
           >
-            Ringkasan & Deskripsi
+            <FileText className="w-4 h-4" />
+            <span>Rangkuman & Catatan</span>
           </button>
+
           <button
-            onClick={() => setActiveTab('checklist')}
-            className={`py-3 px-3 text-xs sm:text-sm font-semibold border-b-2 transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
-              activeTab === 'checklist'
-                ? 'border-indigo-600 text-indigo-600'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
+            onClick={() => setActiveTab("checklist")}
+            className={`py-3 px-3.5 text-xs sm:text-sm font-bold border-b-2 transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+              activeTab === "checklist"
+                ? "border-indigo-600 text-indigo-600"
+                : "border-transparent text-slate-500 hover:text-slate-800"
             }`}
           >
-            <span>Checklist Langkah</span>
-            {ai?.checklist && (
-              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-slate-100 font-bold">
-                {ai.checklist.filter(c => c.done).length}/{ai.checklist.length}
-              </span>
-            )}
+            <ListChecks className="w-4 h-4" />
+            <span>Checklist Langkah ({checklistDone}/{checklistTotal})</span>
           </button>
+
           <button
-            onClick={() => setActiveTab('sources')}
-            className={`py-3 px-3 text-xs sm:text-sm font-semibold border-b-2 transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
-              activeTab === 'sources'
-                ? 'border-indigo-600 text-indigo-600'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
+            onClick={() => setActiveTab("youtube")}
+            className={`py-3 px-3.5 text-xs sm:text-sm font-bold border-b-2 transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+              activeTab === "youtube"
+                ? "border-rose-600 text-rose-600"
+                : "border-transparent text-slate-500 hover:text-slate-800"
             }`}
           >
-            <BookOpen className="w-3.5 h-3.5" />
-            <span>Sumber Belajar AI ({ai?.sources?.length || 0})</span>
+            <Youtube className="w-4 h-4 text-rose-600" />
+            <span>Video YouTube ({ai?.youtubeVideos?.length || 0})</span>
           </button>
+
           <button
-            onClick={() => setActiveTab('youtube')}
-            className={`py-3 px-3 text-xs sm:text-sm font-semibold border-b-2 transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
-              activeTab === 'youtube'
-                ? 'border-rose-600 text-rose-600'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
+            onClick={() => setActiveTab("sources")}
+            className={`py-3 px-3.5 text-xs sm:text-sm font-bold border-b-2 transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+              activeTab === "sources"
+                ? "border-indigo-600 text-indigo-600"
+                : "border-transparent text-slate-500 hover:text-slate-800"
             }`}
           >
-            <Youtube className="w-3.5 h-3.5 text-rose-600" />
-            <span>Rekomendasi YouTube ({ai?.youtubeVideos?.length || 0})</span>
+            <BookOpen className="w-4 h-4" />
+            <span>Sumber Web ({ai?.sources?.length || 0})</span>
           </button>
+
+          {task.materials && task.materials.length > 0 && (
+            <button
+              onClick={() => setActiveTab("materials")}
+              className={`py-3 px-3.5 text-xs sm:text-sm font-bold border-b-2 transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+                activeTab === "materials"
+                  ? "border-indigo-600 text-indigo-600"
+                  : "border-transparent text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              <Paperclip className="w-4 h-4" />
+              <span>Materi Guru ({task.materials.length})</span>
+            </button>
+          )}
+
           <button
-            onClick={() => setActiveTab('tips')}
-            className={`py-3 px-3 text-xs sm:text-sm font-semibold border-b-2 transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
-              activeTab === 'tips'
-                ? 'border-indigo-600 text-indigo-600'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
+            onClick={() => setActiveTab("tips")}
+            className={`py-3 px-3.5 text-xs sm:text-sm font-bold border-b-2 transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+              activeTab === "tips"
+                ? "border-amber-500 text-amber-700"
+                : "border-transparent text-slate-500 hover:text-slate-800"
             }`}
           >
-            <Lightbulb className="w-3.5 h-3.5" />
-            <span>Tips & Strategi</span>
+            <Lightbulb className="w-4 h-4" />
+            <span>Tips Belajar</span>
           </button>
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 overflow-y-auto space-y-6 flex-1 bg-slate-50/50">
+        <div className="p-5 sm:p-6 overflow-y-auto space-y-6 flex-1 bg-slate-50/50">
           {/* AI Banner Prompt if not analyzed yet */}
           {!ai && (
-            <div className="p-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="p-5 rounded-3xl bg-indigo-600 text-white shadow-md flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <Sparkles className="w-5 h-5 text-amber-300" />
-                  <h3 className="font-bold text-base">Aktifkan Analisis & Sumber Belajar AI</h3>
+                  <h3 className="font-extrabold text-base">
+                    Aktifkan Rangkuman Pintar & Video Belajar AI
+                  </h3>
                 </div>
-                <p className="text-xs text-indigo-100">
-                  Gemini AI akan membedah tugas ini, menyusun langkah checklist, dan mengkurasi video YouTube serta referensi web resmi.
+                <p className="text-xs text-indigo-100 leading-relaxed">
+                  TurboLearn AI akan membuat rangkuman konsep penting, menyusun langkah checklist tugas, dan mengkurasi video YouTube serta referensi terpercaya.
                 </p>
               </div>
-              <button
+              <Button
                 id="modal-trigger-ai-analyze"
                 onClick={() => onAnalyzeWithAI(task.id)}
                 disabled={task.aiLoading}
-                className="px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm bg-white text-indigo-700 hover:bg-indigo-50 shadow-sm transition cursor-pointer flex items-center gap-2 shrink-0"
+                variant="secondary"
+                size="default"
+                className="bg-white text-indigo-700 hover:bg-indigo-50 shrink-0 font-extrabold"
               >
                 {task.aiLoading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
-                    <span>Menganalisis...</span>
+                    <span>Sedang Menyusun...</span>
                   </>
                 ) : (
                   <>
                     <Sparkles className="w-4 h-4 text-indigo-600" />
-                    <span>Analisis Tugas Sekarang</span>
+                    <span>Susun Materi Sekarang</span>
                   </>
                 )}
-              </button>
+              </Button>
             </div>
           )}
 
-          {/* TAB 1: OVERVIEW */}
-          {activeTab === 'overview' && (
-            <div className="space-y-6">
-              {/* AI Quick Insight Box if available */}
+          {/* TAB 1: SUMMARY & NOTES */}
+          {activeTab === "summary" && (
+            <div className="space-y-5">
+              {/* Teacher Original Description */}
+              {task.description && (
+                <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-2">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                    Instruksi / Deskripsi Asli dari Guru
+                  </h4>
+                  <p className="text-sm text-slate-700 whitespace-pre-line leading-relaxed">
+                    {task.description}
+                  </p>
+                </div>
+              )}
+
+              {/* AI Key Summary & Concepts */}
               {ai && (
-                <div className="bg-white p-5 rounded-2xl border border-indigo-100 shadow-xs space-y-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 text-indigo-900 font-bold text-sm">
-                      <Sparkles className="w-4 h-4 text-indigo-600" />
-                      <span>Ringkasan AI & Parameter Tugas</span>
+                <div className="bg-white rounded-2xl p-5 border border-indigo-100 shadow-2xs space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 rounded-xl bg-indigo-50 text-indigo-600">
+                        <Sparkles className="w-4 h-4" />
+                      </div>
+                      <h4 className="text-sm font-extrabold text-slate-900">
+                        Rangkuman Inti Materi
+                      </h4>
                     </div>
-                    <div className="flex items-center gap-2 text-xs">
-                      <span className="px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700 font-semibold">
-                        Tingkat: {ai.difficulty}
-                      </span>
-                      <span className="px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 font-semibold">
-                        Estimasi: ~{ai.estimatedMinutes} Menit
-                      </span>
-                    </div>
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700">
+                      Tingkat: {ai.difficulty}
+                    </span>
                   </div>
 
-                  <p className="text-slate-700 text-sm leading-relaxed">
+                  <p className="text-sm text-indigo-950 leading-relaxed bg-indigo-50/70 p-4 rounded-xl border border-indigo-100/80">
                     {ai.summary}
                   </p>
 
-                  {ai.keyConcepts?.length > 0 && (
-                    <div className="pt-2">
-                      <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                        Konsep Kunci yang Perlu Dipahami:
-                      </h4>
-                      <div className="flex flex-wrap gap-1.5">
-                        {ai.keyConcepts.map((concept, i) => (
-                          <span
-                            key={i}
-                            className="px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 text-slate-800 border border-slate-200/60"
+                  {/* Key Concepts Chips */}
+                  {ai.keyConcepts && ai.keyConcepts.length > 0 && (
+                    <div className="space-y-2">
+                      <span className="text-xs font-bold text-slate-500">
+                        Topik & Konsep Kunci:
+                      </span>
+                      <div className="flex flex-wrap gap-2">
+                        {ai.keyConcepts.map((concept, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => {
+                              navigator.clipboard.writeText(concept);
+                              setCopiedConcept(concept);
+                              setTimeout(() => setCopiedConcept(null), 1500);
+                            }}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 transition cursor-pointer"
+                            title="Klik untuk menyalin konsep"
                           >
-                            {concept}
-                          </span>
+                            {copiedConcept === concept ? (
+                              <Check className="w-3 h-3 text-emerald-600" />
+                            ) : (
+                              <BookOpen className="w-3 h-3 text-indigo-500" />
+                            )}
+                            <span>{concept}</span>
+                          </button>
                         ))}
                       </div>
                     </div>
@@ -254,361 +388,325 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                 </div>
               )}
 
-              {/* Assignment Description from Google Classroom */}
-              <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs space-y-3">
-                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-indigo-600" />
-                  Instruksi Lengkap dari Pengajar:
-                </h3>
-                <div className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-200/60">
-                  {task.description || 'Tidak ada deskripsi detail dari guru/dosen.'}
-                </div>
-
-                {/* Materials / Attachments */}
-                {task.materials && task.materials.length > 0 && (
-                  <div className="pt-2">
-                    <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                      <Paperclip className="w-3.5 h-3.5" />
-                      Materi & Lampiran Lampiran ({task.materials.length}):
-                    </h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {task.materials.map((m, idx) => {
-                        const title = m.driveFile?.driveFile?.title || m.youtubeVideo?.title || m.link?.title || m.form?.title || `Lampiran #${idx + 1}`;
-                        const link = m.driveFile?.driveFile?.alternateLink || m.youtubeVideo?.alternateLink || m.link?.url || m.form?.formUrl || '#';
-                        return (
-                          <a
-                            key={idx}
-                            href={link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-3 bg-slate-50 hover:bg-indigo-50/50 border border-slate-200 hover:border-indigo-200 rounded-xl flex items-center justify-between gap-3 text-xs font-medium text-slate-800 transition"
-                          >
-                            <div className="flex items-center gap-2 min-w-0">
-                              {m.youtubeVideo ? (
-                                <Youtube className="w-4 h-4 text-rose-600 shrink-0" />
-                              ) : (
-                                <FileText className="w-4 h-4 text-indigo-600 shrink-0" />
-                              )}
-                              <span className="truncate">{title}</span>
-                            </div>
-                            <ExternalLink className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          </a>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Personal Notes Box */}
-              <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs space-y-3">
+              {/* Personal Notes Editor */}
+              <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-bold text-slate-900">Catatan Pribadi & Todo Tambahan:</h3>
+                  <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-indigo-600" />
+                    <span>Catatan Pribadi Kamu</span>
+                  </h4>
                   {isSavedNotes && (
-                    <span className="text-xs font-semibold text-emerald-600 flex items-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> Tersimpan
+                    <span className="text-xs font-bold text-emerald-600 flex items-center gap-1">
+                      <Check className="w-3.5 h-3.5" /> Tersimpan!
                     </span>
                   )}
                 </div>
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Tuliskan catatan, draf jawaban, pertanyaan untuk dosen, atau ide di sini..."
-                  rows={3}
-                  className="w-full p-3 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition"
+                  placeholder="Tulis catatan pengerjaan, jawaban sementara, atau rumus penting di sini..."
+                  rows={4}
+                  className="w-full p-3.5 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition"
                 />
                 <div className="flex justify-end">
-                  <button
+                  <Button
                     onClick={handleSaveNotes}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-lg transition cursor-pointer"
+                    size="sm"
+                    variant="default"
+                    className="gap-1.5"
                   >
-                    <Save className="w-3.5 h-3.5" /> Simpan Catatan
-                  </button>
+                    <Save className="w-3.5 h-3.5" />
+                    <span>Simpan Catatan</span>
+                  </Button>
                 </div>
               </div>
             </div>
           )}
 
-          {/* TAB 2: STEP-BY-STEP CHECKLIST */}
-          {activeTab === 'checklist' && (
+          {/* TAB 2: CHECKLIST STEPS */}
+          {activeTab === "checklist" && (
             <div className="space-y-4">
-              <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs">
-                <div className="flex items-center justify-between mb-4">
+              {/* Progress Summary Card */}
+              <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3">
+                <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-sm font-bold text-slate-900">
-                      Langkah-Langkah Pengerjaan Tugas (AI Guided Checklist)
-                    </h3>
-                    <p className="text-xs text-slate-500">
-                      Centang setiap langkah saat kamu menyelesaikannya untuk mempermudah pengerjaan.
+                    <h4 className="text-sm font-extrabold text-slate-900">
+                      Langkah Pengerjaan Tugas
+                    </h4>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Centang setiap langkah yang sudah selesai kamu kerjakan.
                     </p>
                   </div>
+                  <span className="text-xs font-extrabold px-3 py-1 rounded-full bg-indigo-50 text-indigo-700">
+                    {checklistDone} / {checklistTotal} Langkah ({checklistPercent}%)
+                  </span>
                 </div>
 
-                {ai?.checklist && ai.checklist.length > 0 ? (
-                  <div className="space-y-2.5">
-                    {ai.checklist.map((item) => (
-                      <div
-                        key={item.id}
-                        onClick={() => onToggleChecklistItem(task.id, item.id)}
-                        className={`p-3.5 rounded-xl border flex items-start gap-3 transition cursor-pointer ${
-                          item.done
-                            ? 'bg-emerald-50/60 border-emerald-200 text-slate-500'
-                            : 'bg-slate-50 hover:bg-indigo-50/40 border-slate-200/80 text-slate-800'
-                        }`}
-                      >
-                        <div className="mt-0.5 shrink-0">
-                          {item.done ? (
-                            <CheckSquare className="w-4 h-4 text-emerald-600" />
-                          ) : (
-                            <Square className="w-4 h-4 text-slate-400" />
-                          )}
-                        </div>
-                        <span className={`text-xs sm:text-sm font-medium ${item.done ? 'line-through text-slate-400' : ''}`}>
+                <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-indigo-600 rounded-full transition-all duration-300"
+                    style={{ width: `${checklistPercent}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Checklist Items */}
+              {ai?.checklist && ai.checklist.length > 0 ? (
+                <div className="space-y-2.5">
+                  {ai.checklist.map((item, idx) => (
+                    <div
+                      key={item.id || idx}
+                      onClick={() => onToggleChecklistItem(task.id, item.id)}
+                      className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-start gap-3 ${
+                        item.done
+                          ? "bg-slate-50 border-slate-200 text-slate-400"
+                          : "bg-white border-slate-200 hover:border-indigo-300 text-slate-800 shadow-2xs"
+                      }`}
+                    >
+                      <button className="mt-0.5 shrink-0 text-indigo-600">
+                        {item.done ? (
+                          <CheckSquare className="w-5 h-5 text-emerald-600" />
+                        ) : (
+                          <Square className="w-5 h-5 text-slate-400" />
+                        )}
+                      </button>
+                      <div className="flex-1">
+                        <span
+                          className={`text-sm font-semibold leading-relaxed ${
+                            item.done ? "line-through text-slate-400" : ""
+                          }`}
+                        >
                           {item.text}
                         </span>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <p className="text-xs text-slate-500 mb-3">Belum ada langkah checklist.</p>
-                    <button
-                      onClick={() => onAnalyzeWithAI(task.id)}
-                      className="px-3.5 py-2 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-xl transition cursor-pointer inline-flex items-center gap-1.5"
-                    >
-                      <Sparkles className="w-3.5 h-3.5" /> Buat Langkah Otomatis dengan AI
-                    </button>
-                  </div>
-                )}
-              </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-8 text-center bg-white rounded-2xl border border-slate-200 text-slate-500 text-sm">
+                  Belum ada checklist. Klik tombol "Susun Materi Sekarang" di atas untuk membuat checklist otomatis dengan AI.
+                </div>
+              )}
             </div>
           )}
 
-          {/* TAB 3: CURATED WEB SOURCES & DOCS */}
-          {activeTab === 'sources' && (
+          {/* TAB 3: YOUTUBE RECOMMENDATIONS */}
+          {activeTab === "youtube" && (
             <div className="space-y-4">
-              <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                      <BookOpen className="w-4 h-4 text-indigo-600" />
-                      Sumber Bacaan & Dokumentasi Terverifikasi AI
-                    </h3>
-                    <p className="text-xs text-slate-500">
-                      Rujukan artikel, dokumentasi resmi, tutorial, dan materi akademis relevan.
-                    </p>
-                  </div>
-                </div>
-
-                {ai?.sources && ai.sources.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {ai.sources.map((src, i) => (
-                      <a
-                        key={i}
-                        href={src.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="p-4 rounded-xl border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/20 bg-slate-50/60 transition flex flex-col justify-between group"
-                      >
-                        <div>
-                          <div className="flex items-center justify-between gap-2 mb-1.5">
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-indigo-100 text-indigo-800">
-                              {src.type}
-                            </span>
-                            <span className="text-[11px] font-medium text-slate-400 flex items-center gap-1">
-                              {src.domain}
-                              <ExternalLink className="w-3 h-3 text-slate-400 group-hover:text-indigo-600 transition" />
-                            </span>
+              {ai?.youtubeVideos && ai.youtubeVideos.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {ai.youtubeVideos.map((video, idx) => (
+                    <div
+                      key={idx}
+                      className="bg-white rounded-3xl p-5 border border-rose-100 shadow-2xs flex flex-col justify-between space-y-4 hover:shadow-md transition"
+                    >
+                      <div className="space-y-2.5">
+                        <div className="flex items-center gap-2">
+                          <div className="p-2 rounded-xl bg-rose-50 text-rose-600">
+                            <Youtube className="w-5 h-5" />
                           </div>
-                          <h4 className="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-indigo-600 transition line-clamp-2">
-                            {src.title}
-                          </h4>
-                          <p className="mt-1 text-xs text-slate-600 line-clamp-3 leading-relaxed">
-                            {src.description}
-                          </p>
-                        </div>
-                        <div className="mt-3 pt-2 border-t border-slate-200/60 flex items-center text-[11px] font-semibold text-indigo-600">
-                          <span>Buka Referensi</span>
-                          <ExternalLink className="w-3 h-3 ml-1" />
-                        </div>
-                      </a>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <p className="text-xs text-slate-500 mb-3">Sumber belajar belum dikurasi.</p>
-                    <button
-                      onClick={() => onAnalyzeWithAI(task.id)}
-                      className="px-3.5 py-2 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-xl transition cursor-pointer inline-flex items-center gap-1.5"
-                    >
-                      <Sparkles className="w-3.5 h-3.5" /> Kurasi Sumber Belajar dengan AI
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* TAB 4: RECOMMENDED YOUTUBE VIDEOS */}
-          {activeTab === 'youtube' && (
-            <div className="space-y-4">
-              <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                      <Youtube className="w-4 h-4 text-rose-600" />
-                      Rekomendasi Video YouTube Pembelajaran
-                    </h3>
-                    <p className="text-xs text-slate-500">
-                      Video penjelasan konsep, tutorial praktik, dan pembahasan topik terkait dari YouTube.
-                    </p>
-                  </div>
-                </div>
-
-                {ai?.youtubeVideos && ai.youtubeVideos.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                    {ai.youtubeVideos.map((video, idx) => (
-                      <div
-                        key={idx}
-                        className="p-4 rounded-2xl border border-rose-100 bg-gradient-to-br from-rose-50/30 to-slate-50 flex flex-col justify-between"
-                      >
-                        <div>
-                          <div className="flex items-center justify-between gap-2 mb-2">
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800">
-                              <Youtube className="w-3 h-3 text-rose-600" />
+                          <div>
+                            <span className="text-[11px] font-bold text-rose-700 block">
                               {video.channel}
                             </span>
+                            <h4 className="text-sm font-extrabold text-slate-900 leading-snug line-clamp-2">
+                              {video.title}
+                            </h4>
                           </div>
-
-                          <h4 className="text-xs sm:text-sm font-bold text-slate-900 leading-snug mb-1.5">
-                            {video.title}
-                          </h4>
-
-                          <p className="text-xs text-slate-600 mb-3 leading-relaxed">
-                            <strong className="text-slate-800">Kenapa membantu:</strong> {video.reason}
-                          </p>
-
-                          {video.keyTakeaways && video.keyTakeaways.length > 0 && (
-                            <div className="bg-white/80 p-2.5 rounded-xl border border-rose-100/60 mb-3">
-                              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
-                                Poin Utama yang Dipelajari:
-                              </span>
-                              <ul className="text-xs text-slate-700 space-y-1">
-                                {video.keyTakeaways.map((point, pIdx) => (
-                                  <li key={pIdx} className="flex items-start gap-1.5">
-                                    <span className="text-rose-500 font-bold">•</span>
-                                    <span>{point}</span>
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
                         </div>
 
-                        <a
-                          href={video.searchUrl || `https://www.youtube.com/results?search_query=${encodeURIComponent(video.searchQuery || video.title)}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="w-full py-2 px-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-2xs"
-                        >
-                          <Youtube className="w-3.5 h-3.5" />
-                          <span>Tonton di YouTube</span>
-                          <ExternalLink className="w-3 h-3 ml-1" />
-                        </a>
+                        <p className="text-xs text-slate-600 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100">
+                          {video.reason}
+                        </p>
+
+                        {video.keyTakeaways && video.keyTakeaways.length > 0 && (
+                          <div className="space-y-1">
+                            <span className="text-[11px] font-bold text-slate-400">
+                              Topik yang dipelajari:
+                            </span>
+                            <ul className="text-xs text-slate-600 space-y-1 list-disc list-inside">
+                              {video.keyTakeaways.map((takeaway, tIdx) => (
+                                <li key={tIdx} className="line-clamp-1">
+                                  {takeaway}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <p className="text-xs text-slate-500 mb-3">Belum ada kurasi video YouTube.</p>
-                    <button
-                      onClick={() => onAnalyzeWithAI(task.id)}
-                      className="px-3.5 py-2 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-xl transition cursor-pointer inline-flex items-center gap-1.5"
+
+                      <a
+                        href={video.searchUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full py-2.5 rounded-xl font-bold text-xs bg-rose-600 hover:bg-rose-700 text-white flex items-center justify-center gap-1.5 transition shadow-xs active:scale-95"
+                      >
+                        <Youtube className="w-4 h-4" />
+                        <span>Tonton Video di YouTube</span>
+                        <ExternalLink className="w-3 h-3 ml-1" />
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-8 text-center bg-white rounded-2xl border border-slate-200 text-slate-500 text-sm">
+                  Belum ada rekomendasi video YouTube. Klik "Susun Materi Sekarang" untuk mencari video YouTube yang cocok.
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 4: WEB SOURCES */}
+          {activeTab === "sources" && (
+            <div className="space-y-3">
+              {ai?.sources && ai.sources.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  {ai.sources.map((src, idx) => (
+                    <a
+                      key={idx}
+                      href={src.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs hover:border-indigo-300 hover:shadow-md transition flex flex-col justify-between space-y-3 group"
                     >
-                      <Youtube className="w-3.5 h-3.5" /> Rekomendasikan Video YouTube dengan AI
-                    </button>
-                  </div>
-                )}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100">
+                            {src.domain}
+                          </span>
+                          <ExternalLink className="w-3.5 h-3.5 text-slate-400 group-hover:text-indigo-600 transition" />
+                        </div>
+                        <h4 className="text-sm font-bold text-slate-900 group-hover:text-indigo-600 transition line-clamp-1">
+                          {src.title}
+                        </h4>
+                        <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
+                          {src.description}
+                        </p>
+                      </div>
+                      <span className="text-[11px] font-bold text-indigo-600 flex items-center gap-1">
+                        Baca Selengkapnya →
+                      </span>
+                    </a>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-8 text-center bg-white rounded-2xl border border-slate-200 text-slate-500 text-sm">
+                  Belum ada referensi web terkurasi.
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 5: TEACHER MATERIALS */}
+          {activeTab === "materials" && task.materials && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {task.materials.map((mat, idx) => {
+                  const title =
+                    mat.driveFile?.driveFile?.title ||
+                    mat.youtubeVideo?.title ||
+                    mat.link?.title ||
+                    "Lampiran";
+                  const link =
+                    mat.driveFile?.driveFile?.alternateLink ||
+                    mat.youtubeVideo?.alternateLink ||
+                    mat.link?.url ||
+                    "#";
+                  return (
+                    <a
+                      key={idx}
+                      href={link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs hover:border-indigo-300 hover:shadow-md transition flex items-center justify-between gap-3 group"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="p-2.5 rounded-xl bg-slate-100 text-slate-600 group-hover:bg-slate-200 group-hover:text-slate-900 transition shrink-0">
+                          {mat.youtubeVideo ? (
+                            <Youtube className="w-5 h-5 text-red-500" />
+                          ) : (
+                            <FileText className="w-5 h-5 text-blue-500" />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-xs sm:text-sm font-bold text-slate-900 truncate">
+                            {title}
+                          </h4>
+                          <span className="text-[11px] text-slate-400">
+                            Buka dokumen guru
+                          </span>
+                        </div>
+                      </div>
+                      <ExternalLink className="w-4 h-4 text-slate-400 group-hover:text-indigo-600 transition shrink-0" />
+                    </a>
+                  );
+                })}
               </div>
             </div>
           )}
 
-          {/* TAB 5: STUDY TIPS & STRATEGY */}
-          {activeTab === 'tips' && (
+          {/* TAB 6: STUDY TIPS */}
+          {activeTab === "tips" && ai && (
             <div className="space-y-4">
-              <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs space-y-4">
-                <div className="flex items-center gap-2 text-amber-900 font-bold text-sm">
-                  <Lightbulb className="w-4 h-4 text-amber-500" />
-                  <span>Tips Belajar & Strategi Pengerjaan Maksimal</span>
+              {ai.recommendedStrategy && (
+                <div className="bg-amber-50 rounded-2xl p-5 border border-amber-200 space-y-2">
+                  <h4 className="text-xs font-bold text-amber-900 uppercase tracking-wider flex items-center gap-1.5">
+                    <Lightbulb className="w-4 h-4 text-amber-600" />
+                    Strategi Belajar Terbaik
+                  </h4>
+                  <p className="text-xs sm:text-sm text-amber-900 leading-relaxed font-medium">
+                    {ai.recommendedStrategy}
+                  </p>
                 </div>
+              )}
 
-                {ai?.recommendedStrategy && (
-                  <div className="p-4 bg-amber-50/70 border border-amber-200/80 rounded-xl">
-                    <h4 className="text-xs font-bold text-amber-900 uppercase tracking-wider mb-1">
-                      Strategi yang Dianjurkan:
-                    </h4>
-                    <p className="text-xs sm:text-sm text-amber-900/90 leading-relaxed">
-                      {ai.recommendedStrategy}
-                    </p>
-                  </div>
-                )}
-
-                {ai?.studyTips && ai.studyTips.length > 0 ? (
-                  <div className="space-y-2.5">
-                    {ai.studyTips.map((tip, i) => (
-                      <div
-                        key={i}
-                        className="p-3.5 bg-slate-50 border border-slate-200/70 rounded-xl flex items-start gap-2.5"
+              {ai.studyTips && ai.studyTips.length > 0 && (
+                <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3">
+                  <h4 className="text-sm font-bold text-slate-900">
+                    Tips Efektif Mengerjakan:
+                  </h4>
+                  <ul className="space-y-2">
+                    {ai.studyTips.map((tip, idx) => (
+                      <li
+                        key={idx}
+                        className="flex items-start gap-2.5 text-xs sm:text-sm text-slate-700"
                       >
-                        <div className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
-                          {i + 1}
-                        </div>
-                        <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
-                          {tip}
-                        </p>
-                      </div>
+                        <span className="w-5 h-5 rounded-full bg-indigo-50 text-indigo-700 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
+                          {idx + 1}
+                        </span>
+                        <span>{tip}</span>
+                      </li>
                     ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-6">
-                    <p className="text-xs text-slate-500 mb-2">Tips belajar belum dibuat.</p>
-                    <button
-                      onClick={() => onAnalyzeWithAI(task.id)}
-                      className="px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 rounded-lg hover:bg-indigo-100 cursor-pointer"
-                    >
-                      Buat Tips dengan AI
-                    </button>
-                  </div>
-                )}
-              </div>
+                  </ul>
+                </div>
+              )}
             </div>
           )}
         </div>
 
         {/* Modal Footer */}
-        <div className="p-4 sm:p-5 border-t border-slate-200 bg-white flex flex-col sm:flex-row items-center justify-between gap-3">
-          <button
-            id="modal-btn-open-chat"
+        <DialogFooter className="p-4 border-t border-slate-200 bg-white flex flex-row items-center justify-between sm:justify-between shrink-0">
+          <Button
+            variant="primarySubtle"
+            size="sm"
             onClick={() => {
               onClose();
               onOpenChat(task.id);
             }}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs transition cursor-pointer"
+            className="gap-2"
           >
-            <MessageSquareText className="w-4 h-4" />
-            <span>Tanya Chatbot AI Soal Tugas Ini</span>
-          </button>
+            <MessageSquareText className="w-4 h-4 text-indigo-600" />
+            <span>Tanya AI Soal Tugas Ini</span>
+          </Button>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-            <button
-              onClick={onClose}
-              className="w-full sm:w-auto px-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition cursor-pointer"
-            >
-              Tutup
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+          <Button
+            onClick={onClose}
+            size="sm"
+          >
+            Selesai Membaca
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };

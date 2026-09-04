@@ -1,6 +1,7 @@
 "use client";
 import React from 'react';
 import { GraduationCap, ArrowRight, Zap, Brain, CalendarSync, LayoutDashboard, AlertCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface LandingPageProps {
   onConnectGoogle: () => void;
@@ -11,7 +12,7 @@ interface LandingPageProps {
 
 export function LandingPage({ onConnectGoogle, onDemoMode, loginError, isAuthenticating }: LandingPageProps) {
   return (
-    <div className="min-h-screen bg-white text-slate-900 flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
+    <div className="min-h-screen bg-white text-slate-900 flex flex-col font-sans">
       {/* Header */}
       <header className="px-6 py-5 flex items-center justify-between border-b border-slate-100 max-w-7xl mx-auto w-full">
         <div className="flex items-center gap-2.5">
@@ -21,20 +22,23 @@ export function LandingPage({ onConnectGoogle, onDemoMode, loginError, isAuthent
           <span className="text-xl font-bold tracking-tight text-slate-800">LearnAI</span>
         </div>
         <div className="flex items-center gap-4">
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={onDemoMode}
             disabled={isAuthenticating}
-            className="text-sm font-semibold text-slate-600 hover:text-slate-900 transition disabled:opacity-50"
+            className="text-slate-600 hover:text-slate-900"
           >
             Mode Simulasi
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="primarySubtle"
+            size="sm"
             onClick={onConnectGoogle}
             disabled={isAuthenticating}
-            className="text-sm font-semibold text-indigo-600 hover:text-indigo-700 transition disabled:opacity-50"
           >
             {isAuthenticating ? 'Menghubungkan...' : 'Masuk Google'}
-          </button>
+          </Button>
         </div>
       </header>
 
@@ -47,7 +51,7 @@ export function LandingPage({ onConnectGoogle, onDemoMode, loginError, isAuthent
         
         <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-slate-900 leading-tight mb-6">
           Sinkronkan Tugas Kelas, <br className="hidden sm:block" />
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-violet-500">
+          <span className="text-indigo-600">
             Taklukkan dengan AI.
           </span>
         </h1>
@@ -67,22 +71,25 @@ export function LandingPage({ onConnectGoogle, onDemoMode, loginError, isAuthent
         )}
         
         <div className="flex flex-col sm:flex-row items-center gap-4">
-          <button
+          <Button
             onClick={onConnectGoogle}
             disabled={isAuthenticating}
-            className="group inline-flex items-center gap-3 px-8 py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-lg shadow-xl shadow-indigo-200 transition-all active:scale-95 w-full sm:w-auto justify-center disabled:opacity-50 disabled:active:scale-100 disabled:pointer-events-none"
+            size="lg"
+            className="w-full sm:w-auto text-base py-6 px-8 rounded-2xl shadow-xl shadow-indigo-200 gap-3 group"
           >
             <span>{isAuthenticating ? 'Menghubungkan...' : 'Masuk Google Classroom'}</span>
             {!isAuthenticating && <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />}
-          </button>
+          </Button>
           
-          <button
+          <Button
+            variant="outline"
             onClick={onDemoMode}
-            className="group inline-flex items-center gap-3 px-8 py-4 rounded-2xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-bold text-lg shadow-sm transition-all active:scale-95 w-full sm:w-auto justify-center"
+            size="lg"
+            className="w-full sm:w-auto text-base py-6 px-8 rounded-2xl bg-white hover:bg-slate-50 text-slate-700 border-slate-200 gap-3"
           >
             <LayoutDashboard className="w-5 h-5 text-slate-500" />
             <span>Coba Mode Simulasi</span>
-          </button>
+          </Button>
         </div>
 
         {/* Feature Grid */}

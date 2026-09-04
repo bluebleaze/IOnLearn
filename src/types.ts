@@ -129,10 +129,77 @@ export interface UserPreferences {
   learningStyle: string; // e.g., 'Visual', 'Membaca/Menulis', 'Praktik'
   explanationDetail: string; // e.g., 'Singkat', 'Detail', 'Bertahap'
   aiTone: string; // e.g., 'Santai', 'Tegas', 'Socratic'
+  classroomDateRangeMonths?: number; // Filter rentang bulan sinkronisasi tugas: 1, 2 (default), 3, 6, 12, atau 0 (semua)
+}
+
+export const DEFAULT_DATE_RANGE_MONTHS = 2;
+
+/**
+ * Memeriksa apakah tugas berada dalam rentang tanggal yang dipilih
+ * @param task Objek TodoTask
+ * @param dateRangeMonths Batas bulan ke belakang (default: 2 bulan). Nilai 0 berarti semua waktu.
+ */
+export function isTaskWithinDateRange(task: TodoTask, dateRangeMonths: number = DEFAULT_DATE_RANGE_MONTHS): boolean {
+  if (!dateRangeMonths || dateRangeMonths <= 0) return true;
+
+  const now = new Date();
+  const cutoffDate = new Date(now.getFullYear(), now.getMonth() - dateRangeMonths, now.getDate(), 0, 0, 0, 0);
+  const cutoffTimestamp = cutoffDate.getTime();
+
+  // Jika tugas memiliki due date (tenggat waktu)
+  if (task.dueTimestamp) {
+    return task.dueTimestamp >= cutoffTimestamp;
+  }
+
+  // Jika tugas tidak memiliki due date, gunakan waktu pembuatan (createdAt)
+  if (task.createdAt) {
+    const createdTimestamp = new Date(task.createdAt).getTime();
+    if (!isNaN(createdTimestamp)) {
+      return createdTimestamp >= cutoffTimestamp;
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Memeriksa apakah CourseWork dari Google Classroom berada dalam rentang tanggal yang ditentukan
+ * @param cw Objek ClassroomCourseWork
+ * @param dateRangeMonths Batas bulan ke belakang (default: 2 bulan)
+ */
+export function isCourseWorkWithinDateRange(cw: ClassroomCourseWork, dateRangeMonths: number = DEFAULT_DATE_RANGE_MONTHS): boolean {
+  if (!dateRangeMonths || dateRangeMonths <= 0) return true;
+
+  const now = new Date();
+  const cutoffDate = new Date(now.getFullYear(), now.getMonth() - dateRangeMonths, now.getDate(), 0, 0, 0, 0);
+  const cutoffTimestamp = cutoffDate.getTime();
+
+  // Jika memiliki due date
+  if (cw.dueDate && cw.dueDate.year && cw.dueDate.month && cw.dueDate.day) {
+    const dueTime = cw.dueTime;
+    const dueObj = new Date(
+      cw.dueDate.year,
+      cw.dueDate.month - 1,
+      cw.dueDate.day,
+      dueTime?.hours ?? 23,
+      dueTime?.minutes ?? 59
+    );
+    return dueObj.getTime() >= cutoffTimestamp;
+  }
+
+  // Jika tidak ada due date, cek creationTime
+  if (cw.creationTime) {
+    const createdTimestamp = new Date(cw.creationTime).getTime();
+    if (!isNaN(createdTimestamp)) {
+      return createdTimestamp >= cutoffTimestamp;
+    }
+  }
+
+  return true;
 }
 
 export interface AIConfig {
-  provider: 'gemini' | 'openai' | 'local';
+  provider: 'gemini' | 'gemini_custom' | 'openai';
   apiKey?: string;
   baseUrl?: string;
   model?: string;

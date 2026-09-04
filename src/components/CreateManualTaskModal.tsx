@@ -1,7 +1,16 @@
 "use client";
 import React, { useState } from 'react';
-import { X, Plus, Calendar, BookOpen, AlertTriangle } from 'lucide-react';
+import { Plus, Calendar, BookOpen, AlertTriangle } from 'lucide-react';
 import { TodoTask } from '../types';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 
 interface CreateManualTaskModalProps {
   isOpen: boolean;
@@ -25,8 +34,6 @@ export const CreateManualTaskModal: React.FC<CreateManualTaskModalProps> = ({
   const [dueTime, setDueTime] = useState('23:59');
   const [points, setPoints] = useState('100');
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium');
-
-  if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,25 +73,24 @@ export const CreateManualTaskModal: React.FC<CreateManualTaskModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
-      <div 
-        className="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-200"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="p-5 border-b border-slate-200 bg-slate-50/80 flex items-center justify-between">
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-lg p-0 flex flex-col gap-0 overflow-hidden">
+        {/* Header */}
+        <DialogHeader className="p-5 border-b border-slate-200 bg-slate-50 text-left pr-12">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0">
               <Plus className="w-4 h-4" />
             </div>
-            <h3 className="font-bold text-slate-900 text-base">Tambah Tugas Manual</h3>
+            <div>
+              <DialogTitle className="font-bold text-slate-900 text-base">
+                Tambah Tugas Manual
+              </DialogTitle>
+              <DialogDescription className="text-xs text-slate-500">
+                Catat tugas atau kegiatan belajar di luar Google Classroom
+              </DialogDescription>
+            </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-700 bg-white border border-slate-200 rounded-lg"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+        </DialogHeader>
 
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           {/* Course selector */}
@@ -219,23 +225,24 @@ export const CreateManualTaskModal: React.FC<CreateManualTaskModalProps> = ({
             </div>
           </div>
 
-          <div className="pt-3 border-t border-slate-200 flex justify-end gap-2">
-            <button
+          <DialogFooter className="pt-3 border-t border-slate-200 flex justify-end gap-2">
+            <Button
               type="button"
+              variant="outline"
               onClick={onClose}
-              className="px-4 py-2 text-xs sm:text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition cursor-pointer"
             >
               Batal
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
-              className="px-5 py-2 text-xs sm:text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs transition cursor-pointer"
+              variant="default"
+              className="font-bold"
             >
               Simpan & Masukkan To-Do
-            </button>
-          </div>
+            </Button>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };

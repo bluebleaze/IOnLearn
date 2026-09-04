@@ -1,4 +1,4 @@
-import { ClassroomCourse, ClassroomCourseWork, ClassroomMaterial, TodoTask } from '../types';
+import { ClassroomCourse, ClassroomCourseWork, ClassroomMaterial, TodoTask, isCourseWorkWithinDateRange, DEFAULT_DATE_RANGE_MONTHS } from '../types';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
 import firebaseConfig from '../../firebase-applet-config.json';
@@ -133,6 +133,10 @@ export class ClassroomService {
     });
 
     if (!response.ok) {
+      if (response.status === 401) {
+        this.logout();
+        throw new Error('Sesi token Google Classroom telah kadaluwarsa (401 Unauthorized). Silakan masuk ulang dengan akun Google Anda.');
+      }
       throw new Error(`Google Classroom API error (${response.status}): ${response.statusText}`);
     }
 
@@ -152,6 +156,10 @@ export class ClassroomService {
     );
 
     if (!response.ok) {
+      if (response.status === 401) {
+        this.logout();
+        throw new Error('Sesi token Google Classroom telah kadaluwarsa (401 Unauthorized). Silakan masuk ulang dengan akun Google Anda.');
+      }
       if (response.status === 404 || response.status === 403) {
         return [];
       }
@@ -166,23 +174,29 @@ export class ClassroomService {
   public static async fetchSubmissions(token: string, courseId: string): Promise<Record<string, string>> {
     try {
       const response = await fetch(
-        `https://classroom.googleapis.com/v1/courses/${courseId}/courseWork/-/studentSubmissions?states=TURNED_IN,RETURNED`,
+        `https://classroom.googleapis.com/v1/courses/${courseId}/courseWork/-/studentSubmissions?userId=me`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         }
       );
-      if (!response.ok) return {};
+      if (!response.ok) {
+        console.warn(`Could not fetch submissions for course ${courseId}: ${response.status} ${response.statusText}`);
+        return {};
+      }
       const data = await response.json();
       const map: Record<string, string> = {};
       if (Array.isArray(data.studentSubmissions)) {
         for (const sub of data.studentSubmissions) {
-          map[sub.courseWorkId] = sub.state;
+          if (sub.courseWorkId && sub.state) {
+            map[sub.courseWorkId] = sub.state;
+          }
         }
       }
       return map;
-    } catch {
+    } catch (err) {
+      console.warn(`Error fetching submissions for course ${courseId}:`, err);
       return {};
     }
   }
@@ -230,7 +244,11 @@ export class ClassroomService {
   }
 
   // Synchronize Google Classroom with Local Todo List
-  public static async syncAllClassrooms(token: string, existingTasks: TodoTask[]): Promise<{ updatedTasks: TodoTask[]; newCount: number }> {
+  public static async syncAllClassrooms(
+    token: string,
+    existingTasks: TodoTask[],
+    dateRangeMonths: number = DEFAULT_DATE_RANGE_MONTHS
+  ): Promise<{ updatedTasks: TodoTask[]; newCount: number }> {
     const courses = await this.fetchCourses(token);
     const updatedTasks = [...existingTasks];
     let newCount = 0;
@@ -242,6 +260,11 @@ export class ClassroomService {
       ]);
 
       for (const cw of courseWorks) {
+        // Abaikan tugas di luar batas rentang waktu yang ditentukan (default 2 bulan)
+        if (!isCourseWorkWithinDateRange(cw, dateRangeMonths)) {
+          continue;
+        }
+
         const existingIndex = updatedTasks.findIndex(t => t.courseWorkId === cw.id || (t.title === cw.title && t.courseName === course.name));
         const { formattedStr, timestamp } = this.formatDueDateTime(cw.dueDate, cw.dueTime);
         const isTurnedIn = submissionsMap[cw.id] === 'TURNED_IN' || submissionsMap[cw.id] === 'RETURNED';
@@ -256,8 +279,9 @@ export class ClassroomService {
         }
 
         if (existingIndex >= 0) {
-          // Update details while preserving user's aiAnalysis and completed check
+          // Update details while preserving user's aiAnalysis and checking submitted status
           const existing = updatedTasks[existingIndex];
+          const isCompleted = isTurnedIn ? true : existing.isCompleted;
           updatedTasks[existingIndex] = {
             ...existing,
             title: cw.title,
@@ -267,8 +291,10 @@ export class ClassroomService {
             points: cw.maxPoints,
             materials: cw.materials || existing.materials,
             classroomLink: cw.alternateLink || existing.classroomLink,
-            isCompleted: isTurnedIn || existing.isCompleted,
-            updatedAt: new Date().toISOString(),
+            isCompleted: isCompleted,
+            completedAt: isTurnedIn && !existing.isCompleted ? new Date().toISOString() : existing.completedAt,
+            createdAt: cw.creationTime || existing.createdAt || new Date().toISOString(),
+            updatedAt: cw.updateTime || new Date().toISOString(),
           };
         } else {
           // New task found from Google Classroom!
@@ -284,12 +310,13 @@ export class ClassroomService {
             dueTimestamp: timestamp,
             points: cw.maxPoints,
             isCompleted: isTurnedIn,
+            completedAt: isTurnedIn ? new Date().toISOString() : undefined,
             priority,
             syncSource: 'classroom',
             classroomLink: cw.alternateLink,
             materials: cw.materials,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
+            createdAt: cw.creationTime || new Date().toISOString(),
+            updatedAt: cw.updateTime || new Date().toISOString(),
           };
           updatedTasks.unshift(newTask);
         }

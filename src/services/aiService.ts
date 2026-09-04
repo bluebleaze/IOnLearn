@@ -1,5 +1,6 @@
 import {
     AIAnalysisResult,
+    AIConfig,
     ChatMessage,
     TodoTask,
     UserPreferences,
@@ -34,6 +35,7 @@ export function getGeminiModel() {
 export async function analyzeTaskWithAI(
     task: Partial<TodoTask>,
     userPreferences?: UserPreferences | null,
+    aiConfig?: AIConfig | null,
 ): Promise<AIAnalysisResult> {
     const response = await fetch("/api/ai/analyze-task", {
         method: "POST",
@@ -46,6 +48,7 @@ export async function analyzeTaskWithAI(
             courseName: task.courseName,
             materials: task.materials,
             userPreferences,
+            aiConfig,
         }),
     });
 
@@ -63,6 +66,7 @@ export async function sendChatMessageToAI(
     messages: { role: "user" | "assistant"; content: string }[],
     taskContext?: Partial<TodoTask>,
     userPreferences?: UserPreferences | null,
+    aiConfig?: AIConfig | null,
 ): Promise<{ reply: string; timestamp: number; suggestedPrompts?: string[] }> {
     let extractedMaterialText = "";
     // Try to load drive contents if there are materials
@@ -96,6 +100,7 @@ export async function sendChatMessageToAI(
         body: JSON.stringify({
             messages,
             userPreferences,
+            aiConfig,
             taskContext: taskContext
                 ? {
                       title: taskContext.title,
