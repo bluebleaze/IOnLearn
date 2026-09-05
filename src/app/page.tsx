@@ -34,6 +34,7 @@ import { LandingPage } from "../components/LandingPage";
 import { OnboardingModal } from "../components/OnboardingModal";
 import { SettingsModal } from "../components/SettingsModal";
 import { Button } from "@/components/ui/button";
+import { toast } from "@/components/ui/sonner";
 import {
     TodoTask,
     AIAnalysisResult,
@@ -44,6 +45,8 @@ import {
 } from "../types";
 import { ClassroomService, UserProfile } from "../services/classroomService";
 import { analyzeTaskWithAI } from "../services/aiService";
+import { DBService } from "../services/dbService";
+import { APP_NAME, APP_TAGLINE } from "@/lib/brand";
 
 const TASKS_STORAGE_KEY = "classroom_ai_todo_tasks_v1";
 const PREFS_STORAGE_KEY = "classroom_ai_user_prefs_v1";
@@ -56,17 +59,62 @@ export default function App() {
 
     useEffect(() => {
         if (typeof window !== "undefined") {
+            document.title = `${APP_NAME} - ${APP_TAGLINE}`;
             const profile = ClassroomService.getUserProfile();
             const key = profile?.email ? `${TASKS_STORAGE_KEY}_${profile.email}` : TASKS_STORAGE_KEY;
             const saved = localStorage.getItem(key);
             if (saved) {
                 try {
-                    setTasks(JSON.parse(saved));
+                    const parsed: TodoTask[] = JSON.parse(saved);
+                    if (profile?.email) {
+                        setTasks(parsed.filter(t => (!t.userEmail || t.userEmail === profile.email) && !t.id.startsWith("seed-")));
+                    } else {
+                        setTasks(parsed);
+                    }
                 } catch (e) {
                     console.error("Failed to parse saved tasks:", e);
                 }
-            } else {
+            } else if (!profile) {
+                // Seed tasks only shown in demo / logged out mode
                 setTasks(ClassroomService.getInitialSeedTasks());
+            } else {
+                setTasks([]);
+            }
+
+            // Sync from shared account cache for cross-device continuity
+            if (profile?.email) {
+                DBService.loadUserData(profile.email).then((cloudData) => {
+                    if (cloudData && cloudData.tasks && cloudData.tasks.length > 0) {
+                        const cloudTasks = cloudData.tasks.filter(t => (!t.userEmail || t.userEmail === profile.email) && !t.id.startsWith("seed-"));
+                        if (cloudTasks.length > 0) {
+                            setTasks((prev) => {
+                                if (prev.length === 0) return cloudTasks;
+                                const cloudMap = new Map(cloudTasks.map(t => [t.id, t]));
+                                const merged = prev.map(t => {
+                                    const ct = cloudMap.get(t.id);
+                                    if (ct) {
+                                        return {
+                                            ...t,
+                                            isCompleted: ct.isCompleted || t.isCompleted,
+                                            completedAt: ct.completedAt || t.completedAt,
+                                            customNotes: ct.customNotes || t.customNotes,
+                                            aiAnalysis: ct.aiAnalysis || t.aiAnalysis,
+                                        };
+                                    }
+                                    return t;
+                                });
+                                const existingIds = new Set(prev.map(t => t.id));
+                                for (const ct of cloudTasks) {
+                                    if (!existingIds.has(ct.id)) {
+                                        merged.push(ct);
+                                    }
+                                }
+                                localStorage.setItem(key, JSON.stringify(merged));
+                                return merged;
+                            });
+                        }
+                    }
+                }).catch(() => {});
             }
         }
     }, []);
@@ -139,9 +187,6 @@ export default function App() {
     }, []);
 
     const [isSyncing, setIsSyncing] = useState(false);
-    const [syncNotification, setSyncNotification] = useState<string | null>(
-        null,
-    );
     const [loginError, setLoginError] = useState<string | null>(null);
     const [isAuthenticating, setIsAuthenticating] = useState(false);
 
@@ -166,13 +211,20 @@ export default function App() {
     const [isOnboardingModalOpen, setIsOnboardingModalOpen] = useState(false);
     const [isSettingsMode, setIsSettingsMode] = useState(false);
 
-    // Persist tasks to localStorage
+    // Persist tasks to localStorage & Firestore Cloud
     useEffect(() => {
         if (tasks.length > 0 || token) {
             const key = userProfile?.email ? `${TASKS_STORAGE_KEY}_${userProfile.email}` : TASKS_STORAGE_KEY;
             localStorage.setItem(key, JSON.stringify(tasks));
+
+            if (userProfile?.email && token) {
+                const timer = setTimeout(() => {
+                    DBService.saveUserData(tasks, userPreferences, aiConfig, userProfile.email);
+                }, 1000);
+                return () => clearTimeout(timer);
+            }
         }
-    }, [tasks, userProfile, token]);
+    }, [tasks, userProfile, token, userPreferences, aiConfig]);
 
     // Persist preferences
     useEffect(() => {
@@ -295,6 +347,10 @@ export default function App() {
                             : null,
                     );
                 }
+
+                toast.success("Rangkuman dan Referensi Siap", {
+                    description: `Materi belajar untuk "${targetTask.title}" berhasil disiapkan.`,
+                });
             } catch (error: any) {
                 console.error("Failed to analyze task with AI:", error);
                 setTasks((prev) =>
@@ -315,11 +371,16 @@ export default function App() {
                             ? {
                                 ...prev,
                                 aiLoading: false,
-                                aiError: error.message,
+                                aiError:
+                                    error.message || "Gagal memproses AI",
                             }
                             : null,
                     );
                 }
+
+                toast.error("Gagal Menganalisis Tugas", {
+                    description: error.message || "Periksa koneksi internet atau kunci API Anda.",
+                });
             }
         },
         [tasks, selectedTask, userPreferences],
@@ -351,28 +412,30 @@ export default function App() {
     }, [tasks, handleAnalyzeTask]);
 
     // Sync Google Classroom
-    const handleSyncWithToken = async (activeToken: string) => {
+    const handleSyncWithToken = async (activeToken: string, overrideTasks?: TodoTask[], overrideEmail?: string) => {
         setIsSyncing(true);
         try {
             const rangeMonths =
                 userPreferences?.classroomDateRangeMonths ??
                 DEFAULT_DATE_RANGE_MONTHS;
+            const currentEmail = overrideEmail || userProfile?.email;
             const { updatedTasks, newCount } =
                 await ClassroomService.syncAllClassrooms(
                     activeToken,
-                    tasks,
+                    overrideTasks || tasks,
                     rangeMonths,
+                    currentEmail,
                 );
             setTasks(updatedTasks);
 
             if (newCount > 0) {
-                setSyncNotification(
-                    `✨ Berhasil menyinkronkan! Ditemukan ${newCount} tugas baru dari Google Classroom.`,
-                );
+                toast.success("Sinkronisasi Selesai", {
+                    description: `Ditemukan ${newCount} tugas baru dari Google Classroom.`,
+                });
             } else {
-                setSyncNotification(
-                    "✅ Sinkronisasi selesai: Semua tugas Google Classroom Anda sudah up-to-date!",
-                );
+                toast.info("Classroom Sudah Terkini", {
+                    description: "Semua tugas Google Classroom Anda sudah sinkron.",
+                });
             }
         } catch (error: any) {
             console.error("Sync error:", error);
@@ -385,13 +448,13 @@ export default function App() {
                 setLoginError(
                     "Sesi token Google Classroom Anda telah kadaluwarsa (401). Silakan klik 'Masuk dengan Google' untuk memperbarui akses.",
                 );
-                setSyncNotification(
-                    "⚠️ Sesi Google kadaluwarsa. Silakan masuk kembali dengan akun Google Anda.",
-                );
+                toast.error("Sesi Google Kadaluwarsa", {
+                    description: "Silakan masuk kembali dengan akun Google Anda.",
+                });
             } else {
-                setSyncNotification(
-                    `ℹ️ Menggunakan data sinkronisasi lokal: ${error.message || "Gagal terhubung ke API Classroom"}`,
-                );
+                toast.warning("Sinkronisasi Offline", {
+                    description: error.message || "Gagal terhubung ke API Classroom. Menggunakan data lokal.",
+                });
             }
         } finally {
             setIsSyncing(false);
@@ -406,7 +469,9 @@ export default function App() {
         setAiConfig(config);
         localStorage.setItem(PREFS_STORAGE_KEY, JSON.stringify(prefs));
         localStorage.setItem(AI_CONFIG_STORAGE_KEY, JSON.stringify(config));
-        setSyncNotification("⚙️ Pengaturan aplikasi dan filter tugas berhasil disimpan.");
+        toast.success("Pengaturan Disimpan", {
+            description: "Preferensi belajar, filter waktu, dan konfigurasi AI telah diperbarui.",
+        });
     };
 
     const handleConnectGoogle = async () => {
@@ -421,13 +486,52 @@ export default function App() {
                 
                 const key = result.profile.email ? `${TASKS_STORAGE_KEY}_${result.profile.email}` : TASKS_STORAGE_KEY;
                 const saved = localStorage.getItem(key);
+                let newTasks: TodoTask[] = [];
                 if (saved) {
-                    try { setTasks(JSON.parse(saved)); } catch (e) {}
-                } else {
-                    setTasks([]);
+                    try {
+                        const parsed: TodoTask[] = JSON.parse(saved);
+                        // Strip out any tasks from another account or seed tasks that might have leaked
+                        newTasks = parsed.filter(t => (!t.userEmail || t.userEmail === result.profile.email) && !t.id.startsWith("seed-"));
+                    } catch (e) {}
                 }
+
+                // Load latest account cache from shared server/cloud
+                try {
+                    const cloudData = await DBService.loadUserData(result.profile.email);
+                    if (cloudData && cloudData.tasks && cloudData.tasks.length > 0) {
+                        const cloudTasks = cloudData.tasks.filter(t => (!t.userEmail || t.userEmail === result.profile.email) && !t.id.startsWith("seed-"));
+                        if (cloudTasks.length > 0) {
+                            const cloudMap = new Map(cloudTasks.map(t => [t.id, t]));
+                            if (newTasks.length > 0) {
+                                newTasks = newTasks.map(t => {
+                                    const ct = cloudMap.get(t.id);
+                                    if (ct) {
+                                        return {
+                                            ...t,
+                                            isCompleted: ct.isCompleted || t.isCompleted,
+                                            completedAt: ct.completedAt || t.completedAt,
+                                            customNotes: ct.customNotes || t.customNotes,
+                                            aiAnalysis: ct.aiAnalysis || t.aiAnalysis,
+                                        };
+                                    }
+                                    return t;
+                                });
+                                const existingIds = new Set(newTasks.map(t => t.id));
+                                for (const ct of cloudTasks) {
+                                    if (!existingIds.has(ct.id)) {
+                                        newTasks.push(ct);
+                                    }
+                                }
+                            } else {
+                                newTasks = cloudTasks;
+                            }
+                            localStorage.setItem(key, JSON.stringify(newTasks));
+                        }
+                    }
+                } catch (e) {}
+                setTasks(newTasks);
                 
-                handleSyncWithToken(result.token);
+                handleSyncWithToken(result.token, newTasks, result.profile.email);
             } else {
                 setLoginError("Gagal mendapatkan akses dari Google.");
             }
@@ -447,27 +551,54 @@ export default function App() {
         setToken(null);
         setUserProfile(null);
         setTasks([]);
-        setSyncNotification("Koneksi Google Classroom diputuskan.");
+        toast.info("Koneksi Google Diputuskan", {
+            description: "Akun Google Classroom telah keluar dan sesi ditutup.",
+        });
     };
 
-    const handleManualSync = () => {
+    const handleManualSync = async () => {
         if (token) {
-            handleSyncWithToken(token);
+            let currentTasks = tasks;
+            if (userProfile?.email) {
+                try {
+                    const cloudData = await DBService.loadUserData(userProfile.email);
+                    if (cloudData && cloudData.tasks && cloudData.tasks.length > 0) {
+                        const cloudMap = new Map(cloudData.tasks.map(t => [t.id, t]));
+                        currentTasks = tasks.map(t => {
+                            const ct = cloudMap.get(t.id);
+                            if (ct) {
+                                return {
+                                    ...t,
+                                    isCompleted: ct.isCompleted || t.isCompleted,
+                                    completedAt: ct.completedAt || t.completedAt,
+                                    customNotes: ct.customNotes || t.customNotes,
+                                    aiAnalysis: ct.aiAnalysis || t.aiAnalysis,
+                                };
+                            }
+                            return t;
+                        });
+                        setTasks(currentTasks);
+                    }
+                } catch (e) {}
+            }
+            handleSyncWithToken(token, currentTasks);
         } else {
             setIsSyncing(true);
             setTimeout(() => {
                 setIsSyncing(false);
-                setSyncNotification(
-                    "✅ Daftar tugas tersinkronisasi dan diperbarui.",
-                );
+                toast.success("Sinkronisasi Selesai", {
+                    description: "Daftar tugas tersinkronisasi dan data telah diperbarui.",
+                });
             }, 800);
         }
     };
 
     // Toggle task completion
     const handleToggleComplete = (taskId: string) => {
-        setTasks((prev) =>
-            prev.map((t) => {
+        setTasks((prev) => {
+            const target = prev.find((t) => t.id === taskId);
+            const isNowCompleted = target ? !target.isCompleted : false;
+            const nextTasks = prev.map((t) => {
                 if (t.id === taskId) {
                     const nextState = !t.isCompleted;
                     return {
@@ -480,17 +611,36 @@ export default function App() {
                     };
                 }
                 return t;
-            }),
-        );
+            });
+            if (userProfile?.email) {
+                DBService.saveUserData(nextTasks, userPreferences, aiConfig, userProfile.email);
+            }
+            if (target) {
+                if (isNowCompleted) {
+                    toast.success("Tugas Selesai", {
+                        description: `"${target.title}" telah ditandai selesai.`,
+                    });
+                } else {
+                    toast.info("Tugas Diaktifkan Kembali", {
+                        description: `"${target.title}" dipindahkan kembali ke daftar aktif.`,
+                    });
+                }
+            }
+            return nextTasks;
+        });
     };
 
     // Delete task
     const handleDeleteTask = (taskId: string) => {
+        const target = tasks.find((t) => t.id === taskId);
         setTasks((prev) => prev.filter((t) => t.id !== taskId));
         if (selectedTask?.id === taskId) {
             setIsDetailModalOpen(false);
             setSelectedTask(null);
         }
+        toast.info("Tugas Dihapus", {
+            description: target ? `"${target.title}" telah dihapus dari daftar.` : "Tugas berhasil dihapus.",
+        });
     };
 
     // Toggle checklist sub-item inside AI Analysis
@@ -568,11 +718,12 @@ export default function App() {
             isCompleted: false,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
+            userEmail: userProfile?.email,
         };
         setTasks((prev) => [newTask, ...prev]);
-        setSyncNotification(
-            `📝 Tugas baru "${newTask.title}" berhasil ditambahkan ke To-Do List!`,
-        );
+        toast.success("Tugas Berhasil Ditambahkan", {
+            description: `"${newTask.title}" berhasil dimasukkan ke daftar tugas.`,
+        });
     };
 
     // Simulate new Google Classroom task received
@@ -589,12 +740,13 @@ export default function App() {
             isCompleted: false,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
+            userEmail: userProfile?.email,
         };
 
         setTasks((prev) => [newTask, ...prev]);
-        setSyncNotification(
-            `🔔 [Google Classroom] Tugas baru masuk: "${newTask.title}". AI sedang menyiapkan kurasi sumber & YouTube...`,
-        );
+        toast.info("Tugas Baru Classroom Diterima", {
+            description: `"${newTask.title}" telah disimulasikan dari Google Classroom.`,
+        });
     };
 
     // Open Chat with specific task context
@@ -747,7 +899,7 @@ export default function App() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 flex flex-col selection:bg-indigo-500 selection:text-white">
+        <div className="min-h-screen bg-slate-50 dark:bg-[#0B0F17] text-slate-900 dark:text-slate-100 flex flex-col transition-colors duration-200">
             {/* Navigation Bar */}
             <Navbar
                 userProfile={userProfile}
@@ -766,27 +918,15 @@ export default function App() {
             {/* Main Container */}
             <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-5 sm:py-6">
                 {/* Welcome / Header Brief */}
-                <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                        <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
-                            {userProfile?.name
-                                ? `Halo, ${userProfile.name.split(" ")[0]}`
-                                : "Daftar Tugas & Belajar"}
-                        </h2>
-                        <p className="text-slate-500 text-xs sm:text-sm mt-0.5">
-                            Semua tugas sekolah tersusun rapi dengan bantuan rangkuman materi & video belajar.
-                        </p>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                        <button
-                            id="main-open-ai-chat-btn"
-                            onClick={() => handleOpenChat()}
-                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition cursor-pointer active:scale-95">
-                            <MessageSquareText className="w-4 h-4" />
-                            <span>Tanya Asisten AI</span>
-                        </button>
-                    </div>
+                <div className="mb-4">
+                    <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-[#F1F0EC] tracking-tight">
+                        {userProfile?.name
+                            ? `Halo, ${userProfile.name.split(" ")[0]}`
+                            : "Daftar Tugas & Belajar"}
+                    </h2>
+                    <p className="text-slate-500 dark:text-[#9AA6B8] text-xs sm:text-sm mt-0.5">
+                        Semua tugas sekolah tersusun rapi dengan bantuan rangkuman materi & video belajar.
+                    </p>
                 </div>
 
                 {/* Dynamic Metric Cards & Quick Filters */}
@@ -794,8 +934,6 @@ export default function App() {
                     tasks={tasks}
                     onQuickFilter={(filter) => setStatusFilter(filter)}
                     currentFilter={statusFilter}
-                    syncNotification={syncNotification}
-                    onDismissNotification={() => setSyncNotification(null)}
                 />
 
                 {/* Search, Filter by Course, Status & Sort */}
@@ -827,15 +965,15 @@ export default function App() {
                         ))}
                     </div>
                 ) : tasks.length === 0 ? (
-                    <div className="bg-white rounded-3xl p-8 sm:p-10 text-center border border-slate-200 shadow-2xs max-w-md mx-auto my-6 space-y-4">
-                        <div className="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto">
-                            <Sparkles className="w-6 h-6 text-indigo-600" />
+                    <div className="bg-white dark:bg-[#161F30] rounded-2xl p-8 sm:p-10 text-center border border-slate-200 dark:border-[#252F42] shadow-2xs max-w-md mx-auto my-6 space-y-4">
+                        <div className="w-12 h-12 rounded-[10px] bg-indigo-50 dark:bg-[#121927] border dark:border-[#252F42] text-[#9294E8] flex items-center justify-center mx-auto">
+                            <Sparkles className="w-5 h-5 text-indigo-600 dark:text-[#9294E8]" />
                         </div>
                         <div>
-                            <h3 className="font-bold text-slate-900 text-base sm:text-lg">
+                            <h3 className="font-bold text-slate-900 dark:text-[#F1F0EC] text-base sm:text-lg">
                                 Belum Ada Catatan Tugas
                             </h3>
-                            <p className="text-xs sm:text-sm text-slate-500 mt-1 leading-relaxed">
+                            <p className="text-xs sm:text-sm text-slate-500 dark:text-[#9AA6B8] mt-1 leading-relaxed">
                                 Tambahkan tugas pertamamu atau sinkronkan tugas dari Google Classroom secara otomatis.
                             </p>
                         </div>
@@ -861,15 +999,15 @@ export default function App() {
                         </div>
                     </div>
                 ) : (
-                    <div className="bg-white rounded-3xl p-8 sm:p-10 text-center border border-slate-200 shadow-2xs max-w-md mx-auto my-6 space-y-4">
-                        <div className="w-14 h-14 rounded-2xl bg-slate-50 text-slate-500 flex items-center justify-center mx-auto">
-                            <Search className="w-6 h-6" />
+                    <div className="bg-white dark:bg-[#161F30] rounded-2xl p-8 sm:p-10 text-center border border-slate-200 dark:border-[#252F42] shadow-2xs max-w-md mx-auto my-6 space-y-4">
+                        <div className="w-12 h-12 rounded-[10px] bg-slate-50 dark:bg-[#121927] border dark:border-[#252F42] text-slate-500 dark:text-[#9AA6B8] flex items-center justify-center mx-auto">
+                            <Search className="w-5 h-5" />
                         </div>
                         <div>
-                            <h3 className="font-bold text-slate-900 text-base sm:text-lg">
+                            <h3 className="font-bold text-slate-900 dark:text-[#F1F0EC] text-base sm:text-lg">
                                 Tidak ada tugas yang sesuai
                             </h3>
-                            <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                            <p className="text-xs sm:text-sm text-slate-500 dark:text-[#9AA6B8] mt-1">
                                 Coba ganti kata kunci pencarian atau tampilkan semua tugas.
                             </p>
                         </div>
@@ -877,7 +1015,7 @@ export default function App() {
                             onClick={() => {
                                 setSearchQuery("");
                                 setSelectedCourse("all");
-                                setStatusFilter("all");
+                                statusFilter !== "all" && setStatusFilter("all");
                             }}
                             variant="primarySubtle"
                             size="sm"
@@ -893,9 +1031,9 @@ export default function App() {
             <button
                 id="floating-chatbot-btn"
                 onClick={() => handleOpenChat()}
-                className="fixed bottom-6 right-6 z-40 md:hidden w-14 h-14 rounded-2xl bg-indigo-600 text-white shadow-xl flex items-center justify-center hover:bg-indigo-700 transition cursor-pointer active:scale-95"
+                className="fixed bottom-6 right-6 z-40 md:hidden w-12 h-12 rounded-[12px] bg-[#9294E8] text-[#0B0F17] shadow-lg flex items-center justify-center hover:bg-[#B0B1F2] transition cursor-pointer active:scale-95"
                 title="Buka Chatbot AI">
-                <MessageSquareText className="w-6 h-6" />
+                <MessageSquareText className="w-5 h-5" />
             </button>
 
             {/* Modals */}

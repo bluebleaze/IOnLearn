@@ -74,28 +74,28 @@ export const CreateManualTaskModal: React.FC<CreateManualTaskModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-lg p-0 flex flex-col gap-0 overflow-hidden">
+      <DialogContent className="max-w-lg p-0 flex flex-col gap-0 overflow-hidden dark:bg-[#0B0F17] dark:border-slate-800">
         {/* Header */}
-        <DialogHeader className="p-5 border-b border-slate-200 bg-slate-50 text-left pr-12">
+        <DialogHeader className="p-5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-left pr-12">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0">
               <Plus className="w-4 h-4" />
             </div>
             <div>
-              <DialogTitle className="font-bold text-slate-900 text-base">
+              <DialogTitle className="font-bold text-slate-900 dark:text-slate-100 text-base">
                 Tambah Tugas Manual
               </DialogTitle>
-              <DialogDescription className="text-xs text-slate-500">
+              <DialogDescription className="text-xs text-slate-500 dark:text-slate-400">
                 Catat tugas atau kegiatan belajar di luar Google Classroom
               </DialogDescription>
             </div>
           </div>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+        <form onSubmit={handleSubmit} className="p-5 space-y-4 dark:bg-[#0B0F17]">
           {/* Course selector */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
               Mata Pelajaran / Kelas
             </label>
             {!isCustomCourse ? (
@@ -109,14 +109,14 @@ export const CreateManualTaskModal: React.FC<CreateManualTaskModalProps> = ({
                       setCourseName(e.target.value);
                     }
                   }}
-                  className="w-full p-2.5 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition"
+                  className="w-full p-2.5 text-xs sm:text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition"
                 >
                   {existingCourses.map((c) => (
                     <option key={c} value={c}>
                       {c}
                     </option>
                   ))}
-                  <option value="__NEW__">➕ Tambah Mata Kuliah Baru...</option>
+                  <option value="__NEW__">+ Tambah Mata Pelajaran Baru...</option>
                 </select>
               </div>
             ) : (
@@ -126,13 +126,13 @@ export const CreateManualTaskModal: React.FC<CreateManualTaskModalProps> = ({
                   value={customCourse}
                   onChange={(e) => setCustomCourse(e.target.value)}
                   placeholder="Nama Mata Pelajaran / Kelas Baru"
-                  className="flex-1 p-2.5 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  className="flex-1 p-2.5 text-xs sm:text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                   autoFocus
                 />
                 <button
                   type="button"
                   onClick={() => setIsCustomCourse(false)}
-                  className="px-3 py-2 text-xs font-semibold text-slate-600 bg-slate-100 rounded-xl hover:bg-slate-200"
+                  className="px-3 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-[#151D2C] border border-transparent dark:border-slate-700/80 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-800 dark:hover:text-slate-100 transition cursor-pointer"
                 >
                   Pilih Eksisting
                 </button>
@@ -142,7 +142,7 @@ export const CreateManualTaskModal: React.FC<CreateManualTaskModalProps> = ({
 
           {/* Title */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
               Judul Tugas <span className="text-rose-500">*</span>
             </label>
             <input
@@ -151,13 +151,13 @@ export const CreateManualTaskModal: React.FC<CreateManualTaskModalProps> = ({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Contoh: Makalah Studi Kasus Hukum Bisnis Bab 4"
-              className="w-full p-2.5 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+              className="w-full p-2.5 text-xs sm:text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
             />
           </div>
 
           {/* Description */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
               Deskripsi & Instruksi Pengerjaan
             </label>
             <textarea
@@ -165,32 +165,32 @@ export const CreateManualTaskModal: React.FC<CreateManualTaskModalProps> = ({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Jelaskan detail soal atau instruksi dari dosen..."
-              className="w-full p-2.5 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+              className="w-full p-2.5 text-xs sm:text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
             />
           </div>
 
           {/* Due Date & Time */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
                 Tanggal Tenggat
               </label>
               <input
                 type="date"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                className="w-full p-2.5 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                className="w-full p-2.5 text-xs sm:text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
                 Jam Tenggat
               </label>
               <input
                 type="time"
                 value={dueTime}
                 onChange={(e) => setDueTime(e.target.value)}
-                className="w-full p-2.5 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                className="w-full p-2.5 text-xs sm:text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
               />
             </div>
           </div>
@@ -198,21 +198,21 @@ export const CreateManualTaskModal: React.FC<CreateManualTaskModalProps> = ({
           {/* Priority & Points */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
                 Prioritas
               </label>
               <select
                 value={priority}
                 onChange={(e) => setPriority(e.target.value as any)}
-                className="w-full p-2.5 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                className="w-full p-2.5 text-xs sm:text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
               >
-                <option value="high">🔴 Tinggi (Mendesak)</option>
-                <option value="medium">🟡 Sedang</option>
-                <option value="low">🟢 Rendah</option>
+                <option value="high">Tinggi (Mendesak)</option>
+                <option value="medium">Sedang</option>
+                <option value="low">Rendah</option>
               </select>
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
                 Bobot Nilai / Poin
               </label>
               <input
@@ -220,12 +220,12 @@ export const CreateManualTaskModal: React.FC<CreateManualTaskModalProps> = ({
                 value={points}
                 onChange={(e) => setPoints(e.target.value)}
                 placeholder="100"
-                className="w-full p-2.5 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                className="w-full p-2.5 text-xs sm:text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
               />
             </div>
           </div>
 
-          <DialogFooter className="pt-3 border-t border-slate-200 flex justify-end gap-2">
+          <DialogFooter className="pt-3 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-2">
             <Button
               type="button"
               variant="outline"

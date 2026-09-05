@@ -8,4 +8,5 @@ coverage/
 !.env.example
 firebase-applet-config.json
 .next/
-
+.user_cache.json
+tsconfig.tsbuildinfo

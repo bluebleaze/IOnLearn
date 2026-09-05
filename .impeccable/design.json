@@ -1,0 +1,177 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-05T05:14:00.000Z",
+  "title": "Design System: ClassroomAI",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "Academic Indigo",
+        "canonical": "#4f46e5",
+        "tonalRamp": ["#312e81", "#3730a3", "#4338ca", "#4f46e5", "#6366f1", "#818cf8", "#a5b4fc", "#e0e7ff"]
+      },
+      "brand-deep": {
+        "role": "secondary",
+        "displayName": "Deep Academic Navy",
+        "canonical": "#2f2c50",
+        "tonalRamp": ["#1e1b33", "#2f2c50", "#45406d", "#5c578f", "#7570b0", "#938ecf", "#b6b2e8", "#e3e1f7"]
+      },
+      "success": {
+        "role": "success",
+        "displayName": "Accomplishment Emerald",
+        "canonical": "#059669",
+        "tonalRamp": ["#064e3b", "#065f46", "#047857", "#059669", "#10b981", "#34d399", "#6ee7b7", "#d1fae5"]
+      },
+      "warning": {
+        "role": "warning",
+        "displayName": "Urgent Amber",
+        "canonical": "#d97706",
+        "tonalRamp": ["#78350f", "#92400e", "#b45309", "#d97706", "#f59e0b", "#fbbf24", "#fde68a", "#fef3c7"]
+      },
+      "danger": {
+        "role": "danger",
+        "displayName": "Overdue Crimson",
+        "canonical": "#e11d48",
+        "tonalRamp": ["#881337", "#9f1239", "#be123c", "#e11d48", "#f43f5e", "#fb7185", "#fca5a5", "#ffe4e6"]
+      },
+      "surface-canvas": {
+        "role": "neutral",
+        "displayName": "Canvas Chalk",
+        "canonical": "#f8fafc",
+        "tonalRamp": ["#0f172a", "#1e293b", "#334155", "#475569", "#64748b", "#94a3b8", "#cbd5e1", "#f8fafc"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display (Fredoka)", "purpose": "Hero and main page headers with playful rounded character." },
+      "headline": { "displayName": "Headline (Fredoka)", "purpose": "Task titles and modal headings." },
+      "title": { "displayName": "Title (Fredoka)", "purpose": "Subject tags and section titles." },
+      "body": { "displayName": "Body (Plus Jakarta Sans)", "purpose": "Task descriptions and AI tutor explanations." },
+      "label": { "displayName": "Label (Fredoka)", "purpose": "Badge text, filters, and timestamps." }
+    },
+    "shadows": [
+      {
+        "name": "shadow-rest",
+        "value": "0 1px 2px 0 rgb(0 0 0 / 0.03)",
+        "purpose": "Subtle card boundary at rest."
+      },
+      {
+        "name": "shadow-hover",
+        "value": "0 4px 12px -2px rgb(0 0 0 / 0.06), 0 2px 6px -2px rgb(0 0 0 / 0.04)",
+        "purpose": "Gentle elevation on interactive card hover."
+      },
+      {
+        "name": "shadow-primary-button",
+        "value": "0 2px 8px 0 rgb(79 70 229 / 0.25)",
+        "purpose": "Warm glow under primary action button."
+      }
+    ],
+    "motion": [
+      {
+        "name": "transition-standard",
+        "value": "all 150ms cubic-bezier(0.4, 0, 0.2, 1)",
+        "purpose": "Button and badge hover transitions."
+      },
+      {
+        "name": "transition-card",
+        "value": "all 200ms cubic-bezier(0.4, 0, 0.2, 1)",
+        "purpose": "Task card hover elevation."
+      }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Tombol aksi utama bernuansa Academic Indigo.",
+      "html": "<button class=\"ds-btn-primary\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\"><path d=\"M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z\"/></svg>Tanya Asisten AI</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #4f46e5; color: #ffffff; padding: 8px 16px; font-size: 14px; font-weight: 600; border-radius: 12px; border: none; cursor: pointer; box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25); transition: background 0.15s, transform 0.1s; } .ds-btn-primary:hover { background: #4338ca; } .ds-btn-primary:active { transform: scale(0.97); }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Tombol sekunder bergaris kontur bersih.",
+      "html": "<button class=\"ds-btn-outline\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><line x1=\"12\" y1=\"5\" x2=\"12\" y2=\"19\"/><line x1=\"5\" y1=\"12\" x2=\"19\" y2=\"12\"/></svg>Tambah Tugas</button>",
+      "css": ".ds-btn-outline { display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #ffffff; color: #1e293b; padding: 8px 14px; font-size: 14px; font-weight: 600; border-radius: 12px; border: 1px solid #e2e8f0; cursor: pointer; transition: background 0.15s, border-color 0.15s; } .ds-btn-outline:hover { background: #f8fafc; border-color: #cbd5e1; }"
+    },
+    {
+      "name": "Signature Interactive Checkbox",
+      "kind": "custom",
+      "refersTo": "checkbox-task",
+      "description": "Kotak centang lingkaran tanda penyelesaian tugas dengan apresiasi visual mikro.",
+      "html": "<div style=\"display:flex; gap:12px; align-items:center;\"><button class=\"ds-checkbox-uncheck\"></button><button class=\"ds-checkbox-checked\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#fff\" stroke-width=\"3.5\"><polyline points=\"20 6 9 17 4 12\"/></svg></button></div>",
+      "css": ".ds-checkbox-uncheck { width: 28px; height: 28px; border-radius: 9999px; border: 2px solid #cbd5e1; background: #ffffff; cursor: pointer; transition: all 0.15s; } .ds-checkbox-uncheck:hover { border-color: #4f46e5; background: #eef2ff; } .ds-checkbox-checked { width: 28px; height: 28px; border-radius: 9999px; border: none; background: #059669; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 6px rgba(5, 150, 105, 0.3); transition: transform 0.1s; } .ds-checkbox-checked:active { transform: scale(0.9); }"
+    },
+    {
+      "name": "Status Badge",
+      "kind": "chip",
+      "refersTo": "badge-due",
+      "description": "Lencana indikator tenggat dan mata pelajaran.",
+      "html": "<div style=\"display:flex; gap:8px; align-items:center;\"><span class=\"ds-badge-subject\">Pemrograman Web</span><span class=\"ds-badge-warning\">Besok, 23:59</span><span class=\"ds-badge-success\">Classroom</span></div>",
+      "css": ".ds-badge-subject { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 10px; font-size: 12px; font-weight: 700; background: #eef2ff; color: #4338ca; border: 1px solid #e0e7ff; } .ds-badge-warning { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 10px; font-size: 12px; font-weight: 700; background: #fffbeb; color: #92400e; border: 1px solid #fde68a; } .ds-badge-success { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 10px; font-size: 12px; font-weight: 600; background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }"
+    },
+    {
+      "name": "Task Card Container",
+      "kind": "card",
+      "refersTo": "card-task",
+      "description": "Kontainer kartu tugas bergaya Tonal Layering.",
+      "html": "<div class=\"ds-card-task\"><div style=\"display:flex; justify-content:space-between; margin-bottom:8px;\"><span class=\"ds-badge-subject\">Matematika Diskrit</span><div class=\"ds-checkbox-uncheck\"></div></div><h4 style=\"margin:0; font-size:16px; font-weight:700; color:#0f172a;\">Latihan Mandiri: Graf Bipartit</h4><p style=\"margin:6px 0 0 0; font-size:13px; color:#64748b;\">Tentukan lintasan terpendek dari simpul A ke Z menggunakan algoritma Dijkstra...</p></div>",
+      "css": ".ds-card-task { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 24px; padding: 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.03); transition: border-color 0.2s, box-shadow 0.2s; cursor: pointer; } .ds-card-task:hover { border-color: #a5b4fc; box-shadow: 0 4px 12px rgba(0,0,0,0.06); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Focused Scholar's Desk",
+    "overview": "ClassroomAI dirancang menyerupai meja belajar seorang pelajar yang rapi, hening, dan terstruktur dengan cermat—namun tetap hangat, bersahabat, dan menyenangkan (friendly & playful). Antarmuka mengeliminasi kekacauan visual dan hierarki yang membingungkan agar pengguna dapat langsung berkonsentrasi membaca materi dan mengerjakan tugas tanpa kelelahan mata.",
+    "keyCharacteristics": [
+      "Clarity Over Clutter: Informasi tugas tersusun dalam baris pindaian horizontal instan.",
+      "Refined & Supportive Shapes: Sudut kurva organik (rounded-2xl hingga 3xl) yang ramah.",
+      "Tonal Layering Depth: Kedalaman ruang dibangun lewat saturasi bidang dan border tipis.",
+      "Micro-Rewards: Interaksi pencapaian memberikan umpan balik taktil dan visual yang menggembirakan."
+    ],
+    "rules": [
+      {
+        "name": "The Clarity First Rule",
+        "body": "Warna aksen indigo dibatasi penggunaannya hingga maksimal 15% dari total bidang layar agar mata pelajar tetap rileks.",
+        "section": "colors"
+      },
+      {
+        "name": "The State Integrity Rule",
+        "body": "Warna status hijau emerald adalah hak eksklusif tugas yang sudah selesai atau akun yang aktif. Jangan gunakan hijau untuk elemen dekoratif non-status.",
+        "section": "colors"
+      },
+      {
+        "name": "The Playful Heading, Focused Body Rule",
+        "body": "Fredoka memegang kendali pada nama brand, judul halaman, judul kartu tugas, dan lencana status untuk memancarkan aura friendly & playful. Teks isi paragraf wajib memakai Plus Jakarta Sans agar stamina baca terjaga.",
+        "section": "typography"
+      },
+      {
+        "name": "The Calm Hierarchy Rule",
+        "body": "Judul tugas tidak boleh bersaing ukuran dengan judul header halaman. Judul tugas maksimal berukuran 18px (text-lg).",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-at-Rest Rule",
+        "body": "Permukaan kartu dan panel berada dalam kondisi flat tonal saat diam. Bayangan hanya hadir sebagai respons interaktif terhadap kursor pengguna.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do gunakan rounded-3xl untuk kartu utama dan rounded-xl untuk elemen tombol/input agar hierarki bentuk konsisten.",
+      "Do berikan umpan balik visual instan (transisi warna dan skala mikro) pada setiap tombol dan kotak centang tugas.",
+      "Do jaga kontras teks minimal WCAG AA (4.5:1) pada seluruh teks deskripsi tugas dan badge status tenggat.",
+      "Do tampilkan lencana urgensi tenggat waktu secara spesifik di baris atas kartu tugas sebelum judul tugas dibaca."
+    ],
+    "donts": [
+      "Don't menggunakan bayangan gelap (shadow-2xl atau bayangan hitam legam) pada kartu tugas di canvas.",
+      "Don't mewarnai seluruh background kartu tugas dengan warna mencolok (merah/kuning); batasi warna peringatan pada badge status.",
+      "Don't menggunakan lebih dari satu tombol aksi primer berkontras tinggi (Indigo) dalam satu area pandang yang sama.",
+      "Don't hilangkan checkbox lingkaran khas; komponen ini adalah pusat kepuasan psikologis pelajar saat menyelesaikan tugas."
+    ]
+  }
+}

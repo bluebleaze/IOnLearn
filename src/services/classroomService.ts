@@ -6,6 +6,7 @@ import firebaseConfig from '../../firebase-applet-config.json';
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
+provider.setCustomParameters({ prompt: 'select_account' });
 provider.addScope('https://www.googleapis.com/auth/classroom.courses.readonly');
 provider.addScope('https://www.googleapis.com/auth/classroom.coursework.me.readonly');
 provider.addScope('https://www.googleapis.com/auth/classroom.courseworkmaterials.readonly');
@@ -247,10 +248,28 @@ export class ClassroomService {
   public static async syncAllClassrooms(
     token: string,
     existingTasks: TodoTask[],
-    dateRangeMonths: number = DEFAULT_DATE_RANGE_MONTHS
+    dateRangeMonths: number = DEFAULT_DATE_RANGE_MONTHS,
+    userEmail?: string
   ): Promise<{ updatedTasks: TodoTask[]; newCount: number }> {
     const courses = await this.fetchCourses(token);
-    const updatedTasks = [...existingTasks];
+    const validCourseIds = new Set(courses.map(c => c.id));
+
+    // Filter existing tasks: only keep manual tasks or tasks belonging to this account's active courses
+    const updatedTasks = existingTasks.filter(t => {
+      // Exclude starter dummy seed tasks when syncing real account
+      if (t.id.startsWith('seed-')) return false;
+
+      // Keep manual tasks belonging to this user
+      if (t.syncSource === 'manual') {
+        return !t.userEmail || !userEmail || t.userEmail === userEmail;
+      }
+
+      // Classroom tasks must belong to current account's courses and email
+      const courseBelongsToAccount = t.courseId ? validCourseIds.has(t.courseId) : true;
+      const emailBelongsToAccount = !t.userEmail || !userEmail || t.userEmail === userEmail;
+      return courseBelongsToAccount && emailBelongsToAccount;
+    });
+
     let newCount = 0;
 
     for (const course of courses) {
@@ -295,6 +314,7 @@ export class ClassroomService {
             completedAt: isTurnedIn && !existing.isCompleted ? new Date().toISOString() : existing.completedAt,
             createdAt: cw.creationTime || existing.createdAt || new Date().toISOString(),
             updatedAt: cw.updateTime || new Date().toISOString(),
+            userEmail: userEmail || existing.userEmail,
           };
         } else {
           // New task found from Google Classroom!
@@ -317,6 +337,7 @@ export class ClassroomService {
             materials: cw.materials,
             createdAt: cw.creationTime || new Date().toISOString(),
             updatedAt: cw.updateTime || new Date().toISOString(),
+            userEmail,
           };
           updatedTasks.unshift(newTask);
         }

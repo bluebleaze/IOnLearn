@@ -24,6 +24,8 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { APP_NAME } from "@/lib/brand";
+import { toast } from "@/components/ui/sonner";
 
 interface AIChatModalProps {
   isOpen: boolean;
@@ -50,7 +52,7 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({
     {
       id: "msg-init",
       role: "assistant",
-      content: `Halo! 👋 Saya adalah **Asisten Belajar AI** Anda.\n\nSaya siap membantu memahami materi pelajaran, memecah langkah tugas sekolah, mencari rumus & konsep kunci, atau membuat contoh soal latihan.\n\nSilakan pilih tugas di atas atau langsung tanyakan apa saja yang ingin kamu pelajari! ✨`,
+      content: `Halo, saya Asisten Belajar Anda.\n\nSaya siap membantu memahami materi pelajaran, membedah langkah penyelesaian tugas, menjelaskan rumus dan konsep penting, atau membuat latihan soal.\n\nPilih konteks tugas di atas atau tanyakan langsung topik yang ingin kamu pelajari.`,
       timestamp: Date.now(),
     },
   ];
@@ -143,7 +145,7 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({
       const errorMsg: ChatMessage = {
         id: `bot-err-${Date.now()}`,
         role: "assistant",
-        content: `⚠️ Maaf, terjadi kendala saat memproses jawaban: ${
+        content: `Terjadi kendala saat memproses jawaban: ${
           error.message || "Silakan periksa koneksi internet atau coba lagi."
         }`,
         timestamp: Date.now(),
@@ -160,7 +162,7 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({
       {
         id: `msg-reset-${Date.now()}`,
         role: "assistant",
-        content: `Obrolan telah dibersihkan. Ada materi atau tugas lain yang ingin kamu diskusikan? 😊`,
+        content: `Riwayat percakapan telah dibersihkan. Ada materi atau tugas lain yang ingin didiskusikan?`,
         timestamp: Date.now(),
       },
     ]);
@@ -171,6 +173,9 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({
     navigator.clipboard.writeText(text);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 1500);
+    toast.success("Teks Disalin", {
+      description: "Jawaban AI berhasil disalin ke clipboard.",
+    });
   };
 
   // TurboLearn standard prompt chips (concise, high value)
@@ -205,33 +210,33 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent hideCloseButton className="max-w-3xl h-[85vh] max-h-[780px] p-0 flex flex-col gap-0 overflow-hidden">
+      <DialogContent hideCloseButton className="max-w-3xl h-[85vh] max-h-[780px] p-0 flex flex-col gap-0 overflow-hidden dark:bg-[#151D2C] dark:border-slate-800">
         {/* TurboLearn AI Chat Header (Fixed, Non-scrollable) */}
-        <DialogHeader className="p-4 sm:p-5 border-b border-slate-200 bg-white shrink-0">
+        <DialogHeader className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#151D2C] shrink-0">
           <div className="flex items-center justify-between gap-3">
             {/* AI Avatar & Title */}
             <div className="flex items-center gap-3 min-w-0">
-              <div className="w-10 h-10 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-200 shrink-0">
+              <div className="w-10 h-10 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-200 dark:shadow-none shrink-0">
                 <Sparkles className="w-5 h-5" />
               </div>
               <div className="min-w-0 text-left">
                 <div className="flex items-center gap-2">
-                  <DialogTitle className="font-extrabold text-slate-900 text-sm sm:text-base tracking-tight truncate flex items-center gap-1.5">
-                    <span>TurboLearn AI Tutor</span>
+                  <DialogTitle className="font-heading font-bold text-slate-900 dark:text-slate-100 text-sm sm:text-base tracking-tight truncate flex items-center gap-1.5">
+                    <span>{APP_NAME} Tutor</span>
                     <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" title="Online & Siap"></span>
                   </DialogTitle>
-                  <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100 shrink-0">
+                  <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800/60 shrink-0">
                     <Sparkles className="w-2.5 h-2.5 text-indigo-500" />
                     <span>{getModelLabel()}</span>
                   </span>
                 </div>
-                <DialogDescription className="text-[11px] text-slate-500 truncate mt-0.5 flex items-center gap-1.5">
+                <DialogDescription className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5 flex items-center gap-1.5">
                   <span>Asisten Belajar Pribadi</span>
-                  <span className="text-slate-300">•</span>
-                  <span className="sm:hidden font-semibold text-indigo-600">
+                  <span className="text-slate-300 dark:text-slate-600">•</span>
+                  <span className="sm:hidden font-semibold text-indigo-600 dark:text-indigo-400">
                     {getModelLabel()}
                   </span>
-                  <span className="hidden sm:inline text-slate-400">Siap Menjawab & Diskusi</span>
+                  <span className="hidden sm:inline text-slate-400 dark:text-slate-500">Siap Menjawab & Diskusi</span>
                 </DialogDescription>
               </div>
             </div>
@@ -242,7 +247,7 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({
                 variant="ghost"
                 size="iconSm"
                 onClick={handleClearHistory}
-                className="text-slate-400 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200 transition cursor-pointer"
+                className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 bg-slate-50 dark:bg-[#151D2C] hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700/80 transition cursor-pointer"
                 title="Bersihkan obrolan"
                 aria-label="Bersihkan obrolan"
               >
@@ -253,7 +258,7 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({
                 variant="ghost"
                 size="iconSm"
                 onClick={onClose}
-                className="text-slate-400 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200 transition cursor-pointer"
+                className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 bg-slate-50 dark:bg-[#151D2C] hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700/80 transition cursor-pointer"
                 title="Tutup chatbot"
                 aria-label="Tutup chatbot"
               >
@@ -263,8 +268,8 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({
           </div>
 
           {/* Context Selector Bar */}
-          <div className="mt-3 flex items-center gap-2 pt-3 border-t border-slate-100">
-            <span className="text-[11px] font-bold text-slate-500 shrink-0">
+          <div className="mt-3 flex items-center gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 shrink-0">
               Fokus Diskusi:
             </span>
             <div className="relative flex-1 min-w-0">
@@ -275,24 +280,24 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({
                     e.target.value === "general" ? undefined : e.target.value
                   )
                 }
-                className="w-full appearance-none pl-3 pr-8 py-1.5 text-xs font-bold bg-indigo-50 border border-indigo-200/80 rounded-xl text-indigo-900 hover:bg-indigo-100/70 focus:outline-none transition cursor-pointer truncate"
+                className="w-full appearance-none pl-3 pr-8 py-1.5 text-xs font-bold bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/60 rounded-xl text-indigo-900 dark:text-indigo-200 hover:bg-indigo-100/70 dark:hover:bg-indigo-900/40 focus:outline-none transition cursor-pointer truncate"
               >
-                <option value="general">
-                  🌐 Obrolan Umum (Semua Pelajaran)
+                <option value="general" className="dark:bg-[#151D2C] dark:text-slate-200">
+                  Obrolan Umum (Semua Pelajaran)
                 </option>
                 {tasks.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    📖 {t.courseName}: {t.title}
+                  <option key={t.id} value={t.id} className="dark:bg-[#151D2C] dark:text-slate-200">
+                    {t.courseName}: {t.title}
                   </option>
                 ))}
               </select>
-              <ChevronDown className="w-3.5 h-3.5 text-indigo-600 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <ChevronDown className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
           </div>
         </DialogHeader>
 
         {/* Chat Messages Body (THE ONLY SCROLLABLE AREA, Locked from Parent Chaining) */}
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-5 space-y-4 bg-slate-50/60">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-5 space-y-4 bg-slate-50/60 dark:bg-[#0B0F17]">
           {messages.map((msg) => (
             <div
               key={msg.id}
@@ -313,27 +318,27 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({
                   msg.role === "user"
                     ? "bg-indigo-600 text-white rounded-tr-none"
                     : msg.isError
-                    ? "bg-rose-50 border border-rose-200 text-rose-800 rounded-tl-none"
-                    : "bg-white border border-slate-200 text-slate-800 rounded-tl-none"
+                    ? "bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-800 dark:text-rose-200 rounded-tl-none"
+                    : "bg-white dark:bg-[#151D2C] border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 rounded-tl-none"
                 }`}
               >
                 {/* Content */}
-                <div className="text-xs sm:text-sm leading-relaxed prose prose-sm max-w-none prose-slate">
+                <div className="text-xs sm:text-sm leading-relaxed prose prose-sm max-w-none prose-slate dark:prose-invert">
                   <Markdown>{msg.content}</Markdown>
                 </div>
 
                 {/* Assistant Message Actions */}
                 {msg.role === "assistant" && !msg.isError && (
-                  <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-end gap-2 text-[11px] text-slate-400">
+                  <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2 text-xs text-slate-400">
                     <button
                       onClick={() => handleCopyMessage(msg.id, msg.content)}
-                      className="inline-flex items-center gap-1 hover:text-indigo-600 transition cursor-pointer p-1 rounded-md"
+                      className="inline-flex items-center gap-1 hover:text-indigo-600 dark:hover:text-indigo-400 transition cursor-pointer p-1 rounded-md"
                       title="Salin jawaban"
                     >
                       {copiedId === msg.id ? (
                         <>
-                          <Check className="w-3 h-3 text-emerald-600" />
-                          <span className="text-emerald-600 font-bold">Tersalin</span>
+                          <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                          <span className="text-emerald-600 dark:text-emerald-400 font-bold">Tersalin</span>
                         </>
                       ) : (
                         <>
@@ -348,7 +353,7 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({
 
               {/* User Avatar */}
               {msg.role === "user" && (
-                <div className="w-7 h-7 rounded-xl bg-slate-900 text-white flex items-center justify-center shrink-0 mt-1 shadow-2xs font-bold text-xs">
+                <div className="w-7 h-7 rounded-xl bg-slate-900 dark:bg-slate-800 text-white flex items-center justify-center shrink-0 mt-1 shadow-2xs font-bold text-xs">
                   <User className="w-3.5 h-3.5" />
                 </div>
               )}
@@ -361,17 +366,17 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({
               <div className="w-7 h-7 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 mt-1">
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
               </div>
-              <div className="bg-white border border-slate-200 rounded-3xl rounded-tl-none p-4 shadow-2xs flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse"></span>
+              <div className="bg-white dark:bg-[#151D2C] border border-slate-200 dark:border-slate-800 rounded-3xl rounded-tl-none p-4 shadow-2xs flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-indigo-600 dark:bg-indigo-400 animate-pulse"></span>
                 <span
-                  className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse"
+                  className="w-2 h-2 rounded-full bg-indigo-600 dark:bg-indigo-400 animate-pulse"
                   style={{ animationDelay: "150ms" }}
                 ></span>
                 <span
-                  className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse"
+                  className="w-2 h-2 rounded-full bg-indigo-600 dark:bg-indigo-400 animate-pulse"
                   style={{ animationDelay: "300ms" }}
                 ></span>
-                <span className="text-xs text-slate-500 font-semibold ml-1">
+                <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold ml-1">
                   AI sedang menyusun jawaban...
                 </span>
               </div>
@@ -383,8 +388,8 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({
 
         {/* Suggested Prompts Chips (Fixed, Non-scrollable Wrap) */}
         {displayPrompts.length > 0 && (
-          <div className="px-4 py-2.5 bg-white border-t border-slate-100 flex flex-wrap items-center gap-1.5 shrink-0">
-            <span className="text-[11px] font-bold text-slate-500 shrink-0 flex items-center gap-1 mr-1">
+          <div className="px-4 py-2.5 bg-white dark:bg-[#151D2C] border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center gap-1.5 shrink-0">
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 shrink-0 flex items-center gap-1 mr-1">
               <Lightbulb className="w-3.5 h-3.5 text-amber-500" />
               <span>Saran:</span>
             </span>
@@ -393,9 +398,9 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({
                 key={idx}
                 onClick={() => handleSendMessage(prompt)}
                 disabled={isLoading}
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 transition cursor-pointer active:scale-95 disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-[#151D2C] hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 hover:text-slate-900 dark:hover:text-slate-100 border border-slate-200 dark:border-slate-700/80 transition cursor-pointer active:scale-95 disabled:opacity-50"
               >
-                <MessageSquare className="w-3 h-3 text-slate-500 shrink-0" />
+                <MessageSquare className="w-3 h-3 text-slate-500 dark:text-slate-400 shrink-0" />
                 <span className="truncate max-w-[280px]">{prompt}</span>
               </button>
             ))}
@@ -403,7 +408,7 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({
         )}
 
         {/* Chat Input Bar (Fixed, Non-scrollable) */}
-        <div className="p-3.5 sm:p-4 bg-white border-t border-slate-200 shrink-0">
+        <div className="p-3.5 sm:p-4 bg-white dark:bg-[#151D2C] border-t border-slate-200 dark:border-slate-800 shrink-0">
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -423,7 +428,7 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({
               }}
               placeholder="Tanyakan materi, rumus, langkah pengerjaan, atau contoh soal..."
               rows={1}
-              className="flex-1 px-4 py-3 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-2xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 resize-none max-h-32 transition"
+              className="flex-1 px-4 py-3 text-xs sm:text-sm bg-slate-50 dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 rounded-2xl text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 resize-none max-h-32 transition"
             />
 
             <Button
@@ -439,14 +444,14 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({
           </form>
 
           {/* Model & AI Disclaimer Footer Info */}
-          <div className="mt-2.5 flex items-center justify-between text-[11px] text-slate-400 px-1">
-            <span className="inline-flex items-center gap-1.5 font-medium text-slate-500">
+          <div className="mt-2.5 flex items-center justify-between text-xs text-slate-400 px-1">
+            <span className="inline-flex items-center gap-1.5 font-medium text-slate-500 dark:text-slate-400">
               <Sparkles className="w-3 h-3 text-indigo-500 shrink-0" />
               <span>
-                Powered by <strong className="text-slate-700 font-semibold">{getModelLabel()}</strong>
+                Powered by <strong className="text-slate-700 dark:text-slate-300 font-semibold">{getModelLabel()}</strong>
               </span>
             </span>
-            <span className="hidden sm:inline text-slate-400 text-[10px]">
+            <span className="hidden sm:inline text-slate-400 dark:text-slate-500 text-xs">
               AI dapat membuat kekeliruan • Selalu verifikasi jawaban penting
             </span>
           </div>

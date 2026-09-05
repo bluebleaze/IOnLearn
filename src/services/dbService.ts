@@ -13,54 +13,107 @@ if (!getApps().length) {
 const db = getFirestore(app);
 
 export class DBService {
-  private static getUserId(): string | null {
+  private static async getUserId(): Promise<string | null> {
     const auth = getAuth(app);
-    return auth.currentUser?.uid || null;
+    if (auth.currentUser?.uid) return auth.currentUser.uid;
+    return new Promise((resolve) => {
+      const timeout = setTimeout(() => resolve(null), 2000);
+      const unsubscribe = auth.onAuthStateChanged((user) => {
+        clearTimeout(timeout);
+        unsubscribe();
+        resolve(user?.uid || null);
+      });
+    });
   }
 
   static async saveUserData(
     tasks: TodoTask[],
     preferences: UserPreferences | null,
-    aiConfig: AIConfig | null
+    aiConfig: AIConfig | null,
+    userEmail?: string
   ): Promise<void> {
-    const uid = this.getUserId();
-    if (!uid) return; // Only save to cloud if logged in
+    const cleanTasks = JSON.parse(JSON.stringify(tasks));
+    const cleanPrefs = preferences ? JSON.parse(JSON.stringify(preferences)) : null;
+    const cleanConfig = aiConfig ? JSON.parse(JSON.stringify(aiConfig)) : null;
 
-    try {
-      const userRef = doc(db, 'users', uid);
-      await setDoc(userRef, {
-        tasks,
-        preferences,
-        aiConfig,
-        updatedAt: new Date().toISOString()
-      });
-    } catch (error) {
-      console.error('Error saving user data to Firestore:', error);
+    // 1. Primary: Save to shared server API cache per account (instant sync across all browsers/devices)
+    if (userEmail) {
+      try {
+        await fetch('/api/user-cache', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: userEmail,
+            tasks: cleanTasks,
+            preferences: cleanPrefs,
+            aiConfig: cleanConfig,
+          }),
+        });
+      } catch (e) {
+        console.warn('Could not save to /api/user-cache:', e);
+      }
+    }
+
+    // 2. Secondary: Firestore Cloud if configured and enabled
+    const uid = await this.getUserId();
+    if (uid) {
+      try {
+        const userRef = doc(db, 'users', uid);
+        await setDoc(userRef, {
+          tasks: cleanTasks,
+          preferences: cleanPrefs,
+          aiConfig: cleanConfig,
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+      } catch (error) {
+        // Silently skip if Firestore API is disabled in console
+      }
     }
   }
 
-  static async loadUserData(): Promise<{
+  static async loadUserData(userEmail?: string): Promise<{
     tasks: TodoTask[];
     preferences: UserPreferences | null;
     aiConfig: AIConfig | null;
   } | null> {
-    const uid = this.getUserId();
-    if (!uid) return null;
-
-    try {
-      const userRef = doc(db, 'users', uid);
-      const snap = await getDoc(userRef);
-      if (snap.exists()) {
-        const data = snap.data();
-        return {
-          tasks: data.tasks || [],
-          preferences: data.preferences || null,
-          aiConfig: data.aiConfig || null,
-        };
+    // 1. Primary: Load from shared server API cache per account
+    if (userEmail) {
+      try {
+        const res = await fetch(`/api/user-cache?email=${encodeURIComponent(userEmail)}`);
+        if (res.ok) {
+          const json = await res.json();
+          if (json.data) {
+            return {
+              tasks: json.data.tasks || [],
+              preferences: json.data.preferences || null,
+              aiConfig: json.data.aiConfig || null,
+            };
+          }
+        }
+      } catch (e) {
+        console.warn('Could not load from /api/user-cache:', e);
       }
-    } catch (error) {
-      console.error('Error loading user data from Firestore:', error);
     }
+
+    // 2. Secondary: Load from Firestore Cloud
+    const uid = await this.getUserId();
+    if (uid) {
+      try {
+        const userRef = doc(db, 'users', uid);
+        const snap = await getDoc(userRef);
+        if (snap.exists()) {
+          const data = snap.data();
+          return {
+            tasks: data.tasks || [],
+            preferences: data.preferences || null,
+            aiConfig: data.aiConfig || null,
+          };
+        }
+      } catch (error) {
+        // Silently skip if Firestore API is disabled in console
+      }
+    }
+
     return null;
   }
 }

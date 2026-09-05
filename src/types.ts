@@ -113,6 +113,7 @@ export interface TodoTask {
   customNotes?: string;
   createdAt: string;
   updatedAt: string;
+  userEmail?: string;
 }
 
 export interface ChatMessage {
@@ -125,11 +126,20 @@ export interface ChatMessage {
   isError?: boolean;
 }
 
+export type ToastPosition =
+  | 'top-left'
+  | 'top-center'
+  | 'top-right'
+  | 'bottom-left'
+  | 'bottom-center'
+  | 'bottom-right';
+
 export interface UserPreferences {
   learningStyle: string; // e.g., 'Visual', 'Membaca/Menulis', 'Praktik'
   explanationDetail: string; // e.g., 'Singkat', 'Detail', 'Bertahap'
   aiTone: string; // e.g., 'Santai', 'Tegas', 'Socratic'
   classroomDateRangeMonths?: number; // Filter rentang bulan sinkronisasi tugas: 1, 2 (default), 3, 6, 12, atau 0 (semua)
+  toastPosition?: ToastPosition; // Posisi notifikasi toast sonner (default: 'top-right')
 }
 
 export const DEFAULT_DATE_RANGE_MONTHS = 2;
