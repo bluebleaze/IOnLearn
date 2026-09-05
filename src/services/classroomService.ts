@@ -1,19 +1,6 @@
 import { ClassroomCourse, ClassroomCourseWork, ClassroomMaterial, TodoTask, isCourseWorkWithinDateRange, DEFAULT_DATE_RANGE_MONTHS } from '../types';
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
-import firebaseConfig from '../../firebase-applet-config.json';
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const provider = new GoogleAuthProvider();
-provider.setCustomParameters({ prompt: 'select_account' });
-provider.addScope('https://www.googleapis.com/auth/classroom.courses.readonly');
-provider.addScope('https://www.googleapis.com/auth/classroom.coursework.me.readonly');
-provider.addScope('https://www.googleapis.com/auth/classroom.courseworkmaterials.readonly');
-provider.addScope('https://www.googleapis.com/auth/classroom.student-submissions.me.readonly');
-provider.addScope('https://www.googleapis.com/auth/drive.readonly');
-provider.addScope('https://www.googleapis.com/auth/userinfo.profile');
-provider.addScope('https://www.googleapis.com/auth/userinfo.email');
+import { signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
+import { auth, googleProvider as provider } from '@/lib/firebase';
 
 const TOKEN_KEY = 'classroom_access_token';
 const TOKEN_EXPIRY_KEY = 'classroom_token_expiry';

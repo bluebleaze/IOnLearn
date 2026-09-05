@@ -1,20 +1,9 @@
-import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
-import { getAuth } from 'firebase/auth';
-import { initializeApp, getApp, getApps, FirebaseApp } from 'firebase/app';
-import firebaseConfig from '../../firebase-applet-config.json';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { TodoTask, UserPreferences, AIConfig } from '../types';
-
-let app: FirebaseApp;
-if (!getApps().length) {
-  app = initializeApp(firebaseConfig);
-} else {
-  app = getApp();
-}
-const db = getFirestore(app);
+import { auth, db } from '@/lib/firebase';
 
 export class DBService {
   private static async getUserId(): Promise<string | null> {
-    const auth = getAuth(app);
     if (auth.currentUser?.uid) return auth.currentUser.uid;
     return new Promise((resolve) => {
       const timeout = setTimeout(() => resolve(null), 2000);
