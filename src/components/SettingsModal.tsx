@@ -19,12 +19,10 @@ import {
 } from 'lucide-react';
 import {
   Dialog,
-  DialogContent,
   DialogHeader,
-  DialogTitle,
-  DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { PageDialog } from '@/components/ui/panel';
 import { Button } from '@/components/ui/button';
 import { toggleThemeWithCircularAnimation } from '@/lib/theme';
 import { toast } from '@/components/ui/sonner';
@@ -35,6 +33,8 @@ interface SettingsModalProps {
   userPreferences: UserPreferences | null;
   aiConfig: AIConfig | null;
   onSave: (prefs: UserPreferences, config: AIConfig) => void;
+  pageMode?: boolean;
+  pageClassName?: string;
 }
 
 const GEMINI_MODELS = [
@@ -53,7 +53,7 @@ const OPENAI_MODELS = [
   { value: '__CUSTOM__', label: 'Tulis Nama Model Kustom...' },
 ];
 
-export function SettingsModal({ isOpen, onClose, userPreferences, aiConfig, onSave }: SettingsModalProps) {
+export function SettingsModal({ isOpen, onClose, userPreferences, aiConfig, onSave, pageMode = false, pageClassName }: SettingsModalProps) {
   const [prefs, setPrefs] = useState<UserPreferences>(userPreferences || {
     learningStyle: 'Netral',
     explanationDetail: 'Netral',
@@ -104,6 +104,7 @@ export function SettingsModal({ isOpen, onClose, userPreferences, aiConfig, onSa
       'bottom-center': 'Tengah Bawah',
       'bottom-right': 'Kanan Bawah',
     };
+    toast.dismiss();
     toast.success("Posisi Notifikasi Diperbarui", {
       description: `Notifikasi kini muncul di sudut ${labelMap[pos]}.`,
     });
@@ -180,19 +181,23 @@ export function SettingsModal({ isOpen, onClose, userPreferences, aiConfig, onSa
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] p-0 flex flex-col gap-0 overflow-hidden dark:bg-[#0B0F17] dark:border-slate-800">
+      <PageDialog
+        pageMode={pageMode}
+        className="max-w-2xl max-h-[90vh] p-0 flex flex-col gap-0 overflow-hidden dark:bg-[#0c0c0c] dark:border-slate-800"
+        pageClassName={pageClassName}
+      >
         {/* Header */}
         <DialogHeader className="px-6 py-5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-left pr-12">
-          <DialogTitle className="text-lg sm:text-xl font-bold text-slate-900 dark:text-slate-100">
+          <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-slate-100">
             Pengaturan Aplikasi
-          </DialogTitle>
-          <DialogDescription className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
             Filter rentang tanggal Classroom, tema antarmuka, preferensi belajar, dan AI
-          </DialogDescription>
+          </p>
         </DialogHeader>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto space-y-7 flex-1 dark:bg-[#0B0F17]">
+        <div className="p-6 overflow-y-auto space-y-7 flex-1 dark:bg-[#0c0c0c]">
 
           {/* SECTION 0: Theme Selection */}
           <section className="space-y-3">
@@ -213,7 +218,7 @@ export function SettingsModal({ isOpen, onClose, userPreferences, aiConfig, onSa
                 className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center gap-3 ${
                   !isDark
                     ? 'border-indigo-600 bg-indigo-50/70 ring-1 ring-indigo-500/20 text-indigo-950 font-bold'
-                    : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-[#121826] hover:bg-slate-50 dark:hover:bg-slate-800/60 text-slate-600 dark:text-slate-300 dark:hover:text-slate-100'
+                    : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-[#141414] hover:bg-slate-50 dark:hover:bg-slate-800/60 text-slate-600 dark:text-slate-300 dark:hover:text-slate-100'
                 }`}
               >
                 <div
@@ -244,7 +249,7 @@ export function SettingsModal({ isOpen, onClose, userPreferences, aiConfig, onSa
                 className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center gap-3 ${
                   isDark
                     ? 'border-indigo-500/60 bg-indigo-950/60 ring-1 ring-indigo-500/30 text-indigo-200 font-bold'
-                    : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-[#121826] hover:bg-slate-50 dark:hover:bg-slate-800/60 text-slate-600 dark:text-slate-300 dark:hover:text-slate-100'
+                    : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-[#141414] hover:bg-slate-50 dark:hover:bg-slate-800/60 text-slate-600 dark:text-slate-300 dark:hover:text-slate-100'
                 }`}
               >
                 <div
@@ -261,7 +266,7 @@ export function SettingsModal({ isOpen, onClose, userPreferences, aiConfig, onSa
                   <div className="text-xs text-slate-500 dark:text-slate-400">Nyaman di mata saat malam</div>
                 </div>
                 {isDark && (
-                  <div className="ml-auto w-5 h-5 rounded-full bg-indigo-600 dark:bg-slate-100 text-white dark:text-[#0f172a] flex items-center justify-center shrink-0">
+                  <div className="ml-auto w-5 h-5 rounded-full bg-indigo-600 dark:bg-slate-100 text-white dark:text-[#0c0c0c] flex items-center justify-center shrink-0">
                     <Check className="w-3 h-3 stroke-[3]" />
                   </div>
                 )}
@@ -309,7 +314,7 @@ export function SettingsModal({ isOpen, onClose, userPreferences, aiConfig, onSa
                     className={`p-2.5 rounded-xl border text-xs font-semibold transition cursor-pointer flex items-center justify-between gap-1.5 ${
                       isSelected
                         ? 'border-indigo-600 bg-indigo-50/80 text-indigo-950 dark:bg-indigo-950/60 dark:border-indigo-500/60 dark:text-indigo-200 ring-1 ring-indigo-500/20'
-                        : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-[#121826] text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 dark:hover:text-slate-100'
+                        : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-[#141414] text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 dark:hover:text-slate-100'
                     }`}
                   >
                     <span className="truncate">{pos.label}</span>
@@ -369,7 +374,7 @@ export function SettingsModal({ isOpen, onClose, userPreferences, aiConfig, onSa
                     onClick={() => setPrefs({ ...prefs, classroomDateRangeMonths: opt.value })}
                     className={`p-3.5 text-left rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-2 ${isSelected
                       ? 'border-indigo-600 bg-indigo-50/60 ring-1 ring-indigo-500/20 dark:bg-indigo-950/60 dark:border-indigo-500/60 dark:ring-indigo-500/30'
-                      : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-[#121826] dark:hover:border-slate-700 dark:hover:bg-slate-800/60'
+                      : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-[#141414] dark:hover:border-slate-700 dark:hover:bg-slate-800/60'
                       }`}
                   >
                     <div>
@@ -381,7 +386,7 @@ export function SettingsModal({ isOpen, onClose, userPreferences, aiConfig, onSa
                       </div>
                     </div>
                     {isSelected && (
-                      <div className="w-5 h-5 rounded-full bg-indigo-600 dark:bg-slate-100 text-white dark:text-[#0f172a] flex items-center justify-center shrink-0">
+                      <div className="w-5 h-5 rounded-full bg-indigo-600 dark:bg-slate-100 text-white dark:text-[#0c0c0c] flex items-center justify-center shrink-0">
                         <Check className="w-3 h-3 stroke-[3]" />
                       </div>
                     )}
@@ -464,13 +469,13 @@ export function SettingsModal({ isOpen, onClose, userPreferences, aiConfig, onSa
                   onClick={() => handleProviderChange(opt.id as any)}
                   className={`p-3.5 text-left rounded-2xl border transition-all cursor-pointer flex flex-col justify-between gap-2 ${config.provider === opt.id
                     ? 'border-indigo-600 bg-indigo-50/60 ring-1 ring-indigo-500/20 dark:bg-indigo-950/60 dark:border-indigo-500/60 dark:ring-indigo-500/30'
-                    : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-[#121826] dark:hover:border-slate-700 dark:hover:bg-slate-800/60'
+                    : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-[#141414] dark:hover:border-slate-700 dark:hover:bg-slate-800/60'
                     }`}
                 >
                   <div className="flex items-center justify-between w-full">
                     <opt.icon className={`w-4 h-4 ${config.provider === opt.id ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500'}`} />
                     {config.provider === opt.id && (
-                      <div className="w-4 h-4 rounded-full bg-indigo-600 dark:bg-slate-100 text-white dark:text-[#0f172a] flex items-center justify-center">
+                      <div className="w-4 h-4 rounded-full bg-indigo-600 dark:bg-slate-100 text-white dark:text-[#0c0c0c] flex items-center justify-center">
                         <Check className="w-2.5 h-2.5 stroke-[3]" />
                       </div>
                     )}
@@ -706,7 +711,7 @@ export function SettingsModal({ isOpen, onClose, userPreferences, aiConfig, onSa
             <Save className="w-4 h-4" /> Simpan Pengaturan
           </Button>
         </DialogFooter>
-      </DialogContent>
+      </PageDialog>
     </Dialog>
   );
 }

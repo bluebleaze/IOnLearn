@@ -1,4 +1,53 @@
 import { NextResponse } from 'next/server';
+import path from 'path';
+import url from 'url';
+
+async function parsePdfBuffer(buffer: Buffer): Promise<string> {
+  try {
+    // @ts-ignore
+    const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+
+    try {
+      const workerPath = url.pathToFileURL(
+        path.join(process.cwd(), 'node_modules', 'pdfjs-dist', 'legacy', 'build', 'pdf.worker.mjs')
+      ).href;
+      if (pdfjs.GlobalWorkerOptions) {
+        pdfjs.GlobalWorkerOptions.workerSrc = workerPath;
+      }
+    } catch (e) {
+      console.warn('Could not set pdfjs workerSrc:', e);
+    }
+
+    const loadingTask = pdfjs.getDocument({
+      data: new Uint8Array(buffer),
+      useSystemFonts: true,
+      disableFontFace: true,
+      isEvalSupported: false,
+    });
+    const doc = await loadingTask.promise;
+    const numPages = doc.numPages || 1;
+    let fullText = '';
+
+    for (let i = 1; i <= numPages; i++) {
+      const page = await doc.getPage(i);
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items
+        .map((item: any) => (typeof item.str === 'string' ? item.str : ''))
+        .join(' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      if (pageText) {
+        fullText += (fullText ? '\n\n' : '') + `[Halaman ${i}]\n${pageText}`;
+      }
+    }
+
+    return fullText;
+  } catch (err: any) {
+    console.error('PDF extraction error in drive/read:', err);
+    throw err;
+  }
+}
 
 export async function POST(req: Request) {
   try {
@@ -33,10 +82,7 @@ export async function POST(req: Request) {
       if (mediaRes.ok) {
         const arrayBuffer = await mediaRes.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
-        // @ts-ignore
-        const pdfParse = require('pdf-parse');
-        const data = await pdfParse(buffer);
-        textContent = data.text;
+        textContent = await parsePdfBuffer(buffer);
       }
     } else if (meta.mimeType === 'text/plain' || meta.mimeType === 'text/markdown' || meta.mimeType === 'text/csv') {
       const mediaRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {

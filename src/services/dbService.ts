@@ -1,6 +1,15 @@
 import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { TodoTask, UserPreferences, AIConfig } from '../types';
+import { TodoTask, UserPreferences, AIConfig, PersonalTodo, StudyNote } from '../types';
 import { auth, db } from '@/lib/firebase';
+
+export interface FullUserData {
+  tasks: TodoTask[];
+  preferences: UserPreferences | null;
+  aiConfig: AIConfig | null;
+  todos: PersonalTodo[];
+  notes: StudyNote[];
+  updatedAt?: string;
+}
 
 export class DBService {
   private static async getUserId(): Promise<string | null> {
@@ -19,11 +28,15 @@ export class DBService {
     tasks: TodoTask[],
     preferences: UserPreferences | null,
     aiConfig: AIConfig | null,
-    userEmail?: string
+    userEmail?: string,
+    todos?: PersonalTodo[],
+    notes?: StudyNote[]
   ): Promise<void> {
-    const cleanTasks = JSON.parse(JSON.stringify(tasks));
+    const cleanTasks = JSON.parse(JSON.stringify(tasks || []));
     const cleanPrefs = preferences ? JSON.parse(JSON.stringify(preferences)) : null;
     const cleanConfig = aiConfig ? JSON.parse(JSON.stringify(aiConfig)) : null;
+    const cleanTodos = JSON.parse(JSON.stringify(todos || []));
+    const cleanNotes = JSON.parse(JSON.stringify(notes || []));
 
     // 1. Primary: Save to shared server API cache per account (instant sync across all browsers/devices)
     if (userEmail) {
@@ -36,6 +49,8 @@ export class DBService {
             tasks: cleanTasks,
             preferences: cleanPrefs,
             aiConfig: cleanConfig,
+            todos: cleanTodos,
+            notes: cleanNotes,
           }),
         });
       } catch (e) {
@@ -52,6 +67,8 @@ export class DBService {
           tasks: cleanTasks,
           preferences: cleanPrefs,
           aiConfig: cleanConfig,
+          todos: cleanTodos,
+          notes: cleanNotes,
           updatedAt: new Date().toISOString()
         }, { merge: true });
       } catch (error) {
@@ -60,11 +77,7 @@ export class DBService {
     }
   }
 
-  static async loadUserData(userEmail?: string): Promise<{
-    tasks: TodoTask[];
-    preferences: UserPreferences | null;
-    aiConfig: AIConfig | null;
-  } | null> {
+  static async loadUserData(userEmail?: string): Promise<FullUserData | null> {
     // 1. Primary: Load from shared server API cache per account
     if (userEmail) {
       try {
@@ -76,6 +89,9 @@ export class DBService {
               tasks: json.data.tasks || [],
               preferences: json.data.preferences || null,
               aiConfig: json.data.aiConfig || null,
+              todos: json.data.todos || [],
+              notes: json.data.notes || [],
+              updatedAt: json.data.updatedAt,
             };
           }
         }
@@ -96,6 +112,9 @@ export class DBService {
             tasks: data.tasks || [],
             preferences: data.preferences || null,
             aiConfig: data.aiConfig || null,
+            todos: data.todos || [],
+            notes: data.notes || [],
+            updatedAt: data.updatedAt,
           };
         }
       } catch (error) {

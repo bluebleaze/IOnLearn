@@ -1,1114 +1,531 @@
 "use client";
-import React, {
-    useState,
-    useEffect,
-    useMemo,
-    useCallback,
-    useRef,
-} from "react";
+
+import React, { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import {
-    Plus,
-    Sparkles,
-    RefreshCw,
-    BookOpen,
-    CheckCircle2,
-    Clock,
-    MessageSquareText,
-    GraduationCap,
-    FolderSync,
-    AlertCircle,
-    HelpCircle,
-    Lightbulb,
-    Search,
-    Filter,
+  Sparkles,
+  BookOpen,
+  ListTodo,
+  NotebookPen,
+  MessageSquareText,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  Flame,
+  ArrowRight,
+  TrendingUp,
+  BrainCircuit,
+  Plus,
+  RefreshCw,
+  Check,
+  ChevronRight,
 } from "lucide-react";
-import { Navbar } from "../components/Navbar";
-import { StatsBanner } from "../components/StatsBanner";
-import { FilterBar } from "../components/FilterBar";
-import { TaskCard } from "../components/TaskCard";
-import { TaskDetailModal } from "../components/TaskDetailModal";
-import { AIChatModal } from "../components/AIChatModal";
-import { CreateManualTaskModal } from "../components/CreateManualTaskModal";
-import { SimulateTaskModal } from "../components/SimulateTaskModal";
-import { LandingPage } from "../components/LandingPage";
-import { OnboardingModal } from "../components/OnboardingModal";
-import { SettingsModal } from "../components/SettingsModal";
+import { Shell, useShell } from "../components/Shell";
+import { ActivityChart } from "../components/ActivityChart";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
-import {
-    TodoTask,
-    AIAnalysisResult,
-    UserPreferences,
-    AIConfig,
-    DEFAULT_DATE_RANGE_MONTHS,
-    isTaskWithinDateRange,
-} from "../types";
-import { ClassroomService, UserProfile } from "../services/classroomService";
-import { analyzeTaskWithAI } from "../services/aiService";
+import { TodoTask, PersonalTodo, StudyNote } from "../types";
+import { ClassroomService } from "../services/classroomService";
 import { DBService } from "../services/dbService";
-import { APP_NAME, APP_TAGLINE } from "@/lib/brand";
+import {
+  loadTasks,
+  loadTodos,
+  loadNotes,
+  toggleTaskComplete,
+  toggleTodoComplete,
+  syncAllUserDataToCloud,
+} from "../lib/taskStore";
+import confetti from "canvas-confetti";
 
-const TASKS_STORAGE_KEY = "classroom_ai_todo_tasks_v1";
-const PREFS_STORAGE_KEY = "classroom_ai_user_prefs_v1";
-const AI_CONFIG_STORAGE_KEY = "classroom_ai_config_v1";
-const ONBOARDING_DONE_KEY = "classroom_ai_onboarding_done_v1";
+export default function HomeHighlightPage() {
+  return (
+    <Shell>
+      <HomeContent />
+    </Shell>
+  );
+}
 
-export default function App() {
-    // Application State
-    const [tasks, setTasks] = useState<TodoTask[]>([]);
+function HomeContent() {
+  const router = useRouter();
+  const { userProfile, isSyncing, syncClassroom } = useShell();
 
-    useEffect(() => {
-        if (typeof window !== "undefined") {
-            document.title = `${APP_NAME} - ${APP_TAGLINE}`;
-            const profile = ClassroomService.getUserProfile();
-            const key = profile?.email ? `${TASKS_STORAGE_KEY}_${profile.email}` : TASKS_STORAGE_KEY;
-            const saved = localStorage.getItem(key);
-            if (saved) {
-                try {
-                    const parsed: TodoTask[] = JSON.parse(saved);
-                    if (profile?.email) {
-                        setTasks(parsed.filter(t => (!t.userEmail || t.userEmail === profile.email) && !t.id.startsWith("seed-")));
-                    } else {
-                        setTasks(parsed);
-                    }
-                } catch (e) {
-                    console.error("Failed to parse saved tasks:", e);
-                }
-            } else if (!profile) {
-                // Seed tasks only shown in demo / logged out mode
-                setTasks(ClassroomService.getInitialSeedTasks());
-            } else {
-                setTasks([]);
-            }
+  const [tasks, setTasks] = useState<TodoTask[]>([]);
+  const [todos, setTodos] = useState<PersonalTodo[]>([]);
+  const [notes, setNotes] = useState<StudyNote[]>([]);
+  const [isLoaded, setIsLoaded] = useState(false);
 
-            // Sync from shared account cache for cross-device continuity
-            if (profile?.email) {
-                DBService.loadUserData(profile.email).then((cloudData) => {
-                    if (cloudData && cloudData.tasks && cloudData.tasks.length > 0) {
-                        const cloudTasks = cloudData.tasks.filter(t => (!t.userEmail || t.userEmail === profile.email) && !t.id.startsWith("seed-"));
-                        if (cloudTasks.length > 0) {
-                            setTasks((prev) => {
-                                if (prev.length === 0) return cloudTasks;
-                                const cloudMap = new Map(cloudTasks.map(t => [t.id, t]));
-                                const merged = prev.map(t => {
-                                    const ct = cloudMap.get(t.id);
-                                    if (ct) {
-                                        return {
-                                            ...t,
-                                            isCompleted: ct.isCompleted || t.isCompleted,
-                                            completedAt: ct.completedAt || t.completedAt,
-                                            customNotes: ct.customNotes || t.customNotes,
-                                            aiAnalysis: ct.aiAnalysis || t.aiAnalysis,
-                                        };
-                                    }
-                                    return t;
-                                });
-                                const existingIds = new Set(prev.map(t => t.id));
-                                for (const ct of cloudTasks) {
-                                    if (!existingIds.has(ct.id)) {
-                                        merged.push(ct);
-                                    }
-                                }
-                                localStorage.setItem(key, JSON.stringify(merged));
-                                return merged;
-                            });
-                        }
-                    }
-                }).catch(() => {});
-            }
-        }
-    }, []);
+  useEffect(() => {
+    setTasks(loadTasks());
+    setTodos(loadTodos());
+    setNotes(loadNotes());
+    setIsLoaded(true);
 
-    const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-
-    useEffect(() => {
-        if (typeof window !== "undefined") {
-            setUserProfile(ClassroomService.getUserProfile());
-        }
-    }, []);
-
-    const [token, setToken] = useState<string | null>(null);
-
-    useEffect(() => {
-        if (typeof window !== "undefined") {
-            setToken(ClassroomService.getStoredToken());
-        }
-    }, []);
-
-    const [userPreferences, setUserPreferences] =
-        useState<UserPreferences | null>(null);
-
-    useEffect(() => {
-        if (typeof window !== "undefined") {
-            const saved = localStorage.getItem(PREFS_STORAGE_KEY);
-            if (saved) {
-                try {
-                    const parsed = JSON.parse(saved);
-                    setUserPreferences({
-                        ...parsed,
-                        classroomDateRangeMonths:
-                            parsed.classroomDateRangeMonths ??
-                            DEFAULT_DATE_RANGE_MONTHS,
-                    });
-                } catch (e) { }
-            } else {
-                setUserPreferences({
-                    learningStyle: "Netral",
-                    explanationDetail: "Netral",
-                    aiTone: "Ramah",
-                    classroomDateRangeMonths: DEFAULT_DATE_RANGE_MONTHS,
-                });
-            }
-        }
-    }, []);
-
-    const [aiConfig, setAiConfig] = useState<AIConfig | null>(null);
-
-    useEffect(() => {
-        if (typeof window !== "undefined") {
-            const saved = localStorage.getItem(AI_CONFIG_STORAGE_KEY);
-            if (saved) {
-                try {
-                    setAiConfig(JSON.parse(saved));
-                } catch (e) { }
-            }
-        }
-    }, []);
-
-    const [hasCompletedOnboarding, setHasCompletedOnboarding] =
-        useState<boolean>(true);
-
-    useEffect(() => {
-        if (typeof window !== "undefined") {
-            setHasCompletedOnboarding(
-                localStorage.getItem(ONBOARDING_DONE_KEY) === "true",
-            );
-        }
-    }, []);
-
-    const [isSyncing, setIsSyncing] = useState(false);
-    const [loginError, setLoginError] = useState<string | null>(null);
-    const [isAuthenticating, setIsAuthenticating] = useState(false);
-
-    // Filters and Search State
-    const [searchQuery, setSearchQuery] = useState("");
-    const [selectedCourse, setSelectedCourse] = useState("all");
-    const [statusFilter, setStatusFilter] = useState<
-        "all" | "pending" | "completed" | "ai-ready"
-    >("pending");
-    const [sortBy, setSortBy] = useState<"due" | "newest" | "priority">("due");
-
-    // Modals & Chat state
-    const [selectedTask, setSelectedTask] = useState<TodoTask | null>(null);
-    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-    const [isChatOpen, setIsChatOpen] = useState(false);
-    const [chatTaskId, setChatTaskId] = useState<string | undefined>(undefined);
-    const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
-    const [isSimulateOpen, setIsSimulateOpen] = useState(false);
-    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-
-    // Onboarding Mode
-    const [isOnboardingModalOpen, setIsOnboardingModalOpen] = useState(false);
-    const [isSettingsMode, setIsSettingsMode] = useState(false);
-
-    // Persist tasks to localStorage & Firestore Cloud
-    useEffect(() => {
-        if (tasks.length > 0 || token) {
-            const key = userProfile?.email ? `${TASKS_STORAGE_KEY}_${userProfile.email}` : TASKS_STORAGE_KEY;
-            localStorage.setItem(key, JSON.stringify(tasks));
-
-            if (userProfile?.email && token) {
-                const timer = setTimeout(() => {
-                    DBService.saveUserData(tasks, userPreferences, aiConfig, userProfile.email);
-                }, 1000);
-                return () => clearTimeout(timer);
-            }
-        }
-    }, [tasks, userProfile, token, userPreferences, aiConfig]);
-
-    // Persist preferences
-    useEffect(() => {
-        if (userPreferences) {
-            localStorage.setItem(
-                PREFS_STORAGE_KEY,
-                JSON.stringify(userPreferences),
-            );
-        }
-    }, [userPreferences]);
-
-    // Persist AI Config
-    useEffect(() => {
-        if (aiConfig) {
-            localStorage.setItem(
-                AI_CONFIG_STORAGE_KEY,
-                JSON.stringify(aiConfig),
-            );
-        }
-    }, [aiConfig]);
-
-    // Handle opening onboarding modal right after login if not completed
-    useEffect(() => {
-        if (token && !hasCompletedOnboarding) {
-            setIsOnboardingModalOpen(true);
-            setIsSettingsMode(false);
-        }
-    }, [token, hasCompletedOnboarding]);
-
-    // AI Task Analyzer runner
-    const handleAnalyzeTask = useCallback(
-        async (taskId: string) => {
-            const targetTask = tasks.find((t) => t.id === taskId);
-            if (!targetTask || targetTask.aiLoading) return;
-
-            // Check Cache First
-            const CACHE_KEY = `ai_analysis_cache_${taskId}`;
-            const cachedData = localStorage.getItem(CACHE_KEY);
-            if (cachedData) {
-                try {
-                    const parsedAnalysis = JSON.parse(cachedData);
-                    setTasks((prev) =>
-                        prev.map((t) => {
-                            if (t.id === taskId) {
-                                return {
-                                    ...t,
-                                    aiAnalysis: parsedAnalysis,
-                                    aiLoading: false,
-                                    updatedAt: new Date().toISOString(),
-                                };
-                            }
-                            return t;
-                        }),
-                    );
-                    if (selectedTask?.id === taskId) {
-                        setSelectedTask((prev) =>
-                            prev
-                                ? {
-                                    ...prev,
-                                    aiAnalysis: parsedAnalysis,
-                                    aiLoading: false,
-                                }
-                                : null,
-                        );
-                    }
-                    return; // Early return to avoid calling AI again
-                } catch (e) {
-                    console.error("Failed to parse cached analysis:", e);
-                }
-            }
-
-            // Set loading state
-            setTasks((prev) =>
-                prev.map((t) =>
-                    t.id === taskId
-                        ? { ...t, aiLoading: true, aiError: undefined }
-                        : t,
-                ),
-            );
-            if (selectedTask?.id === taskId) {
-                setSelectedTask((prev) =>
-                    prev
-                        ? { ...prev, aiLoading: true, aiError: undefined }
-                        : null,
-                );
-            }
-
-            try {
-                const analysisResult = await analyzeTaskWithAI(
-                    targetTask,
-                    userPreferences,
-                    aiConfig,
-                );
-
-                // Save to cache
-                localStorage.setItem(CACHE_KEY, JSON.stringify(analysisResult));
-
-                setTasks((prev) =>
-                    prev.map((t) => {
-                        if (t.id === taskId) {
-                            return {
-                                ...t,
-                                aiAnalysis: analysisResult,
-                                aiLoading: false,
-                                updatedAt: new Date().toISOString(),
-                            };
-                        }
-                        return t;
-                    }),
-                );
-
-                if (selectedTask?.id === taskId) {
-                    setSelectedTask((prev) =>
-                        prev
-                            ? {
-                                ...prev,
-                                aiAnalysis: analysisResult,
-                                aiLoading: false,
-                            }
-                            : null,
-                    );
-                }
-
-                toast.success("Rangkuman dan Referensi Siap", {
-                    description: `Materi belajar untuk "${targetTask.title}" berhasil disiapkan.`,
-                });
-            } catch (error: any) {
-                console.error("Failed to analyze task with AI:", error);
-                setTasks((prev) =>
-                    prev.map((t) =>
-                        t.id === taskId
-                            ? {
-                                ...t,
-                                aiLoading: false,
-                                aiError:
-                                    error.message || "Gagal memproses AI",
-                            }
-                            : t,
-                    ),
-                );
-                if (selectedTask?.id === taskId) {
-                    setSelectedTask((prev) =>
-                        prev
-                            ? {
-                                ...prev,
-                                aiLoading: false,
-                                aiError:
-                                    error.message || "Gagal memproses AI",
-                            }
-                            : null,
-                    );
-                }
-
-                toast.error("Gagal Menganalisis Tugas", {
-                    description: error.message || "Periksa koneksi internet atau kunci API Anda.",
-                });
-            }
-        },
-        [tasks, selectedTask, userPreferences],
-    );
-
-    const prevTasksCount = useRef(0);
-
-    // Auto-analyze HANYA jika ada dibawah 20 tugas baru yang ditambahkan (bukan bulk sync yang sangat banyak)
-    useEffect(() => {
-        const diff = tasks.length - prevTasksCount.current;
-        prevTasksCount.current = tasks.length;
-
-        if (diff <= 20) {
-            const newestTask = [...tasks].sort(
-                (a, b) =>
-                    new Date(b.createdAt).getTime() -
-                    new Date(a.createdAt).getTime(),
-            )[0];
-            if (
-                newestTask &&
-                !newestTask.isCompleted &&
-                !newestTask.aiAnalysis &&
-                !newestTask.aiLoading &&
-                !newestTask.aiError
-            ) {
-                handleAnalyzeTask(newestTask.id);
-            }
-        }
-    }, [tasks, handleAnalyzeTask]);
-
-    // Sync Google Classroom
-    const handleSyncWithToken = async (activeToken: string, overrideTasks?: TodoTask[], overrideEmail?: string) => {
-        setIsSyncing(true);
-        try {
-            const rangeMonths =
-                userPreferences?.classroomDateRangeMonths ??
-                DEFAULT_DATE_RANGE_MONTHS;
-            const currentEmail = overrideEmail || userProfile?.email;
-            const { updatedTasks, newCount } =
-                await ClassroomService.syncAllClassrooms(
-                    activeToken,
-                    overrideTasks || tasks,
-                    rangeMonths,
-                    currentEmail,
-                );
-            setTasks(updatedTasks);
-
-            if (newCount > 0) {
-                toast.success("Sinkronisasi Selesai", {
-                    description: `Ditemukan ${newCount} tugas baru dari Google Classroom.`,
-                });
-            } else {
-                toast.info("Classroom Sudah Terkini", {
-                    description: "Semua tugas Google Classroom Anda sudah sinkron.",
-                });
-            }
-        } catch (error: any) {
-            console.error("Sync error:", error);
-            const is401 =
-                error.message?.includes("401") ||
-                error.message?.includes("kadaluwarsa");
-            if (is401) {
-                setToken(null);
-                setUserProfile(null);
-                setLoginError(
-                    "Sesi token Google Classroom Anda telah kadaluwarsa (401). Silakan klik 'Masuk dengan Google' untuk memperbarui akses.",
-                );
-                toast.error("Sesi Google Kadaluwarsa", {
-                    description: "Silakan masuk kembali dengan akun Google Anda.",
-                });
-            } else {
-                toast.warning("Sinkronisasi Offline", {
-                    description: error.message || "Gagal terhubung ke API Classroom. Menggunakan data lokal.",
-                });
-            }
-        } finally {
-            setIsSyncing(false);
-        }
+    const handleStorage = () => {
+      setTasks(loadTasks());
+      setTodos(loadTodos());
+      setNotes(loadNotes());
     };
+    window.addEventListener("taskStoreChange", handleStorage);
+    return () => window.removeEventListener("taskStoreChange", handleStorage);
+  }, []);
 
-    const handleSaveSettings = (
-        prefs: UserPreferences,
-        config: AIConfig,
-    ) => {
-        setUserPreferences(prefs);
-        setAiConfig(config);
-        localStorage.setItem(PREFS_STORAGE_KEY, JSON.stringify(prefs));
-        localStorage.setItem(AI_CONFIG_STORAGE_KEY, JSON.stringify(config));
-        toast.success("Pengaturan Disimpan", {
-            description: "Preferensi belajar, filter waktu, dan konfigurasi AI telah diperbarui.",
-        });
+  // Stats calculation
+  const stats = useMemo(() => {
+    const activeTasks = tasks.filter((t) => !t.isCompleted);
+    const urgentTasks = activeTasks.filter((t) => {
+      if (!t.dueTimestamp) return false;
+      const hoursLeft = (t.dueTimestamp - Date.now()) / (1000 * 3600);
+      return hoursLeft > 0 && hoursLeft <= 48;
+    });
+
+    const activeTodos = todos.filter((t) => !t.isCompleted);
+    const completedTodos = todos.filter((t) => t.isCompleted);
+    const todoProgress =
+      todos.length > 0 ? Math.round((completedTodos.length / todos.length) * 100) : 0;
+
+    const notesWithAI = notes.filter((n) => Boolean(n.summary)).length;
+
+    return {
+      activeTasksCount: activeTasks.length,
+      urgentTasksCount: urgentTasks.length,
+      activeTodosCount: activeTodos.length,
+      completedTodosCount: completedTodos.length,
+      todoProgress,
+      notesCount: notes.length,
+      notesWithAICount: notesWithAI,
     };
+  }, [tasks, todos, notes]);
 
-    const handleConnectGoogle = async () => {
-        if (isAuthenticating) return;
-        setLoginError(null);
-        setIsAuthenticating(true);
-        try {
-            const result = await ClassroomService.requestToken();
-            if (result) {
-                setToken(result.token);
-                setUserProfile(result.profile);
-                
-                const key = result.profile.email ? `${TASKS_STORAGE_KEY}_${result.profile.email}` : TASKS_STORAGE_KEY;
-                const saved = localStorage.getItem(key);
-                let newTasks: TodoTask[] = [];
-                if (saved) {
-                    try {
-                        const parsed: TodoTask[] = JSON.parse(saved);
-                        // Strip out any tasks from another account or seed tasks that might have leaked
-                        newTasks = parsed.filter(t => (!t.userEmail || t.userEmail === result.profile.email) && !t.id.startsWith("seed-"));
-                    } catch (e) {}
-                }
+  // Urgent tasks list (< 72h or priority high)
+  const urgentTasks = useMemo(() => {
+    return tasks
+      .filter((t) => !t.isCompleted)
+      .sort((a, b) => (a.dueTimestamp || Infinity) - (b.dueTimestamp || Infinity))
+      .slice(0, 4);
+  }, [tasks]);
 
-                // Load latest account cache from shared server/cloud
-                try {
-                    const cloudData = await DBService.loadUserData(result.profile.email);
-                    if (cloudData && cloudData.tasks && cloudData.tasks.length > 0) {
-                        const cloudTasks = cloudData.tasks.filter(t => (!t.userEmail || t.userEmail === result.profile.email) && !t.id.startsWith("seed-"));
-                        if (cloudTasks.length > 0) {
-                            const cloudMap = new Map(cloudTasks.map(t => [t.id, t]));
-                            if (newTasks.length > 0) {
-                                newTasks = newTasks.map(t => {
-                                    const ct = cloudMap.get(t.id);
-                                    if (ct) {
-                                        return {
-                                            ...t,
-                                            isCompleted: ct.isCompleted || t.isCompleted,
-                                            completedAt: ct.completedAt || t.completedAt,
-                                            customNotes: ct.customNotes || t.customNotes,
-                                            aiAnalysis: ct.aiAnalysis || t.aiAnalysis,
-                                        };
-                                    }
-                                    return t;
-                                });
-                                const existingIds = new Set(newTasks.map(t => t.id));
-                                for (const ct of cloudTasks) {
-                                    if (!existingIds.has(ct.id)) {
-                                        newTasks.push(ct);
-                                    }
-                                }
-                            } else {
-                                newTasks = cloudTasks;
-                            }
-                            localStorage.setItem(key, JSON.stringify(newTasks));
-                        }
-                    }
-                } catch (e) {}
-                setTasks(newTasks);
-                
-                handleSyncWithToken(result.token, newTasks, result.profile.email);
-            } else {
-                setLoginError("Gagal mendapatkan akses dari Google.");
-            }
-        } catch (error: any) {
-            console.warn("Google Auth Error:", error);
-            setLoginError(
-                error.message ||
-                "Gagal terhubung ke sistem login Google. Pastikan popup tidak diblokir atau buka di tab baru.",
-            );
-        } finally {
-            setIsAuthenticating(false);
-        }
-    };
+  // Today's To-Dos
+  const todayTodos = useMemo(() => {
+    return todos.slice(0, 5);
+  }, [todos]);
 
-    const handleDisconnectGoogle = () => {
-        ClassroomService.logout();
-        setToken(null);
-        setUserProfile(null);
-        setTasks([]);
-        toast.info("Koneksi Google Diputuskan", {
-            description: "Akun Google Classroom telah keluar dan sesi ditutup.",
-        });
-    };
+  // Recent notes
+  const recentNotes = useMemo(() => {
+    return notes.slice(0, 3);
+  }, [notes]);
 
-    const handleManualSync = async () => {
-        if (token) {
-            let currentTasks = tasks;
-            if (userProfile?.email) {
-                try {
-                    const cloudData = await DBService.loadUserData(userProfile.email);
-                    if (cloudData && cloudData.tasks && cloudData.tasks.length > 0) {
-                        const cloudMap = new Map(cloudData.tasks.map(t => [t.id, t]));
-                        currentTasks = tasks.map(t => {
-                            const ct = cloudMap.get(t.id);
-                            if (ct) {
-                                return {
-                                    ...t,
-                                    isCompleted: ct.isCompleted || t.isCompleted,
-                                    completedAt: ct.completedAt || t.completedAt,
-                                    customNotes: ct.customNotes || t.customNotes,
-                                    aiAnalysis: ct.aiAnalysis || t.aiAnalysis,
-                                };
-                            }
-                            return t;
-                        });
-                        setTasks(currentTasks);
-                    }
-                } catch (e) {}
-            }
-            handleSyncWithToken(token, currentTasks);
-        } else {
-            setIsSyncing(true);
-            setTimeout(() => {
-                setIsSyncing(false);
-                toast.success("Sinkronisasi Selesai", {
-                    description: "Daftar tugas tersinkronisasi dan data telah diperbarui.",
-                });
-            }, 800);
-        }
-    };
-
-    // Toggle task completion
-    const handleToggleComplete = (taskId: string) => {
-        setTasks((prev) => {
-            const target = prev.find((t) => t.id === taskId);
-            const isNowCompleted = target ? !target.isCompleted : false;
-            const nextTasks = prev.map((t) => {
-                if (t.id === taskId) {
-                    const nextState = !t.isCompleted;
-                    return {
-                        ...t,
-                        isCompleted: nextState,
-                        completedAt: nextState
-                            ? new Date().toISOString()
-                            : undefined,
-                        updatedAt: new Date().toISOString(),
-                    };
-                }
-                return t;
-            });
-            if (userProfile?.email) {
-                DBService.saveUserData(nextTasks, userPreferences, aiConfig, userProfile.email);
-            }
-            if (target) {
-                if (isNowCompleted) {
-                    toast.success("Tugas Selesai", {
-                        description: `"${target.title}" telah ditandai selesai.`,
-                    });
-                } else {
-                    toast.info("Tugas Diaktifkan Kembali", {
-                        description: `"${target.title}" dipindahkan kembali ke daftar aktif.`,
-                    });
-                }
-            }
-            return nextTasks;
-        });
-    };
-
-    // Delete task
-    const handleDeleteTask = (taskId: string) => {
-        const target = tasks.find((t) => t.id === taskId);
-        setTasks((prev) => prev.filter((t) => t.id !== taskId));
-        if (selectedTask?.id === taskId) {
-            setIsDetailModalOpen(false);
-            setSelectedTask(null);
-        }
-        toast.info("Tugas Dihapus", {
-            description: target ? `"${target.title}" telah dihapus dari daftar.` : "Tugas berhasil dihapus.",
-        });
-    };
-
-    // Toggle checklist sub-item inside AI Analysis
-    const handleToggleChecklistItem = (taskId: string, checkId: string) => {
-        setTasks((prev) =>
-            prev.map((t) => {
-                if (t.id === taskId && t.aiAnalysis?.checklist) {
-                    const updatedChecklist = t.aiAnalysis.checklist.map(
-                        (item) =>
-                            item.id === checkId
-                                ? { ...item, done: !item.done }
-                                : item,
-                    );
-                    return {
-                        ...t,
-                        aiAnalysis: {
-                            ...t.aiAnalysis,
-                            checklist: updatedChecklist,
-                        },
-                    };
-                }
-                return t;
-            }),
-        );
-
-        if (selectedTask?.id === taskId && selectedTask.aiAnalysis?.checklist) {
-            const updatedChecklist = selectedTask.aiAnalysis.checklist.map(
-                (item) =>
-                    item.id === checkId ? { ...item, done: !item.done } : item,
-            );
-            setSelectedTask((prev) =>
-                prev && prev.aiAnalysis
-                    ? {
-                        ...prev,
-                        aiAnalysis: {
-                            ...prev.aiAnalysis,
-                            checklist: updatedChecklist,
-                        },
-                    }
-                    : null,
-            );
-        }
-    };
-
-    // Save personal notes for task
-    const handleSaveNotes = (taskId: string, notes: string) => {
-        setTasks((prev) =>
-            prev.map((t) =>
-                t.id === taskId
-                    ? {
-                        ...t,
-                        customNotes: notes,
-                        updatedAt: new Date().toISOString(),
-                    }
-                    : t,
-            ),
-        );
-        if (selectedTask?.id === taskId) {
-            setSelectedTask((prev) =>
-                prev ? { ...prev, customNotes: notes } : null,
-            );
-        }
-    };
-
-    // Add manual task
-    const handleAddManualTask = (
-        taskData: Omit<
-            TodoTask,
-            "id" | "createdAt" | "updatedAt" | "isCompleted"
-        >,
-    ) => {
-        const newTask: TodoTask = {
-            ...taskData,
-            id: `manual_${Date.now()}`,
-            isCompleted: false,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            userEmail: userProfile?.email,
-        };
-        setTasks((prev) => [newTask, ...prev]);
-        toast.success("Tugas Berhasil Ditambahkan", {
-            description: `"${newTask.title}" berhasil dimasukkan ke daftar tugas.`,
-        });
-    };
-
-    // Simulate new Google Classroom task received
-    const handleSimulateNewTask = (
-        taskData: Omit<
-            TodoTask,
-            "id" | "createdAt" | "updatedAt" | "isCompleted"
-        >,
-    ) => {
-        const simulatedId = `sim_gc_${Date.now()}`;
-        const newTask: TodoTask = {
-            ...taskData,
-            id: simulatedId,
-            isCompleted: false,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            userEmail: userProfile?.email,
-        };
-
-        setTasks((prev) => [newTask, ...prev]);
-        toast.info("Tugas Baru Classroom Diterima", {
-            description: `"${newTask.title}" telah disimulasikan dari Google Classroom.`,
-        });
-    };
-
-    // Open Chat with specific task context
-    const handleOpenChat = (taskId?: string) => {
-        setChatTaskId(taskId);
-        setIsChatOpen(true);
-    };
-
-    // Open Details modal
-    const handleOpenDetails = (task: TodoTask) => {
-        setSelectedTask(task);
-        setIsDetailModalOpen(true);
-    };
-
-    // Extract unique course list
-    const coursesList = useMemo(() => {
-        const set = new Set<string>();
-        tasks.forEach((t) => {
-            if (t.courseName) set.add(t.courseName);
-        });
-        return Array.from(set);
-    }, [tasks]);
-
-    // Filtered and Sorted Tasks
-    const filteredTasks = useMemo(() => {
-        return tasks
-            .filter((t) => {
-                // Search filter
-                if (searchQuery.trim()) {
-                    const q = searchQuery.toLowerCase();
-                    const matchTitle = t.title.toLowerCase().includes(q);
-                    const matchDesc =
-                        t.description?.toLowerCase().includes(q) || false;
-                    const matchCourse = t.courseName.toLowerCase().includes(q);
-                    const matchConcepts =
-                        t.aiAnalysis?.keyConcepts?.some((k) =>
-                            k.toLowerCase().includes(q),
-                        ) || false;
-                    if (
-                        !matchTitle &&
-                        !matchDesc &&
-                        !matchCourse &&
-                        !matchConcepts
-                    )
-                        return false;
-                }
-
-                // Course filter
-                if (
-                    selectedCourse !== "all" &&
-                    t.courseName !== selectedCourse
-                ) {
-                    return false;
-                }
-
-                // Status filter
-                if (statusFilter === "pending" && t.isCompleted) return false;
-                if (statusFilter === "completed" && !t.isCompleted)
-                    return false;
-                if (
-                    statusFilter === "ai-ready" &&
-                    (!t.aiAnalysis || t.isCompleted)
-                )
-                    return false;
-
-                // Date range filter from Settings (default 2 months)
-                const dateRangeMonths =
-                    userPreferences?.classroomDateRangeMonths ??
-                    DEFAULT_DATE_RANGE_MONTHS;
-                if (!isTaskWithinDateRange(t, dateRangeMonths)) {
-                    return false;
-                }
-
-                return true;
-            })
-            .sort((a, b) => {
-                if (sortBy === "newest") {
-                    const getCreatedTime = (t: TodoTask) => {
-                        if (t.createdAt) {
-                            const parsed = new Date(t.createdAt).getTime();
-                            if (!isNaN(parsed) && parsed > 0) return parsed;
-                        }
-                        if (t.updatedAt) {
-                            const parsed = new Date(t.updatedAt).getTime();
-                            if (!isNaN(parsed) && parsed > 0) return parsed;
-                        }
-                        if (t.id.startsWith("manual_") || t.id.startsWith("sim_gc_")) {
-                            const parts = t.id.split("_");
-                            const ts = parseInt(parts[parts.length - 1], 10);
-                            if (!isNaN(ts) && ts > 0) return ts;
-                        }
-                        return t.dueTimestamp || 0;
-                    };
-
-                    const timeA = getCreatedTime(a);
-                    const timeB = getCreatedTime(b);
-                    if (timeB !== timeA) {
-                        return timeB - timeA; // Tugas paling baru berada di paling atas
-                    }
-                    return (b.dueTimestamp || 0) - (a.dueTimestamp || 0);
-                }
-                if (sortBy === "priority") {
-                    const priorityScore = { high: 3, medium: 2, low: 1 };
-                    const scoreDiff = priorityScore[b.priority] - priorityScore[a.priority];
-                    if (scoreDiff !== 0) return scoreDiff;
-                    if (!a.dueTimestamp && !b.dueTimestamp) return 0;
-                    if (!a.dueTimestamp) return 1;
-                    if (!b.dueTimestamp) return -1;
-                    return a.dueTimestamp - b.dueTimestamp;
-                }
-                // default: 'due' (Batas Waktu Terdekat)
-                if (!a.dueTimestamp && !b.dueTimestamp) return 0;
-                if (!a.dueTimestamp) return 1;
-                if (!b.dueTimestamp) return -1;
-                return a.dueTimestamp - b.dueTimestamp;
-            });
-    }, [
-        tasks,
-        searchQuery,
-        selectedCourse,
-        statusFilter,
-        sortBy,
-        userPreferences?.classroomDateRangeMonths,
-    ]);
-
-    const pendingTasksCount = tasks.filter((t) => !t.isCompleted).length;
-
-    if (!token) {
-        const handleDemoMode = () => {
-            setToken("DEMO_TOKEN");
-            localStorage.setItem("classroom_access_token", "DEMO_TOKEN");
-            setUserProfile({
-                name: "Pelajar Simulasi",
-                email: "pelajar@contoh.com",
-                picture:
-                    "https://api.dicebear.com/7.x/avataaars/svg?seed=Pelajar",
-            });
-            const seed = ClassroomService.getInitialSeedTasks();
-            setTasks(seed);
-            localStorage.setItem(`${TASKS_STORAGE_KEY}_pelajar@contoh.com`, JSON.stringify(seed));
-        };
-        return (
-            <LandingPage
-                onConnectGoogle={handleConnectGoogle}
-                onDemoMode={handleDemoMode}
-                loginError={loginError}
-                isAuthenticating={isAuthenticating}
-            />
-        );
+  const handleToggleTask = (taskId: string) => {
+    const res = toggleTaskComplete(taskId);
+    setTasks(loadTasks());
+    if (res.nowCompleted) {
+      try {
+        confetti({ particleCount: 35, spread: 50, origin: { y: 0.8 } });
+      } catch {}
+      toast.success("Tugas Diselesaikan!", { description: res.title });
     }
+  };
 
-    return (
-        <div className="min-h-screen bg-slate-50 dark:bg-[#0B0F17] text-slate-900 dark:text-slate-100 flex flex-col transition-colors duration-200">
-            {/* Navigation Bar */}
-            <Navbar
-                userProfile={userProfile}
-                isConnected={Boolean(token)}
-                isSyncing={isSyncing}
-                onConnectGoogle={handleConnectGoogle}
-                onDisconnectGoogle={handleDisconnectGoogle}
-                onSyncClassroom={handleManualSync}
-                onOpenCreateTask={() => setIsCreateTaskOpen(true)}
-                onOpenChat={() => handleOpenChat()}
-                onSimulateNewTask={() => setIsSimulateOpen(true)}
-                onOpenSettings={() => setIsSettingsOpen(true)}
-                pendingCount={pendingTasksCount}
-            />
+  const handleToggleTodo = (todoId: string) => {
+    const res = toggleTodoComplete(todoId);
+    setTodos(loadTodos());
+    if (res.nowCompleted) {
+      try {
+        confetti({ particleCount: 25, spread: 40, origin: { y: 0.8 } });
+      } catch {}
+      toast.success("To-Do Selesai!", { description: res.title });
+    }
+  };
 
-            {/* Main Container */}
-            <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-5 sm:py-6">
-                {/* Welcome / Header Brief */}
-                <div className="mb-4">
-                    <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-[#F1F0EC] tracking-tight">
-                        {userProfile?.name
-                            ? `Halo, ${userProfile.name.split(" ")[0]}`
-                            : "Daftar Tugas & Belajar"}
-                    </h2>
-                    <p className="text-slate-500 dark:text-[#9AA6B8] text-xs sm:text-sm mt-0.5">
-                        Semua tugas sekolah tersusun rapi dengan bantuan rangkuman materi & video belajar.
-                    </p>
-                </div>
+  const quickPrompts = [
+    "Jelaskan konsep kunci dari tugas terdekat saya",
+    "Bantu saya membuat rencana belajar untuk ujian minggu ini",
+    "Bagaimana cara membagi waktu antara tugas kuliah dan proyek pribadi?",
+  ];
 
-                {/* Dynamic Metric Cards & Quick Filters */}
-                <StatsBanner
-                    tasks={tasks}
-                    onQuickFilter={(filter) => setStatusFilter(filter)}
-                    currentFilter={statusFilter}
-                />
-
-                {/* Search, Filter by Course, Status & Sort */}
-                <FilterBar
-                    searchQuery={searchQuery}
-                    onSearchChange={setSearchQuery}
-                    courses={coursesList}
-                    selectedCourse={selectedCourse}
-                    onCourseChange={setSelectedCourse}
-                    statusFilter={statusFilter}
-                    onStatusChange={(s: any) => setStatusFilter(s)}
-                    sortBy={sortBy}
-                    onSortChange={setSortBy}
-                />
-
-                {/* Task Cards Grid */}
-                {filteredTasks.length > 0 ? (
-                    <div className="space-y-3.5">
-                        {filteredTasks.map((task) => (
-                            <TaskCard
-                                key={task.id}
-                                task={task}
-                                onToggleComplete={handleToggleComplete}
-                                onAnalyzeWithAI={handleAnalyzeTask}
-                                onOpenDetails={handleOpenDetails}
-                                onOpenChat={handleOpenChat}
-                                onDeleteTask={handleDeleteTask}
-                            />
-                        ))}
-                    </div>
-                ) : tasks.length === 0 ? (
-                    <div className="bg-white dark:bg-[#161F30] rounded-2xl p-8 sm:p-10 text-center border border-slate-200 dark:border-[#252F42] shadow-2xs max-w-md mx-auto my-6 space-y-4">
-                        <div className="w-12 h-12 rounded-[10px] bg-indigo-50 dark:bg-[#121927] border dark:border-[#252F42] text-[#9294E8] flex items-center justify-center mx-auto">
-                            <Sparkles className="w-5 h-5 text-indigo-600 dark:text-[#9294E8]" />
-                        </div>
-                        <div>
-                            <h3 className="font-bold text-slate-900 dark:text-[#F1F0EC] text-base sm:text-lg">
-                                Belum Ada Catatan Tugas
-                            </h3>
-                            <p className="text-xs sm:text-sm text-slate-500 dark:text-[#9AA6B8] mt-1 leading-relaxed">
-                                Tambahkan tugas pertamamu atau sinkronkan tugas dari Google Classroom secara otomatis.
-                            </p>
-                        </div>
-                        <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
-                            <Button
-                                onClick={() => setIsCreateTaskOpen(true)}
-                                variant="default"
-                                size="sm"
-                                className="font-bold gap-1.5"
-                            >
-                                <Plus className="w-4 h-4" />
-                                <span>Tambah Tugas Baru</span>
-                            </Button>
-                            <Button
-                                onClick={handleManualSync}
-                                variant="outline"
-                                size="sm"
-                                className="gap-1.5"
-                            >
-                                <RefreshCw className="w-3.5 h-3.5" />
-                                <span>Cek Google Classroom</span>
-                            </Button>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="bg-white dark:bg-[#161F30] rounded-2xl p-8 sm:p-10 text-center border border-slate-200 dark:border-[#252F42] shadow-2xs max-w-md mx-auto my-6 space-y-4">
-                        <div className="w-12 h-12 rounded-[10px] bg-slate-50 dark:bg-[#121927] border dark:border-[#252F42] text-slate-500 dark:text-[#9AA6B8] flex items-center justify-center mx-auto">
-                            <Search className="w-5 h-5" />
-                        </div>
-                        <div>
-                            <h3 className="font-bold text-slate-900 dark:text-[#F1F0EC] text-base sm:text-lg">
-                                Tidak ada tugas yang sesuai
-                            </h3>
-                            <p className="text-xs sm:text-sm text-slate-500 dark:text-[#9AA6B8] mt-1">
-                                Coba ganti kata kunci pencarian atau tampilkan semua tugas.
-                            </p>
-                        </div>
-                        <Button
-                            onClick={() => {
-                                setSearchQuery("");
-                                setSelectedCourse("all");
-                                statusFilter !== "all" && setStatusFilter("all");
-                            }}
-                            variant="primarySubtle"
-                            size="sm"
-                            className="font-bold"
-                        >
-                            Tampilkan Semua Tugas
-                        </Button>
-                    </div>
+  return (
+    <>
+      <div className="space-y-6 max-w-7xl mx-auto pb-16">
+        {/* Refined Calm Overview Header */}
+        <div className="rounded-2xl bg-white dark:bg-[#161616] p-6 sm:p-7 border border-slate-200/80 dark:border-[#262626] shadow-2xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="space-y-1.5 max-w-2xl">
+              <div className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-[#888]">
+                <span>Ikhtisar Belajar</span>
+                <span>•</span>
+                <span>{new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long" })}</span>
+              </div>
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-[#f3f3f3] font-heading">
+                Selamat datang kembali, {userProfile?.name?.split(" ")[0] || "Pelajar"}
+              </h1>
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-[#999] leading-relaxed">
+                Terdapat <span className="font-semibold text-slate-900 dark:text-[#f0f0f0]">{stats.activeTasksCount} tugas aktif</span>
+                {stats.urgentTasksCount > 0 && (
+                  <>
+                    , dengan <span className="font-semibold text-rose-600 dark:text-rose-400">{stats.urgentTasksCount} tenggat mendekat</span>
+                  </>
                 )}
-            </main>
+                , serta <span className="font-semibold text-slate-900 dark:text-[#f0f0f0]">{stats.activeTodosCount} to-do tersisa</span> hari ini.
+              </p>
+            </div>
 
-            {/* Floating Action Button for Mobile Chat Trigger */}
-            <button
-                id="floating-chatbot-btn"
-                onClick={() => handleOpenChat()}
-                className="fixed bottom-6 right-6 z-40 md:hidden w-12 h-12 rounded-[12px] bg-[#9294E8] text-[#0B0F17] shadow-lg flex items-center justify-center hover:bg-[#B0B1F2] transition cursor-pointer active:scale-95"
-                title="Buka Chatbot AI">
-                <MessageSquareText className="w-5 h-5" />
-            </button>
+            {/* Quick Action Navigation Buttons */}
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              <Button
+                onClick={() => router.push("/tasks")}
+                variant="outline"
+                className="h-9 px-3.5 text-xs font-medium rounded-xl border-slate-200 dark:border-[#2b2b2b] hover:bg-slate-100 dark:hover:bg-[#202020] text-slate-800 dark:text-[#e0e0e0] gap-1.5 cursor-pointer"
+              >
+                <BookOpen className="w-3.5 h-3.5 text-slate-500 dark:text-[#888]" />
+                <span>Semua Tugas</span>
+              </Button>
 
-            {/* Modals */}
-            <TaskDetailModal
-                task={selectedTask}
-                isOpen={isDetailModalOpen}
-                onClose={() => setIsDetailModalOpen(false)}
-                onAnalyzeWithAI={handleAnalyzeTask}
-                onToggleChecklistItem={handleToggleChecklistItem}
-                onSaveNotes={handleSaveNotes}
-                onOpenChat={handleOpenChat}
-                onToggleComplete={handleToggleComplete}
-            />
-
-            <AIChatModal
-                isOpen={isChatOpen}
-                onClose={() => setIsChatOpen(false)}
-                tasks={tasks}
-                activeTaskId={chatTaskId}
-                onSelectTaskContext={(id) => setChatTaskId(id)}
-                userPreferences={userPreferences}
-                aiConfig={aiConfig}
-            />
-
-            <CreateManualTaskModal
-                isOpen={isCreateTaskOpen}
-                onClose={() => setIsCreateTaskOpen(false)}
-                onAddTask={handleAddManualTask}
-                existingCourses={coursesList}
-            />
-
-            <SimulateTaskModal
-                isOpen={isSimulateOpen}
-                onClose={() => setIsSimulateOpen(false)}
-                onSimulate={handleSimulateNewTask}
-            />
-
-            <SettingsModal
-                isOpen={isSettingsOpen}
-                onClose={() => setIsSettingsOpen(false)}
-                userPreferences={userPreferences}
-                aiConfig={aiConfig}
-                onSave={handleSaveSettings}
-            />
-
-            <OnboardingModal
-                isOpen={isOnboardingModalOpen}
-                isSettingsMode={isSettingsMode}
-                onSave={(prefs) => {
-                    setUserPreferences({
-                        ...prefs,
-                        classroomDateRangeMonths:
-                            userPreferences?.classroomDateRangeMonths ??
-                            DEFAULT_DATE_RANGE_MONTHS,
-                    });
-                    setHasCompletedOnboarding(true);
-                    localStorage.setItem(ONBOARDING_DONE_KEY, "true");
-                    setIsOnboardingModalOpen(false);
-                }}
-                onSkip={() => {
-                    if (!isSettingsMode) {
-                        setUserPreferences({
-                            learningStyle: "Netral",
-                            explanationDetail: "Netral",
-                            aiTone: "Ramah",
-                            classroomDateRangeMonths:
-                                userPreferences?.classroomDateRangeMonths ??
-                                DEFAULT_DATE_RANGE_MONTHS,
-                        });
-                        setHasCompletedOnboarding(true);
-                        localStorage.setItem(ONBOARDING_DONE_KEY, "true");
-                    }
-                    setIsOnboardingModalOpen(false);
-                }}
-            />
+              <Button
+                onClick={() => router.push("/chat")}
+                className="h-9 px-3.5 text-xs font-medium rounded-xl bg-indigo-600 hover:bg-indigo-700 dark:bg-[#818cf8] dark:hover:bg-[#9ba3fa] text-white dark:text-[#0c0c0c] gap-1.5 shadow-2xs cursor-pointer"
+              >
+                <MessageSquareText className="w-3.5 h-3.5" />
+                <span>Tanya AI</span>
+              </Button>
+            </div>
+          </div>
         </div>
-    );
+
+        {/* 4 Key Highlight Metrics (Quiet, Balanced) */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          {/* Card 1: Tugas Classroom */}
+          <div
+            onClick={() => router.push("/tasks")}
+            className="bg-white dark:bg-[#161616] p-4 sm:p-5 rounded-2xl shadow-2xs border border-slate-200/80 dark:border-[#262626] cursor-pointer hover:border-slate-300 dark:hover:border-[#3a3a3a] transition-colors group"
+          >
+            <div className="flex items-center justify-between">
+              <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-[#202020] text-slate-700 dark:text-[#d0d0d0] flex items-center justify-center">
+                <BookOpen className="w-4 h-4" />
+              </div>
+              <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors" />
+            </div>
+            <div className="mt-3">
+              <div className="text-2xl font-bold tracking-tight text-slate-900 dark:text-[#f3f3f3] font-heading">
+                {stats.activeTasksCount}
+              </div>
+              <div className="text-xs text-slate-500 dark:text-[#888] mt-0.5">
+                Tugas Classroom Aktif
+              </div>
+            </div>
+            {stats.urgentTasksCount > 0 ? (
+              <div className="mt-2.5 text-xs font-medium text-rose-600 dark:text-rose-400 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" />
+                <span>{stats.urgentTasksCount} mendesak</span>
+              </div>
+            ) : (
+              <div className="mt-2.5 text-xs text-slate-400 dark:text-[#666]">
+                Tenggat aman
+              </div>
+            )}
+          </div>
+
+          {/* Card 2: To-Do List */}
+          <div
+            onClick={() => router.push("/todo")}
+            className="bg-white dark:bg-[#161616] p-4 sm:p-5 rounded-2xl shadow-2xs border border-slate-200/80 dark:border-[#262626] cursor-pointer hover:border-slate-300 dark:hover:border-[#3a3a3a] transition-colors group"
+          >
+            <div className="flex items-center justify-between">
+              <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-[#202020] text-slate-700 dark:text-[#d0d0d0] flex items-center justify-center">
+                <ListTodo className="w-4 h-4" />
+              </div>
+              <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors" />
+            </div>
+            <div className="mt-3">
+              <div className="text-2xl font-bold tracking-tight text-slate-900 dark:text-[#f3f3f3] font-heading">
+                {stats.activeTodosCount}
+              </div>
+              <div className="text-xs text-slate-500 dark:text-[#888] mt-0.5">
+                To-Do Belum Selesai
+              </div>
+            </div>
+            <div className="mt-2.5 text-xs text-slate-500 dark:text-[#888]">
+              Selesai <span className="font-semibold text-slate-800 dark:text-[#ddd]">{stats.todoProgress}%</span>
+            </div>
+          </div>
+
+          {/* Card 3: Catatan Materi */}
+          <div
+            onClick={() => router.push("/notes")}
+            className="bg-white dark:bg-[#161616] p-4 sm:p-5 rounded-2xl shadow-2xs border border-slate-200/80 dark:border-[#262626] cursor-pointer hover:border-slate-300 dark:hover:border-[#3a3a3a] transition-colors group"
+          >
+            <div className="flex items-center justify-between">
+              <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-[#202020] text-slate-700 dark:text-[#d0d0d0] flex items-center justify-center">
+                <NotebookPen className="w-4 h-4" />
+              </div>
+              <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors" />
+            </div>
+            <div className="mt-3">
+              <div className="text-2xl font-bold tracking-tight text-slate-900 dark:text-[#f3f3f3] font-heading">
+                {stats.notesCount}
+              </div>
+              <div className="text-xs text-slate-500 dark:text-[#888] mt-0.5">
+                Catatan Materi
+              </div>
+            </div>
+            <div className="mt-2.5 text-xs text-slate-500 dark:text-[#888] flex items-center gap-1">
+              <Sparkles className="w-3 h-3 text-indigo-500" />
+              <span>{stats.notesWithAICount} dirangkum AI</span>
+            </div>
+          </div>
+
+          {/* Card 4: Tanya AI Hub */}
+          <div
+            onClick={() => router.push("/chat")}
+            className="bg-white dark:bg-[#161616] p-4 sm:p-5 rounded-2xl shadow-2xs border border-slate-200/80 dark:border-[#262626] cursor-pointer hover:border-slate-300 dark:hover:border-[#3a3a3a] transition-colors group"
+          >
+            <div className="flex items-center justify-between">
+              <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-[#202020] text-slate-700 dark:text-[#d0d0d0] flex items-center justify-center">
+                <BrainCircuit className="w-4 h-4" />
+              </div>
+              <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors" />
+            </div>
+            <div className="mt-3">
+              <div className="text-2xl font-bold tracking-tight text-slate-900 dark:text-[#f3f3f3] font-heading">
+                AI Tutor
+              </div>
+              <div className="text-xs text-slate-500 dark:text-[#888] mt-0.5">
+                Bantuan Belajar Aktif
+              </div>
+            </div>
+            <div className="mt-2.5 text-xs text-slate-500 dark:text-[#888]">
+              Diskusi & Analisis Tugas
+            </div>
+          </div>
+        </div>
+
+        {/* Main Content Dual Column Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* Left Column (8 cols): Urgent Deadlines & Today's To-Do */}
+          <div className="lg:col-span-7 space-y-6">
+            {/* Urgent Deadlines Snapshot */}
+            <div className="bg-white dark:bg-[#161616] rounded-2xl p-5 sm:p-6 shadow-2xs border border-slate-200/80 dark:border-[#262626] space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-[#202020] text-slate-700 dark:text-[#d0d0d0] flex items-center justify-center">
+                    <Clock className="w-3.5 h-3.5" />
+                  </div>
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-[#f3f3f3]">
+                    Tugas Tenggat Terdekat
+                  </h3>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => router.push("/tasks")}
+                  className="text-xs text-slate-600 dark:text-[#a0a0a0] hover:text-slate-900 dark:hover:text-[#f0f0f0] gap-1 cursor-pointer"
+                >
+                  <span>Lihat Semua</span>
+                  <ArrowRight className="w-3 h-3" />
+                </Button>
+              </div>
+
+              {urgentTasks.length === 0 ? (
+                <div className="text-center py-7 px-4 rounded-xl bg-slate-50/50 dark:bg-[#181818]/50 border border-dashed border-slate-200 dark:border-[#262626] text-xs text-slate-500 dark:text-[#888] space-y-1">
+                  <div className="flex items-center justify-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-semibold">
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Tidak ada tenggat mendesak</span>
+                  </div>
+                  <p className="text-xs text-slate-400 dark:text-[#666]">Semua tugas kuliah saat ini terkendali dengan baik 🎉</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {urgentTasks.map((t) => (
+                    <div
+                      key={t.id}
+                      onClick={() => router.push(`/tugas/${t.id}`)}
+                      className="p-3 rounded-xl bg-slate-50/70 dark:bg-[#181818] hover:bg-slate-100/80 dark:hover:bg-[#202020] border border-slate-100 dark:border-[#242424] transition-colors cursor-pointer flex items-center justify-between gap-3"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleTask(t.id);
+                          }}
+                          className="w-5 h-5 rounded-md border border-slate-300 dark:border-[#444] hover:border-indigo-500 flex items-center justify-center shrink-0 cursor-pointer"
+                        >
+                          {t.isCompleted && <Check className="w-3 h-3 text-emerald-500" />}
+                        </button>
+                        <div className="min-w-0">
+                          <h4 className="text-xs font-medium text-slate-900 dark:text-[#f3f3f3] truncate">
+                            {t.title}
+                          </h4>
+                          <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-[#888] mt-0.5">
+                            {t.courseName && <span>{t.courseName}</span>}
+                            {t.dueDateStr && <span>• {t.dueDateStr}</span>}
+                          </div>
+                        </div>
+                      </div>
+
+                      {t.aiAnalysis && (
+                        <span className="shrink-0 text-xs font-medium px-2 py-0.5 rounded-md bg-slate-100 dark:bg-[#222] text-slate-600 dark:text-[#aaa] flex items-center gap-1 border border-slate-200/60 dark:border-[#2c2c2c]">
+                          <Sparkles className="w-2.5 h-2.5 text-indigo-500" />
+                          <span>AI Siap</span>
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Today's To-Do List Snapshot */}
+            <div className="bg-white dark:bg-[#161616] rounded-2xl p-5 sm:p-6 shadow-2xs border border-slate-200/80 dark:border-[#262626] space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-[#202020] text-slate-700 dark:text-[#d0d0d0] flex items-center justify-center">
+                    <ListTodo className="w-3.5 h-3.5" />
+                  </div>
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-[#f3f3f3]">
+                    To-Do Harian
+                  </h3>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => router.push("/todo")}
+                  className="text-xs text-slate-600 dark:text-[#a0a0a0] hover:text-slate-900 dark:hover:text-[#f0f0f0] gap-1 cursor-pointer"
+                >
+                  <span>Buka To-Do</span>
+                  <ArrowRight className="w-3 h-3" />
+                </Button>
+              </div>
+
+              {todayTodos.length === 0 ? (
+                <div className="text-center py-8 text-xs text-slate-500 dark:text-[#888] space-y-2">
+                  <p>Belum ada rencana To-Do hari ini.</p>
+                  <Button
+                    size="sm"
+                    onClick={() => router.push("/todo")}
+                    className="text-xs bg-slate-900 hover:bg-slate-800 dark:bg-[#f0f0f0] dark:hover:bg-white text-white dark:text-slate-900 rounded-xl"
+                  >
+                    <Plus className="w-3.5 h-3.5 mr-1" />
+                    Tambah To-Do
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {todayTodos.map((todo) => (
+                    <div
+                      key={todo.id}
+                      className={`p-2.5 rounded-xl bg-slate-50/70 dark:bg-[#181818] border border-slate-100 dark:border-[#242424] flex items-center justify-between gap-3 ${
+                        todo.isCompleted ? "opacity-50 line-through" : ""
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <button
+                          onClick={() => handleToggleTodo(todo.id)}
+                          className={`w-4 h-4 rounded flex items-center justify-center shrink-0 cursor-pointer transition-colors ${
+                            todo.isCompleted
+                              ? "bg-emerald-500 text-white"
+                              : "border border-slate-300 dark:border-[#444]"
+                          }`}
+                        >
+                          {todo.isCompleted && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                        </button>
+                        <span className="text-xs font-medium text-slate-800 dark:text-[#e0e0e0] truncate">
+                          {todo.title}
+                        </span>
+                      </div>
+
+                      {todo.priority === "high" && (
+                        <span className="shrink-0 text-xs font-medium px-1.5 py-0.5 rounded bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400">
+                          Penting
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Right Column (5 cols): Activity Chart & Recent Notes & AI Prompts */}
+          <div className="lg:col-span-5 space-y-6">
+            {/* Weekly Activity Chart */}
+            <div className="bg-white dark:bg-[#161616] rounded-2xl p-5 sm:p-6 shadow-2xs border border-slate-200/80 dark:border-[#262626]">
+              <div className="flex items-center gap-2 mb-3">
+                <TrendingUp className="w-4 h-4 text-slate-500 dark:text-[#888]" />
+                <h3 className="text-sm font-semibold text-slate-900 dark:text-[#f3f3f3]">
+                  Aktivitas Belajar Mingguan
+                </h3>
+              </div>
+              <ActivityChart tasks={tasks} />
+            </div>
+
+            {/* Recent Notes Preview */}
+            <div className="bg-white dark:bg-[#161616] rounded-2xl p-5 sm:p-6 shadow-2xs border border-slate-200/80 dark:border-[#262626] space-y-3.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <NotebookPen className="w-4 h-4 text-slate-500 dark:text-[#888]" />
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-[#f3f3f3]">
+                    Catatan Materi Terkini
+                  </h3>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => router.push("/notes")}
+                  className="text-xs text-slate-600 dark:text-[#a0a0a0] hover:text-slate-900 dark:hover:text-[#f0f0f0]"
+                >
+                  Buka Catatan
+                </Button>
+              </div>
+
+              {recentNotes.length === 0 ? (
+                <div className="text-center py-6 text-xs text-slate-500 dark:text-[#888]">
+                  Belum ada catatan materi tersimpan.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {recentNotes.map((note) => (
+                    <div
+                      key={note.id}
+                      onClick={() => router.push(`/notes`)}
+                      className="p-3 rounded-xl bg-slate-50/70 dark:bg-[#181818] hover:bg-slate-100/80 dark:hover:bg-[#202020] border border-slate-100 dark:border-[#242424] transition-colors cursor-pointer space-y-1"
+                    >
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-medium text-slate-900 dark:text-[#f3f3f3] line-clamp-1">
+                          {note.title}
+                        </span>
+                        <span className="text-xs text-slate-400 dark:text-[#666] shrink-0">
+                          {note.subject || "Umum"}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500 dark:text-[#888] line-clamp-1">
+                        {note.content}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* AI Prompts Launcher (Quiet, Calm) */}
+            <div className="bg-white dark:bg-[#161616] rounded-2xl p-4.5 border border-slate-200/80 dark:border-[#262626] shadow-2xs space-y-2.5">
+              <div className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-[#d0d0d0]">
+                <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+                <span>Tanya AI Cepat:</span>
+              </div>
+              <div className="space-y-1.5">
+                {quickPrompts.map((prompt, i) => (
+                  <button
+                    key={i}
+                    onClick={() => router.push(`/chat?prompt=${encodeURIComponent(prompt)}`)}
+                    className="w-full text-left p-2.5 rounded-xl text-xs text-slate-700 dark:text-[#ccc] bg-slate-50/70 dark:bg-[#181818] hover:bg-slate-100 dark:hover:bg-[#222] border border-slate-100 dark:border-[#242424] transition-colors flex items-center justify-between gap-2 cursor-pointer"
+                  >
+                    <span className="truncate">{prompt}</span>
+                    <ArrowRight className="w-3 h-3 text-slate-400 shrink-0" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
 }

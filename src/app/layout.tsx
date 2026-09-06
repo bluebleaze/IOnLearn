@@ -17,7 +17,9 @@ export default function RootLayout({
   return (
     <html lang="id" suppressHydrationWarning>
       <head>
-        <script
+        <Script
+          id="theme-script"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
@@ -35,7 +37,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body suppressHydrationWarning className="bg-slate-50 text-slate-900 dark:bg-[#0B0F17] dark:text-slate-100 min-h-screen transition-colors duration-200">
+      <body suppressHydrationWarning className="bg-slate-50 text-slate-900 dark:bg-[#0c0c0c] dark:text-slate-100 min-h-screen transition-colors duration-200">
         <Script src="https://accounts.google.com/gsi/client" strategy="afterInteractive" />
         {children}
         <Toaster />

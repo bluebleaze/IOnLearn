@@ -11,7 +11,7 @@ export function BrandText({ name = APP_NAME, className = "" }: { name?: string; 
   if (name === "Ubur Ubur") {
     return (
       <span className={className}>
-        Ubur <span className="text-[#9294E8]">Ubur</span>
+        Ubur <span className="text-[#818cf8]">Ubur</span>
       </span>
     );
   }
@@ -19,7 +19,7 @@ export function BrandText({ name = APP_NAME, className = "" }: { name?: string; 
     const base = name.slice(0, -2);
     return (
       <span className={className}>
-        {base}<span className="text-[#9294E8]">AI</span>
+        {base}<span className="text-[#818cf8]">AI</span>
       </span>
     );
   }

@@ -49,7 +49,7 @@ export function OnboardingModal({ isOpen, onSave, onSkip, isSettingsMode = false
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className="max-w-lg p-0 overflow-hidden dark:bg-[#0B0F17] dark:border-slate-800">
+      <DialogContent className="max-w-lg p-0 overflow-hidden dark:bg-[#0c0c0c] dark:border-slate-800">
         {/* Header */}
         <DialogHeader className="p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900">
           <div className="flex items-center gap-3">
@@ -68,7 +68,7 @@ export function OnboardingModal({ isOpen, onSave, onSkip, isSettingsMode = false
         </DialogHeader>
 
         {/* Content */}
-        <div className="p-6 space-y-4 dark:bg-[#0B0F17]">
+        <div className="p-6 space-y-4 dark:bg-[#0c0c0c]">
           {step === 1 && (
             <div className="space-y-4">
               <div>

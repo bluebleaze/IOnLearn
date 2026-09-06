@@ -7,38 +7,56 @@
 web
 
 ## Users
-Pelajar dan mahasiswa Indonesia yang aktif menggunakan Google Classroom untuk perkuliahan/sekolah dan membutuhkan bantuan terstruktur dalam memahami materi kuliah, menyusun jawaban tugas, serta mengatur tenggat waktu belajar.
+
+Students at any level (SMA/SMP through college) whose school uses Google Classroom. They sit down with their homework pile and need the scattered assignments turned into an ordered, actionable study session. All UI copy is casual Bahasa Indonesia.
 
 ## Product Purpose
-ClassroomAI (IOnLearn) adalah buku tugas digital dan asisten belajar cerdas yang menyinkronkan tugas Google Classroom secara otomatis serta menyediakan AI Academic Tutor kontekstual. Tujuannya adalah menghilangkan rasa kewalahan (overwhelm) akibat tumpukan tugas akademik dan membantu pelajar menguasai konsep inti materi secara mendalam.
+
+IOnLearn syncs a student's Google Classroom assignments into one to-do list and turns each open task into a curated study plan — AI-generated summary, key concepts, checklists, YouTube recommendations, sources, and strategy — plus a chatbot that can explain any task or material. Success means a student knows what to do next and actually studies from resources that fit the assignment.
 
 ## Positioning
-Study-hub terpadu yang memadukan manajemen tugas Google Classroom otomatis dengan tutor AI kontekstual yang langsung mengenali materi, konsep, dan referensi setiap tugas tanpa perlu menulis ulang prompt secara manual.
+
+The task list is the student's real Classroom data, not a manual planner: assignments, due dates, points, and attached materials come from their own Google Classroom, and the AI layer works on top of that real data — one assignment at a time, personalized to the user's stated learning style. A generic AI tutor sells generic study guidance; this connects AI to the actual coursework the student was assigned.
 
 ## Operating Context
-Digunakan oleh pelajar di laptop, tablet, atau desktop saat sesi belajar mandiri, mengerjakan tugas sekolah/kuliah, atau mereview materi menjelang ujian. Bekerja secara sinkron dengan Google Classroom API, Firebase Auth, dan Cloud Firestore lintas perangkat.
+
+- Google Classroom is the source of truth; the student signs in with Google (OAuth read scope) and syncs within a configurable date window (default 2 months).
+- After sync, the app fires an AI analysis per task generating the study plan; results persist with the task.
+- Attachments come through as Drive files, YouTube videos, links, and forms from Classroom course work.
+- The chatbot carries task context (title, materials, analysis) so follow-ups stay grounded.
+- Demo mode seeds a realistic task set so the flow can be evaluated without a Classroom account.
+- The app is used in long study sessions, frequently at night — reading comfort matters (see Brand Commitments).
 
 ## Capabilities and Constraints
-- Sinkronisasi tugas Google Classroom otomatis dengan filter rentang waktu dinamis.
-- Analisis tugas berbasis AI: ringkasan, tingkat kesulitan, estimasi durasi, konsep kunci, checklist langkah pengerjaan, sumber akademik, dan kurasi video YouTube.
-- Chatbot AI Tutor dengan manajemen sesi terpisah untuk percakapan umum maupun konsultasi spesifik per-tugas.
-- Penyimpanan lokal responsif (`localStorage`) yang terisolasi per akun, didukung cloud backup lintas perangkat (`Firebase Firestore`).
-- Pencatatan tugas manual mandiri serta simulasi tugas baru.
-- Kendala teknis: Bergantung pada Google Classroom API OAuth scope dan ketersediaan API Google Gemini.
+
+- Google Classroom sync (courses, course work, materials, submission state, due dates, points) via Google OAuth; read-only.
+- Manual task creation as a complement to synced tasks.
+- AI study plans: summary, estimated minutes, difficulty, key concepts, step checklist, sources, YouTube picks, study tips, recommended strategy.
+- AI analysis and chat run through server-side API routes; provider configurable (Gemini with library key or custom key/model, or OpenAI-compatible with custom base URL/model). Default model `gemini-3.1-flash-lite`.
+- User preferences: learning style, explanation detail, AI tone, sync date-range, toast position.
+- Persistence: Firebase Auth (Google) + Firestore per-user; user cache route for synced data; tasks stored per user identity.
+- Dark/light theme with circular reveal transition; persists per user.
+- Two app surfaces: a marketing/landing page (pre-login) and the dashboard app (post-login).
+- Content and demos are in Indonesian; the Classroom integration itself is locale-neutral.
 
 ## Brand Commitments
-- Nama Produk: ClassroomAI (IOnLearn).
-- Tone of Voice: Suportif, edukatif, ramah, jelas, tidak menggurui, dan berbahasa Indonesia natural.
-- Karakter Visual: Bersih, akademis modern, fokus, bebas distraksi, dengan palet warna indigo/violet profesional.
+
+- App name is env-configurable via `NEXT_PUBLIC_APP_NAME`; shipped fallback is "Ubur Ubur", whose brand lockup stylizes the second word in the accent color. A name ending in "AI" gets the same accent treatment on the suffix.
+- Tagline: "Produktivitas Akademik & Asisten Belajar". Description: "Platform produktivitas akademik terhubung Google Classroom dengan kurasi materi dan tutor AI".
+- Voice: casual, encouraging Indonesian for a student audience; UI copy already committed and in place.
+- User-confirmed visual constraint (dark mode): page background is a soft, near-black neutral (`#0c0c0c`) — explicitly NO pure black and NO blue- or navy-tinted black, which the user reports is hard on the eyes. Dark surfaces ruled by neutral grays (`#141414`/`#161616`/`#1f1f1f`/`#2b2b2b`), text is cool off-white (`#f5f5f5`/`#a3a3a3`/`#737373`), and accents are vivid saturated tones (indigo `#818cf8`, emerald `#34d399`, amber `#fbbf24`, rose `#f87171`, sky `#7dd3fc`) — explicitly NOT pastel.
 
 ## Evidence on Hand
-- Integrasi fungsional Google Classroom API v1.
-- Integrasi Firebase Auth dan Firestore Cloud Database (`uburubur-85adc`).
-- Endpoint AI terintegrasi Google Gemini (`/api/ai/analyze-task` dan `/api/ai/chat`).
-- Dataset demo seed tugas realistis untuk mode simulasi.
+
+- README.md: setup, architecture, Firestore security rules.
+- Demo seed tasks via `ClassroomService.getInitialSeedTasks()` for the simulated-user flow.
+- The full UI copy set in `src/` (Indonesian) is present and committed.
+- No testimonial, case-study, or marketing assets exist; future work must not fabricate social proof.
 
 ## Product Principles
-1. **Kejelasan Tanpa Beban Kognitif:** Tampilkan deadline, status, dan prioritas tugas dengan hirarki visual yang menenangkan dan mudah dipahami dalam hitungan detik.
-2. **AI sebagai Fasilitator Pemahaman:** Bimbing pemikiran konseptual dan langkah penyelesaian tugas, bukan sekadar mesin pemberi contekan instan.
-3. **Privasi & Kontinuitas Lintas Perangkat:** Seluruh riwayat analisis, catatan, dan progres belajar tersimpan aman dan terisolasi per akun di berbagai perangkat.
-4. **Kecepatan & Responsivitas:** Pengalaman belajar tanpa jeda, transisi cepat, dan interaksi yang efisien agar waktu pengguna terfokus pada belajar.
+
+1. **The student's real assignments lead.** The list, deadlines, and materials come from Google Classroom; any feature that invents or detaches from source data is suspect.
+2. **AI exists to make studying start, not to decorate the page.** Every AI output should reduce friction toward an actual study action (do the checklist, watch the video, read the source).
+3. **One surface at a time.** Keep the pre-login landing page and the post-login dashboard as distinct jobs with distinct layout logic.
+4. **Long-session comfort is a feature.** Reading environments are chosen to stay easy on the eyes over hours of evening study, not to look striking for a minute.
+5. **Preferences and providers stay open.** Learning-style tone, sync window, and even the AI model/provider are user choices, not platform dictates.

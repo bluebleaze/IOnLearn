@@ -1,81 +1,44 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-05T05:14:00.000Z",
-  "title": "Design System: ClassroomAI",
+  "generatedAt": "2026-09-05T00:00:00.000Z",
+  "title": "Design System: IOnLearn",
   "extensions": {
     "colorMeta": {
-      "primary": {
-        "role": "primary",
-        "displayName": "Academic Indigo",
-        "canonical": "#4f46e5",
-        "tonalRamp": ["#312e81", "#3730a3", "#4338ca", "#4f46e5", "#6366f1", "#818cf8", "#a5b4fc", "#e0e7ff"]
-      },
-      "brand-deep": {
-        "role": "secondary",
-        "displayName": "Deep Academic Navy",
-        "canonical": "#2f2c50",
-        "tonalRamp": ["#1e1b33", "#2f2c50", "#45406d", "#5c578f", "#7570b0", "#938ecf", "#b6b2e8", "#e3e1f7"]
-      },
-      "success": {
-        "role": "success",
-        "displayName": "Accomplishment Emerald",
-        "canonical": "#059669",
-        "tonalRamp": ["#064e3b", "#065f46", "#047857", "#059669", "#10b981", "#34d399", "#6ee7b7", "#d1fae5"]
-      },
-      "warning": {
-        "role": "warning",
-        "displayName": "Urgent Amber",
-        "canonical": "#d97706",
-        "tonalRamp": ["#78350f", "#92400e", "#b45309", "#d97706", "#f59e0b", "#fbbf24", "#fde68a", "#fef3c7"]
-      },
-      "danger": {
-        "role": "danger",
-        "displayName": "Overdue Crimson",
-        "canonical": "#e11d48",
-        "tonalRamp": ["#881337", "#9f1239", "#be123c", "#e11d48", "#f43f5e", "#fb7185", "#fca5a5", "#ffe4e6"]
-      },
-      "surface-canvas": {
-        "role": "neutral",
-        "displayName": "Canvas Chalk",
-        "canonical": "#f8fafc",
-        "tonalRamp": ["#0f172a", "#1e293b", "#334155", "#475569", "#64748b", "#94a3b8", "#cbd5e1", "#f8fafc"]
-      }
+      "primary": { "role": "primary", "displayName": "Study Indigo", "canonical": "#818cf8", "tonalRamp": ["#27274a", "#37377a", "#4b4ba8", "#6363c6", "#818cf8", "#a5b4fc", "#c7d2fe", "#e5eafe"] },
+      "primary-deep": { "role": "primary", "displayName": "Study Indigo Deep", "canonical": "#4f46e5", "tonalRamp": ["#1e1b4b", "#312e81", "#4338ca", "#4f46e5", "#6d63fa", "#8f86ff", "#b7b0ff", "#e0e0ff"] },
+      "primary-soft": { "role": "primary", "displayName": "Indigo Mist", "canonical": "#a5b4fc", "tonalRamp": ["#33385c", "#444a78", "#555d98", "#6b72b8", "#a5b4fc", "#c7d2fe", "#e5eafe", "#f4f6ff"] },
+      "neutral-bg": { "role": "neutral", "displayName": "Soft Black", "canonical": "#0c0c0c", "tonalRamp": ["#000000", "#0c0c0c", "#161616", "#1f1f1f", "#2b2b2b", "#3a3a3a", "#4a4a4a", "#5f5f5f"] },
+      "neutral-surface": { "role": "neutral", "displayName": "Charcoal Surface", "canonical": "#161616", "tonalRamp": ["#000000", "#0c0c0c", "#161616", "#1f1f1f", "#2b2b2b", "#3a3a3a", "#4a4a4a", "#5f5f5f"] },
+      "neutral-surface-2": { "role": "neutral", "displayName": "Ink Surface", "canonical": "#141414", "tonalRamp": ["#000000", "#0c0c0c", "#141414", "#1f1f1f", "#2b2b2b", "#3a3a3a", "#4a4a4a", "#5f5f5f"] },
+      "neutral-raised": { "role": "neutral", "displayName": "Raised Charcoal", "canonical": "#1f1f1f", "tonalRamp": ["#000000", "#0c0c0c", "#161616", "#1f1f1f", "#2b2b2b", "#3a3a3a", "#4a4a4a", "#5f5f5f"] },
+      "neutral-border": { "role": "neutral", "displayName": "Hairline", "canonical": "#2b2b2b", "tonalRamp": ["#000000", "#0c0c0c", "#161616", "#1f1f1f", "#2b2b2b", "#3a3a3a", "#4a4a4a", "#5f5f5f"] },
+      "neutral-text": { "role": "neutral", "displayName": "Paper White", "canonical": "#f5f5f5", "tonalRamp": ["#2e2e2e", "#444444", "#5f5f5f", "#7a7a7a", "#a3a3a3", "#c0c0c0", "#dddddd", "#f5f5f5"] },
+      "neutral-text-2": { "role": "neutral", "displayName": "Quiet Gray", "canonical": "#a3a3a3", "tonalRamp": ["#2e2e2e", "#444444", "#5f5f5f", "#7a7a7a", "#a3a3a3", "#c0c0c0", "#dddddd", "#f5f5f5"] },
+      "neutral-text-muted": { "role": "neutral", "displayName": "Muted Echo", "canonical": "#737373", "tonalRamp": ["#2e2e2e", "#444444", "#5f5f5f", "#737373", "#a3a3a3", "#c0c0c0", "#dddddd", "#f5f5f5"] },
+      "accent-success": { "role": "secondary", "displayName": "Done Green", "canonical": "#34d399", "tonalRamp": ["#0f3d2e", "#125a43", "#167a58", "#1f9c71", "#34d399", "#5fe8b1", "#8ff5cc", "#c6fbe5"] },
+      "accent-warning": { "role": "secondary", "displayName": "Deadline Amber", "canonical": "#fbbf24", "tonalRamp": ["#47350b", "#6b5113", "#916f1a", "#c58f19", "#fbbf24", "#ffd766", "#ffe9a3", "#fff7d9"] },
+      "accent-danger": { "role": "secondary", "displayName": "Overdue Rose", "canonical": "#f87171", "tonalRamp": ["#4a1717", "#6e1f1f", "#912b2b", "#c03f3f", "#f87171", "#ff9b9b", "#ffc6c6", "#ffebeb"] },
+      "accent-info": { "role": "secondary", "displayName": "Source Sky", "canonical": "#7dd3fc", "tonalRamp": ["#14394d", "#175974", "#1d7da0", "#3ba3cb", "#7dd3fc", "#a8e2ff", "#d0f0ff", "#effaff"] },
+      "light-bg": { "role": "neutral", "displayName": "Day Paper", "canonical": "#f8fafc", "tonalRamp": ["#0f172a", "#1e293b", "#334155", "#475569", "#64748b", "#94a3b8", "#cbd5e1", "#f8fafc"] },
+      "light-surface": { "role": "neutral", "displayName": "Card White", "canonical": "#ffffff", "tonalRamp": ["#0f172a", "#1e293b", "#334155", "#475569", "#64748b", "#94a3b8", "#cbd5e1", "#ffffff"] },
+      "light-border": { "role": "neutral", "displayName": "Line Slate", "canonical": "#e2e8f0", "tonalRamp": ["#0f172a", "#1e293b", "#334155", "#475569", "#64748b", "#94a3b8", "#cbd5e1", "#e2e8f0"] },
+      "light-text": { "role": "neutral", "displayName": "Ink Slate", "canonical": "#0f172a", "tonalRamp": ["#0f172a", "#1e293b", "#334155", "#475569", "#64748b", "#94a3b8", "#cbd5e1", "#f8fafc"] }
     },
     "typographyMeta": {
-      "display": { "displayName": "Display (Fredoka)", "purpose": "Hero and main page headers with playful rounded character." },
-      "headline": { "displayName": "Headline (Fredoka)", "purpose": "Task titles and modal headings." },
-      "title": { "displayName": "Title (Fredoka)", "purpose": "Subject tags and section titles." },
-      "body": { "displayName": "Body (Plus Jakarta Sans)", "purpose": "Task descriptions and AI tutor explanations." },
-      "label": { "displayName": "Label (Fredoka)", "purpose": "Badge text, filters, and timestamps." }
+      "display": { "displayName": "Display", "purpose": "Page greeting and hero headings; Lexend, weight 800, tight tracking." },
+      "body": { "displayName": "Body", "purpose": "Descriptions, counts, modal copy; Plus Jakarta Sans, 14px, relaxed leading." },
+      "label": { "displayName": "Label", "purpose": "Chips, badges, button labels, timestamps; 12px at 500-600." },
+      "mono": { "displayName": "Mono", "purpose": "Actual data only: dates, identifiers, debug timestamps." }
     },
     "shadows": [
-      {
-        "name": "shadow-rest",
-        "value": "0 1px 2px 0 rgb(0 0 0 / 0.03)",
-        "purpose": "Subtle card boundary at rest."
-      },
-      {
-        "name": "shadow-hover",
-        "value": "0 4px 12px -2px rgb(0 0 0 / 0.06), 0 2px 6px -2px rgb(0 0 0 / 0.04)",
-        "purpose": "Gentle elevation on interactive card hover."
-      },
-      {
-        "name": "shadow-primary-button",
-        "value": "0 2px 8px 0 rgb(79 70 229 / 0.25)",
-        "purpose": "Warm glow under primary action button."
-      }
+      { "name": "hairline-lift", "value": "0 1px 2px 0 rgb(0 0 0 / 0.05)", "purpose": "Cards and primary buttons at rest; reads as an edge, not a float." },
+      { "name": "overlay-float", "value": "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)", "purpose": "Profile dropdown and dialog panels only." }
     ],
     "motion": [
-      {
-        "name": "transition-standard",
-        "value": "all 150ms cubic-bezier(0.4, 0, 0.2, 1)",
-        "purpose": "Button and badge hover transitions."
-      },
-      {
-        "name": "transition-card",
-        "value": "all 200ms cubic-bezier(0.4, 0, 0.2, 1)",
-        "purpose": "Task card hover elevation."
-      }
+      { "name": "ease-standard", "value": "transition 0.15s cubic-bezier(0.4, 0, 0.2, 1)", "purpose": "Default for hover, focus, and color transitions." },
+      { "name": "ease-progress", "value": "0.5s ease-out", "purpose": "Progress bar fill width." },
+      { "name": "press", "value": "transform 0.15s; scale(0.95)", "purpose": "Active press states on buttons and checkboxes." },
+      { "name": "theme-reveal", "value": "1000ms cubic-bezier(1, 0.36, 0.52, 1.03)", "purpose": "Circular clip-path reveal for the theme toggle (View Transitions API)." }
     ],
     "breakpoints": [
       { "name": "sm", "value": "640px" },
@@ -87,91 +50,92 @@
     {
       "name": "Primary Button",
       "kind": "button",
-      "refersTo": "button-primary",
-      "description": "Tombol aksi utama bernuansa Academic Indigo.",
-      "html": "<button class=\"ds-btn-primary\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\"><path d=\"M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z\"/></svg>Tanya Asisten AI</button>",
-      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #4f46e5; color: #ffffff; padding: 8px 16px; font-size: 14px; font-weight: 600; border-radius: 12px; border: none; cursor: pointer; box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25); transition: background 0.15s, transform 0.1s; } .ds-btn-primary:hover { background: #4338ca; } .ds-btn-primary:active { transform: scale(0.97); }"
+      "refersTo": "button-primary-bright",
+      "description": "Inverted primary in dark mode (paper white fill, soft black text).",
+      "html": "<button class=\"ds-btn-primary\">Buka Materi</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 8px 16px; background: #f5f5f5; color: #0c0c0c; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-size: 13px; font-weight: 600; border: none; border-radius: 10px; cursor: pointer; transition: background 0.15s cubic-bezier(0.4,0,0.2,1), transform 0.15s; } .ds-btn-primary:hover { background: #ffffff; } .ds-btn-primary:active { transform: scale(0.95); } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 2px rgba(129, 140, 248, 0.4); }"
     },
     {
       "name": "Outline Button",
       "kind": "button",
-      "refersTo": "button-outline",
-      "description": "Tombol sekunder bergaris kontur bersih.",
-      "html": "<button class=\"ds-btn-outline\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><line x1=\"12\" y1=\"5\" x2=\"12\" y2=\"19\"/><line x1=\"5\" y1=\"12\" x2=\"19\" y2=\"12\"/></svg>Tambah Tugas</button>",
-      "css": ".ds-btn-outline { display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #ffffff; color: #1e293b; padding: 8px 14px; font-size: 14px; font-weight: 600; border-radius: 12px; border: 1px solid #e2e8f0; cursor: pointer; transition: background 0.15s, border-color 0.15s; } .ds-btn-outline:hover { background: #f8fafc; border-color: #cbd5e1; }"
+      "refersTo": "button-outline-dark",
+      "description": "Secondary action on neutral ink surface; one tone step up on hover.",
+      "html": "<button class=\"ds-btn-outline\"><svg viewBox=\"0 0 24 24\" width=\"14\" height=\"14\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><path d=\"M5 12h14\"/><path d=\"m12 5 7 7-7 7\"/></svg>Lihat Materi</button>",
+      "css": ".ds-btn-outline { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 8px 16px; background: #141414; color: #f5f5f5; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-size: 13px; font-weight: 600; border: 1px solid #2b2b2b; border-radius: 10px; cursor: pointer; transition: background 0.15s cubic-bezier(0.4,0,0.2,1), border-color 0.15s, transform 0.15s; } .ds-btn-outline:hover { background: #161616; border-color: #3a3a3a; } .ds-btn-outline:active { transform: scale(0.95); } .ds-btn-outline:focus-visible { outline: none; border-color: #818cf8; box-shadow: 0 0 0 2px rgba(129, 140, 248, 0.2); }"
     },
     {
-      "name": "Signature Interactive Checkbox",
-      "kind": "custom",
-      "refersTo": "checkbox-task",
-      "description": "Kotak centang lingkaran tanda penyelesaian tugas dengan apresiasi visual mikro.",
-      "html": "<div style=\"display:flex; gap:12px; align-items:center;\"><button class=\"ds-checkbox-uncheck\"></button><button class=\"ds-checkbox-checked\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#fff\" stroke-width=\"3.5\"><polyline points=\"20 6 9 17 4 12\"/></svg></button></div>",
-      "css": ".ds-checkbox-uncheck { width: 28px; height: 28px; border-radius: 9999px; border: 2px solid #cbd5e1; background: #ffffff; cursor: pointer; transition: all 0.15s; } .ds-checkbox-uncheck:hover { border-color: #4f46e5; background: #eef2ff; } .ds-checkbox-checked { width: 28px; height: 28px; border-radius: 9999px; border: none; background: #059669; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 6px rgba(5, 150, 105, 0.3); transition: transform 0.1s; } .ds-checkbox-checked:active { transform: scale(0.9); }"
+      "name": "Search Input",
+      "kind": "input",
+      "refersTo": "input-dark",
+      "description": "Dashboard search on ink surface, indigo glow on focus.",
+      "html": "<div style=\"position:relative\"><svg viewBox=\"0 0 24 24\" width=\"15\" height=\"15\" fill=\"none\" stroke=\"#737373\" stroke-width=\"2\" stroke-linecap=\"round\" style=\"position:absolute;left:12px;top:50%;transform:translateY(-50%)\"><circle cx=\"11\" cy=\"11\" r=\"8\"/><path d=\"m21 21-4.3-4.3\"/></svg><input class=\"ds-input-search\" type=\"text\" placeholder=\"Cari tugas atau nama mata pelajaran...\"></div>",
+      "css": ".ds-input-search { width: 100%; height: 36px; padding: 8px 12px 8px 37px; background: #141414; color: #f5f5f5; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-size: 13px; border: 1px solid #2b2b2b; border-radius: 10px; outline: none; transition: border-color 0.15s, box-shadow 0.15s; } .ds-input-search::placeholder { color: #737373; } .ds-input-search:focus { border-color: #818cf8; box-shadow: 0 0 0 2px rgba(129, 140, 248, 0.2); }"
     },
     {
-      "name": "Status Badge",
+      "name": "Metadata Chip",
       "kind": "chip",
-      "refersTo": "badge-due",
-      "description": "Lencana indikator tenggat dan mata pelajaran.",
-      "html": "<div style=\"display:flex; gap:8px; align-items:center;\"><span class=\"ds-badge-subject\">Pemrograman Web</span><span class=\"ds-badge-warning\">Besok, 23:59</span><span class=\"ds-badge-success\">Classroom</span></div>",
-      "css": ".ds-badge-subject { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 10px; font-size: 12px; font-weight: 700; background: #eef2ff; color: #4338ca; border: 1px solid #e0e7ff; } .ds-badge-warning { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 10px; font-size: 12px; font-weight: 700; background: #fffbeb; color: #92400e; border: 1px solid #fde68a; } .ds-badge-success { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 10px; font-size: 12px; font-weight: 600; background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }"
+      "refersTo": "chip-dark",
+      "description": "Uniform ink surface, color lives in text and icon only.",
+      "html": "<span class=\"ds-chip\"><svg viewBox=\"0 0 24 24\" width=\"12\" height=\"12\" fill=\"none\" stroke=\"#818cf8\" stroke-width=\"2.5\" stroke-linecap=\"round\"><path d=\"m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z\"/></svg>Rangkuman AI</span>",
+      "css": ".ds-chip { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 2px 10px; background: #141414; color: #a5b4fc; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-size: 12px; font-weight: 600; border: 1px solid #2b2b2b; border-radius: 8px; white-space: nowrap; }"
     },
     {
-      "name": "Task Card Container",
+      "name": "Task Card",
       "kind": "card",
-      "refersTo": "card-task",
-      "description": "Kontainer kartu tugas bergaya Tonal Layering.",
-      "html": "<div class=\"ds-card-task\"><div style=\"display:flex; justify-content:space-between; margin-bottom:8px;\"><span class=\"ds-badge-subject\">Matematika Diskrit</span><div class=\"ds-checkbox-uncheck\"></div></div><h4 style=\"margin:0; font-size:16px; font-weight:700; color:#0f172a;\">Latihan Mandiri: Graf Bipartit</h4><p style=\"margin:6px 0 0 0; font-size:13px; color:#64748b;\">Tentukan lintasan terpendek dari simpul A ke Z menggunakan algoritma Dijkstra...</p></div>",
-      "css": ".ds-card-task { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 24px; padding: 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.03); transition: border-color 0.2s, box-shadow 0.2s; cursor: pointer; } .ds-card-task:hover { border-color: #a5b4fc; box-shadow: 0 4px 12px rgba(0,0,0,0.06); }"
+      "refersTo": "card-dark",
+      "description": "The signature surface: metadata chips, bold title, single action rail.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card-chips\"><span class=\"ds-chip\">Matematika</span></div><h3 class=\"ds-card-title\">Kerjakan Latihan Soal Fungsi</h3><p class=\"ds-card-body\">Kumpulkan sebelum jam pelajaran besok pagi.</p><div class=\"ds-card-actions\"><span class=\"ds-card-foot\">Tanya AI</span><button class=\"ds-card-cta\">Buka Materi</button></div></div>",
+      "css": ".ds-card { padding: 20px; background: #161616; border: 1px solid #2b2b2b; border-radius: 16px; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; transition: border-color 0.2s; } .ds-card:hover { border-color: rgba(129, 140, 248, 0.5); } .ds-chip { display: inline-flex; padding: 2px 10px; background: #141414; color: #a5b4fc; font-size: 12px; font-weight: 600; border: 1px solid #2b2b2b; border-radius: 8px; } .ds-card-title { margin: 8px 0 4px; font-family: 'Lexend', system-ui, sans-serif; font-size: 17px; font-weight: 700; color: #f5f5f5; } .ds-card-body { margin: 0 0 14px; font-size: 13px; line-height: 1.5; color: #a3a3a3; } .ds-card-actions { display: flex; align-items: center; justify-content: space-between; padding-top: 12px; border-top: 1px solid #2b2b2b; } .ds-card-foot { font-size: 12px; font-weight: 600; color: #a5b4fc; } .ds-card-cta { height: 32px; padding: 6px 12px; background: #f5f5f5; color: #0c0c0c; font-size: 12px; font-weight: 600; border: none; border-radius: 8px; cursor: pointer; } .ds-card-cta:hover { background: #ffffff; }"
+    },
+    {
+      "name": "Completed Checkbox",
+      "kind": "custom",
+      "refersTo": "card-dark",
+      "description": "Off-square completion knot: Done Green fill, 3px-stroke check, dark tick.",
+      "html": "<button class=\"ds-check\" aria-label=\"Tandai sudah selesai\"><svg viewBox=\"0 0 24 24\" width=\"15\" height=\"15\" fill=\"none\" stroke=\"#0c0c0c\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M20 6 9 17l-5-5\"/></svg></button>",
+      "css": ".ds-check { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; background: #34d399; border: none; border-radius: 8px; cursor: pointer; transition: transform 0.15s; } .ds-check:hover { background: #5fe8b1; } .ds-check:active { transform: scale(0.9); } .ds-check:focus-visible { outline: none; box-shadow: 0 0 0 2px rgba(52, 211, 153, 0.4); }"
+    },
+    {
+      "name": "Navbar",
+      "kind": "nav",
+      "refersTo": "chip-dark",
+      "description": "Sticky hairline header: 40px indigo logo mark, right-aligned actions.",
+      "html": "<nav class=\"ds-nav\"><div class=\"ds-logo\"><svg viewBox=\"0 0 24 24\" width=\"20\" height=\"20\" fill=\"none\" stroke=\"#0c0c0c\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z\"/><path d=\"M22 10v6\"/><path d=\"M6 12.5V16a6 3 0 0 0 12 0v-3.5\"/></svg></div><span class=\"ds-nav-brand\">Ubur <b>Ubur</b></span><div class=\"ds-nav-spacer\"></div><button class=\"ds-nav-cta\">Tanya AI</button><button class=\"ds-nav-icon\"><svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><path d=\"m15 21-3-3 3-3\"/><circle cx=\"9\" cy=\"12\" r=\"4\"/><path d=\"M12 12h13\"/></svg></button></nav>",
+      "css": ".ds-nav { display: flex; align-items: center; gap: 10px; height: 64px; padding: 0 24px; background: rgba(12, 12, 12, 0.95); border-bottom: 1px solid #2b2b2b; backdrop-filter: blur(12px); font-family: 'Plus Jakarta Sans', system-ui, sans-serif; } .ds-logo { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; background: #818cf8; border-radius: 10px; } .ds-nav-brand { font-family: 'Lexend', system-ui, sans-serif; font-weight: 800; font-size: 16px; color: #f5f5f5; letter-spacing: -0.025em; } .ds-nav-brand b { color: #818cf8; } .ds-nav-spacer { flex: 1; } .ds-nav-cta { height: 32px; padding: 4px 12px; background: #141414; color: #a5b4fc; font-size: 12px; font-weight: 600; border: 1px solid #2b2b2b; border-radius: 8px; cursor: pointer; transition: background 0.15s; } .ds-nav-cta:hover { background: #161616; } .ds-nav-icon { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: transparent; color: #a3a3a3; border: none; border-radius: 10px; cursor: pointer; transition: background 0.15s, color 0.15s; } .ds-nav-icon:hover { background: rgba(255, 255, 255, 0.08); color: #f5f5f5; }"
     }
   ],
   "narrative": {
-    "northStar": "The Focused Scholar's Desk",
-    "overview": "ClassroomAI dirancang menyerupai meja belajar seorang pelajar yang rapi, hening, dan terstruktur dengan cermat—namun tetap hangat, bersahabat, dan menyenangkan (friendly & playful). Antarmuka mengeliminasi kekacauan visual dan hierarki yang membingungkan agar pengguna dapat langsung berkonsentrasi membaca materi dan mengerjakan tugas tanpa kelelahan mata.",
+    "northStar": "The Late-Study Lamp",
+    "overview": "The interface is a desk lamp in a dark room: everything around the light stays quiet and near-black, and exactly one thing is lit at a time — the task, the deadline, the button that moves you forward. The dark surface is a soft neutral black (never pure black, never blue-cast black), and the indigo accent is the lamplight itself: scarce, precise, and always aimed at what matters right now.\n\nThe system reads as calm, orderly, and encouraging. Surfaces are flat, separated by hairline borders and tonal steps rather than cast shadows; the eye moves from greeting to progress to the task list without anything shouting for attention. Density is real but disciplined — chips carry the metadata, weight stays reserved for the task title and the one primary action.\n\nThis is an Operate surface: the tool should disappear while the homework leads. Both modes honor the same spacing, radius, and component language; the light mode is the \u201cday desk\u201d on slate paper, the dark mode is the \u201cnight desk\u201d that the product truth says matters most — long evening sessions where reading comfort beats striking contrasts.",
     "keyCharacteristics": [
-      "Clarity Over Clutter: Informasi tugas tersusun dalam baris pindaian horizontal instan.",
-      "Refined & Supportive Shapes: Sudut kurva organik (rounded-2xl hingga 3xl) yang ramah.",
-      "Tonal Layering Depth: Kedalaman ruang dibangun lewat saturasi bidang dan border tipis.",
-      "Micro-Rewards: Interaksi pencapaian memberikan umpan balik taktil dan visual yang menggembirakan."
+      "Soft near-black dark mode (#0c0c0c family), explicitly free of blue cast and pastel haze",
+      "One primary accent (indigo) at rest; emerald/amber/rose/sky appear only as status language",
+      "Flat surfaces with hairline borders; shadows effectively absent at rest",
+      "Lexend for headings, Plus Jakarta Sans for UI, JetBrains Mono only for real data",
+      "20px group cadence, 16px card rhythm, 8px chip rhythm",
+      "Inverted primary button in dark mode (paper-white fill, near-black text)"
     ],
     "rules": [
-      {
-        "name": "The Clarity First Rule",
-        "body": "Warna aksen indigo dibatasi penggunaannya hingga maksimal 15% dari total bidang layar agar mata pelajar tetap rileks.",
-        "section": "colors"
-      },
-      {
-        "name": "The State Integrity Rule",
-        "body": "Warna status hijau emerald adalah hak eksklusif tugas yang sudah selesai atau akun yang aktif. Jangan gunakan hijau untuk elemen dekoratif non-status.",
-        "section": "colors"
-      },
-      {
-        "name": "The Playful Heading, Focused Body Rule",
-        "body": "Fredoka memegang kendali pada nama brand, judul halaman, judul kartu tugas, dan lencana status untuk memancarkan aura friendly & playful. Teks isi paragraf wajib memakai Plus Jakarta Sans agar stamina baca terjaga.",
-        "section": "typography"
-      },
-      {
-        "name": "The Calm Hierarchy Rule",
-        "body": "Judul tugas tidak boleh bersaing ukuran dengan judul header halaman. Judul tugas maksimal berukuran 18px (text-lg).",
-        "section": "typography"
-      },
-      {
-        "name": "The Flat-at-Rest Rule",
-        "body": "Permukaan kartu dan panel berada dalam kondisi flat tonal saat diam. Bayangan hanya hadir sebagai respons interaktif terhadap kursor pengguna.",
-        "section": "elevation"
-      }
+      { "name": "The Lamplight Rule", "body": "One accent is lit at rest — indigo. Emerald, amber, rose, and sky are reserved for their semantic labels and are never used decoratively on the same surface, so a task card at rest shows its urgency (or its completion) before it shows anything else.", "section": "colors" },
+      { "name": "The Soft-Black Rule", "body": "Dark surfaces never reach pure black and never shift blue. Every dark surface, border, and hover lives on the #0c0c0c → #2b2b2b neutral ramp.", "section": "colors" },
+      { "name": "The One-Voice Rule", "body": "Lexend speaks in headings, Plus Jakarta Sans speaks in the UI, JetBrains Mono appears only for actual data — dates, identifiers, debug timestamps. Mono is never worn as a \u201ctechnical\u201d costume.", "section": "typography" },
+      { "name": "The Flat-By-Default Rule", "body": "Surfaces are flat at rest. Shadows appear only where interactive state or a true overlay demands them; nothing decorative casts a shadow.", "section": "elevation" }
     ],
     "dos": [
-      "Do gunakan rounded-3xl untuk kartu utama dan rounded-xl untuk elemen tombol/input agar hierarki bentuk konsisten.",
-      "Do berikan umpan balik visual instan (transisi warna dan skala mikro) pada setiap tombol dan kotak centang tugas.",
-      "Do jaga kontras teks minimal WCAG AA (4.5:1) pada seluruh teks deskripsi tugas dan badge status tenggat.",
-      "Do tampilkan lencana urgensi tenggat waktu secara spesifik di baris atas kartu tugas sebelum judul tugas dibaca."
+      "Do keep dark surfaces on the #0c0c0c → #2b2b2b neutral ramp in both surfaces and borders.",
+      "Do reserve saturated accents for semantic status — Done Green, Deadline Amber, Overdue Rose, Source Sky — and let indigo carry all resting emphasis.",
+      "Do hold the 20px/16px/8px rhythm: 20px between major groups, 16px inside cards, 8px between chips.",
+      "Do keep one hairline separator per card; let proximity (not stacked rules) separate content from actions.",
+      "Do let the task title be the heaviest text on its card.",
+      "Do invert the primary button in dark mode (Paper White fill, Soft Black text) so the action is the brightest element."
     ],
     "donts": [
-      "Don't menggunakan bayangan gelap (shadow-2xl atau bayangan hitam legam) pada kartu tugas di canvas.",
-      "Don't mewarnai seluruh background kartu tugas dengan warna mencolok (merah/kuning); batasi warna peringatan pada badge status.",
-      "Don't menggunakan lebih dari satu tombol aksi primer berkontras tinggi (Indigo) dalam satu area pandang yang sama.",
-      "Don't hilangkan checkbox lingkaran khas; komponen ini adalah pusat kepuasan psikologis pelajar saat menyelesaikan tugas."
+      "Don't use pure #000000 or any blue- or navy-tinted black for dark backgrounds.",
+      "Don't reach for pastel or hazy accents in dark mode — the status colors are vivid by commitment.",
+      "Don't cast shadows beyond the hairline lift at rest; the profile dropdown owns shadow-xl.",
+      "Don't wear JetBrains Mono on prose — data only.",
+      "Don't create a second nested border-t inside a card (the \u201cencased\u201d look).",
+      "Don't put gray text on a colored fill — on tinted chips, shade the hue instead."
     ]
   }
 }

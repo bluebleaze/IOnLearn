@@ -1,6 +1,7 @@
 import {
     AIAnalysisResult,
     AIConfig,
+    ChatAttachment,
     ChatMessage,
     TodoTask,
     UserPreferences,
@@ -63,11 +64,44 @@ export async function analyzeTaskWithAI(
 }
 
 export async function sendChatMessageToAI(
-    messages: { role: "user" | "assistant"; content: string }[],
+    messages: {
+        role: "user" | "assistant";
+        content: string;
+        attachments?: ChatAttachment[];
+    }[],
     taskContext?: Partial<TodoTask>,
     userPreferences?: UserPreferences | null,
     aiConfig?: AIConfig | null,
-): Promise<{ reply: string; timestamp: number; suggestedPrompts?: string[] }> {
+    studyMode?: "socratic" | "direct" | "quizzer",
+): Promise<{
+    reply: string;
+    timestamp: number;
+    suggestedPrompts?: string[];
+    createdNote?: {
+        title: string;
+        content: string;
+        subject?: string;
+        tags?: string[];
+    };
+    createdTodo?: {
+        title: string;
+        description?: string;
+        priority?: "high" | "medium" | "low";
+        category?: string;
+        subtasks?: {
+            title: string;
+        }[];
+    };
+    createdTodos?: {
+        title: string;
+        description?: string;
+        priority?: "high" | "medium" | "low";
+        category?: string;
+        subtasks?: {
+            title: string;
+        }[];
+    }[];
+}> {
     let extractedMaterialText = "";
     // Try to load drive contents if there are materials
     if (taskContext?.materials && Array.isArray(taskContext.materials)) {
@@ -101,6 +135,7 @@ export async function sendChatMessageToAI(
             messages,
             userPreferences,
             aiConfig,
+            studyMode,
             taskContext: taskContext
                 ? {
                       title: taskContext.title,

@@ -116,6 +116,14 @@ export interface TodoTask {
   userEmail?: string;
 }
 
+export interface ChatAttachment {
+  name: string;
+  size: number;
+  type?: 'pdf' | 'image' | 'code' | 'doc';
+  dataUrl?: string;
+  extractedText?: string;
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant' | 'system';
@@ -124,6 +132,38 @@ export interface ChatMessage {
   taskId?: string;
   taskTitle?: string;
   isError?: boolean;
+  attachments?: ChatAttachment[];
+  createdNote?: {
+    id?: string;
+    title: string;
+    content: string;
+    subject?: string;
+    tags?: string[];
+  };
+  createdTodo?: {
+    id?: string;
+    title: string;
+    description?: string;
+    priority?: 'high' | 'medium' | 'low';
+    category?: string;
+    subtasks?: {
+      id?: string;
+      title: string;
+      isCompleted?: boolean;
+    }[];
+  };
+  createdTodos?: {
+    id?: string;
+    title: string;
+    description?: string;
+    priority?: 'high' | 'medium' | 'low';
+    category?: string;
+    subtasks?: {
+      id?: string;
+      title: string;
+      isCompleted?: boolean;
+    }[];
+  }[];
 }
 
 export type ToastPosition =
@@ -140,6 +180,8 @@ export interface UserPreferences {
   aiTone: string; // e.g., 'Santai', 'Tegas', 'Socratic'
   classroomDateRangeMonths?: number; // Filter rentang bulan sinkronisasi tugas: 1, 2 (default), 3, 6, 12, atau 0 (semua)
   toastPosition?: ToastPosition; // Posisi notifikasi toast sonner (default: 'top-right')
+  taskModalStyle?: 'modal' | 'drawer'; // Gaya pop-up detail tugas: 'drawer' (panel samping) atau 'modal' (tengah layar)
+  chatLayout?: 'sidebar' | 'split' | 'minimal'; // Tata letak AI Chat: 'sidebar' (default), 'split' (dual workspace), atau 'minimal'
 }
 
 export const DEFAULT_DATE_RANGE_MONTHS = 2;
@@ -221,4 +263,48 @@ export interface SyncStats {
   totalSyncedTasks: number;
   newTasksFound: number;
   isSyncing: boolean;
+}
+
+export interface TodoSubtask {
+  id: string;
+  title: string;
+  isCompleted: boolean;
+}
+
+export interface PersonalTodo {
+  id: string;
+  title: string;
+  description?: string;
+  isCompleted: boolean;
+  completedAt?: string;
+  priority: 'high' | 'medium' | 'low';
+  dueDate?: string; // YYYY-MM-DD
+  category?: string; // e.g., 'Belajar', 'Tugas', 'Pribadi', 'Ujian'
+  courseWorkId?: string; // If converted from classroom task
+  courseName?: string;
+  subtasks?: TodoSubtask[];
+  createdAt: string;
+  updatedAt: string;
+  userEmail?: string;
+}
+
+export interface StudyNoteQuizItem {
+  id: string;
+  question: string;
+  options: string[];
+  correctAnswer: number;
+  explanation: string;
+}
+
+export interface StudyNote {
+  id: string;
+  title: string;
+  content: string; // Markdown / rich text
+  subject?: string; // e.g., 'Matematika', 'Pemrograman'
+  tags?: string[];
+  summary?: string;
+  aiQuiz?: StudyNoteQuizItem[];
+  createdAt: string;
+  updatedAt: string;
+  userEmail?: string;
 }

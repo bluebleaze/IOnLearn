@@ -44,11 +44,11 @@ export function LandingPage({
   };
 
   return (
-    <div className="min-h-screen bg-[#0B0F17] text-[#F1F0EC] flex flex-col font-sans relative selection:bg-[#9294E8] selection:text-[#0B0F17] overflow-x-hidden">
+    <div className="min-h-screen bg-white dark:bg-[#0c0c0c] text-slate-900 dark:text-[#f5f5f5] flex flex-col font-sans relative overflow-x-hidden">
       {/* Subtle organic Ubur Ubur background wave motif (calm, non-distracting) */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-[0.04]">
         <svg
-          className="absolute top-0 right-0 w-[600px] h-[600px] -mr-32 -mt-24 text-[#9294E8]"
+          className="absolute top-0 right-0 w-[600px] h-[600px] -mr-32 -mt-24 text-[#818cf8]"
           viewBox="0 0 200 200"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
@@ -84,12 +84,12 @@ export function LandingPage({
       </div>
 
       {/* Navbar */}
-      <header className="px-5 sm:px-8 py-4 flex items-center justify-between border-b border-[#252F42] bg-[#0B0F17]/90 backdrop-blur-md sticky top-0 z-20 w-full">
+      <header className="px-5 sm:px-8 py-4 flex items-center justify-between border-b border-slate-200 dark:border-[#2b2b2b] bg-white/90 dark:bg-[#0c0c0c]/90 backdrop-blur-md sticky top-0 z-20 w-full">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-[#9294E8] rounded-[10px] flex items-center justify-center text-[#0B0F17] shadow-xs shrink-0">
+          <div className="w-9 h-9 bg-[#818cf8] rounded-[10px] flex items-center justify-center text-[#0c0c0c] shadow-xs shrink-0">
             <GraduationCap className="w-5 h-5 stroke-[2.2]" />
           </div>
-          <span className="font-heading text-lg font-bold tracking-tight text-[#F1F0EC]">
+          <span className="font-heading text-lg font-bold tracking-tight text-slate-900 dark:text-[#f5f5f5]">
             <BrandText />
           </span>
         </div>
@@ -100,12 +100,12 @@ export function LandingPage({
             type="button"
             onClick={handleToggleTheme}
             title={isDark ? "Ganti ke Mode Terang" : "Ganti ke Mode Gelap"}
-            className="w-9 h-9 rounded-[10px] text-[#9AA6B8] hover:text-[#F1F0EC] bg-[#121927] hover:bg-[#161F30] border border-[#252F42] flex items-center justify-center transition cursor-pointer"
+            className="w-9 h-9 rounded-[10px] text-slate-500 hover:text-slate-900 dark:text-[#a3a3a3] dark:hover:text-[#f5f5f5] bg-slate-100 hover:bg-slate-200 dark:bg-[#141414] dark:hover:bg-[#161616] border border-slate-200 dark:border-[#2b2b2b] flex items-center justify-center transition cursor-pointer"
           >
             {isDark ? (
-              <Sun className="w-4 h-4 text-[#E8DFC8]" />
+              <Sun className="w-4 h-4 text-amber-400" />
             ) : (
-              <Moon className="w-4 h-4 text-[#9294E8]" />
+              <Moon className="w-4 h-4 text-indigo-600" />
             )}
           </button>
 
@@ -114,7 +114,7 @@ export function LandingPage({
             type="button"
             onClick={onDemoMode}
             disabled={isAuthenticating}
-            className="px-3.5 py-2 text-xs sm:text-sm font-medium rounded-[10px] bg-[#121927] hover:bg-[#161F30] text-[#9AA6B8] hover:text-[#F1F0EC] border border-[#252F42] hover:border-[#8FAFCB]/50 transition cursor-pointer disabled:opacity-50"
+            className="px-3.5 py-2 text-xs sm:text-sm font-medium rounded-[10px] bg-slate-100 hover:bg-slate-200 dark:bg-[#141414] dark:hover:bg-[#161616] text-slate-600 hover:text-slate-900 dark:text-[#a3a3a3] dark:hover:text-[#f5f5f5] border border-slate-200 dark:border-[#2b2b2b] hover:border-indigo-300 dark:hover:border-[#7dd3fc]/50 transition cursor-pointer disabled:opacity-50"
           >
             Mode Simulasi
           </button>
@@ -124,7 +124,7 @@ export function LandingPage({
             type="button"
             onClick={onConnectGoogle}
             disabled={isAuthenticating}
-            className="inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold rounded-[10px] bg-[#F1F0EC] hover:bg-[#E8DFC8] text-[#0B0F17] transition cursor-pointer disabled:opacity-50 active:scale-95 shadow-xs"
+            className="inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold rounded-[10px] bg-slate-900 hover:bg-[#fbbf24] dark:bg-[#f5f5f5] dark:hover:bg-[#fbbf24] text-white dark:text-[#0c0c0c] transition cursor-pointer disabled:opacity-50 active:scale-95 shadow-xs"
           >
             <LogIn className="w-3.5 h-3.5" />
             <span>{isAuthenticating ? "Menghubungkan..." : "Masuk Google"}</span>
@@ -135,19 +135,19 @@ export function LandingPage({
       {/* Hero Section */}
       <main className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 py-16 sm:py-24 text-center max-w-4xl mx-auto w-full relative z-10">
         {/* Academic Purpose Pill */}
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#121927] border border-[#252F42] text-xs font-medium text-[#9AA6B8] mb-8">
-          <span className="w-2 h-2 rounded-full bg-[#91C9B5]" />
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-100 dark:bg-[#141414] border border-slate-200 dark:border-[#2b2b2b] text-xs font-medium text-slate-500 dark:text-[#a3a3a3] mb-8">
+          <span className="w-2 h-2 rounded-full bg-emerald-500" />
           <span>Platform Produktivitas Akademik Siswa & Mahasiswa</span>
         </div>
 
         {/* Hero Title */}
-        <h1 className="font-heading text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-[#F1F0EC] leading-[1.18] mb-6">
+        <h1 className="font-heading text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-slate-900 dark:text-[#f5f5f5] leading-[1.18] mb-6">
           Sinkronkan Tugas Kelas, <br className="hidden sm:block" />
-          <span className="text-[#9294E8]">Taklukkan dengan AI.</span>
+          <span className="text-[#818cf8]">Taklukkan dengan AI.</span>
         </h1>
 
         {/* Supporting Editorial Paragraph */}
-        <p className="text-base sm:text-lg text-[#9AA6B8] max-w-2xl mx-auto mb-10 leading-relaxed font-normal">
+        <p className="text-base sm:text-lg text-slate-500 dark:text-[#a3a3a3] max-w-2xl mx-auto mb-10 leading-relaxed font-normal">
           Platform produktivitas akademik yang terhubung langsung dengan Google
           Classroom Anda. Dapatkan kurasi sumber belajar, rekomendasi YouTube,
           dan tutor AI personal secara otomatis untuk setiap tugas.
@@ -155,10 +155,10 @@ export function LandingPage({
 
         {/* Login Error Notification */}
         {loginError && (
-          <div className="mb-8 p-4 bg-[#161F30] border border-rose-900/60 rounded-xl text-rose-200 text-xs sm:text-sm max-w-lg mx-auto w-full flex items-start gap-3 text-left">
-            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+          <div className="mb-8 p-4 bg-red-50 dark:bg-[#161616] border border-red-200 dark:border-rose-900/60 rounded-xl text-red-700 dark:text-rose-200 text-xs sm:text-sm max-w-lg mx-auto w-full flex items-start gap-3 text-left">
+            <AlertCircle className="w-4 h-4 text-red-500 dark:text-rose-400 shrink-0 mt-0.5" />
             <div>
-              <strong className="block font-semibold text-rose-100 mb-0.5">
+              <strong className="block font-semibold text-red-800 dark:text-rose-100 mb-0.5">
                 Gagal Masuk Google
               </strong>
               {loginError}
@@ -173,7 +173,7 @@ export function LandingPage({
             type="button"
             onClick={onConnectGoogle}
             disabled={isAuthenticating}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-[10px] bg-[#F1F0EC] hover:bg-[#E8DFC8] text-[#0B0F17] font-semibold text-sm sm:text-base transition-all duration-150 cursor-pointer disabled:opacity-50 active:scale-95 shadow-xs group"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-[10px] bg-slate-900 hover:bg-[#fbbf24] dark:bg-[#f5f5f5] dark:hover:bg-[#fbbf24] text-white dark:text-[#0c0c0c] font-semibold text-sm sm:text-base transition-all duration-150 cursor-pointer disabled:opacity-50 active:scale-95 shadow-xs group"
           >
             <span>
               {isAuthenticating
@@ -181,7 +181,7 @@ export function LandingPage({
                 : "Masuk Google Classroom"}
             </span>
             {!isAuthenticating && (
-              <ArrowRight className="w-4 h-4 text-[#0B0F17] group-hover:translate-x-0.5 transition-transform" />
+              <ArrowRight className="w-4 h-4 text-white dark:text-[#0c0c0c] group-hover:translate-x-0.5 transition-transform" />
             )}
           </button>
 
@@ -189,9 +189,9 @@ export function LandingPage({
           <button
             type="button"
             onClick={onDemoMode}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-[10px] bg-[#121927] hover:bg-[#161F30] border border-[#252F42] hover:border-[#8FAFCB]/50 text-[#D8DCE5] hover:text-[#F1F0EC] font-semibold text-sm sm:text-base transition-all duration-150 cursor-pointer active:scale-95"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-[10px] bg-slate-100 hover:bg-slate-200 dark:bg-[#141414] dark:hover:bg-[#161616] border border-slate-200 dark:border-[#2b2b2b] hover:border-indigo-300 dark:hover:border-[#7dd3fc]/50 text-slate-700 hover:text-slate-900 dark:text-[#e5e5e5] dark:hover:text-[#f5f5f5] font-semibold text-sm sm:text-base transition-all duration-150 cursor-pointer active:scale-95"
           >
-            <LayoutDashboard className="w-4 h-4 text-[#8FAFCB]" />
+            <LayoutDashboard className="w-4 h-4 text-[#7dd3fc]" />
             <span>Coba Mode Simulasi</span>
           </button>
         </div>
@@ -199,70 +199,70 @@ export function LandingPage({
         {/* Academic Feature Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mt-20 text-left w-full">
           {/* Card 1: Sinkronisasi Otomatis */}
-          <div className="p-6 sm:p-7 rounded-2xl bg-[#161F30] border border-[#252F42] flex flex-col justify-between space-y-4 hover:border-[#8FAFCB]/40 transition-colors">
+          <div className="p-6 sm:p-7 rounded-2xl bg-slate-50 dark:bg-[#161616] border border-slate-200 dark:border-[#2b2b2b] flex flex-col justify-between space-y-4 hover:border-[#7dd3fc]/40 transition-colors">
             <div>
-              <div className="w-10 h-10 rounded-[10px] bg-[#121927] border border-[#252F42] flex items-center justify-center mb-4 text-[#8FAFCB]">
+              <div className="w-10 h-10 rounded-[10px] bg-white dark:bg-[#141414] border border-slate-200 dark:border-[#2b2b2b] flex items-center justify-center mb-4 text-[#7dd3fc]">
                 <CalendarSync className="w-5 h-5" />
               </div>
-              <h3 className="font-heading font-semibold text-lg text-[#F1F0EC] mb-2">
+              <h3 className="font-heading font-semibold text-lg text-slate-900 dark:text-[#f5f5f5] mb-2">
                 Sinkronisasi Otomatis
               </h3>
-              <p className="text-sm text-[#9AA6B8] leading-relaxed">
+              <p className="text-sm text-slate-500 dark:text-[#a3a3a3] leading-relaxed">
                 Semua tugas, materi, dan tenggat waktu ditarik otomatis dari
                 Google Classroom tanpa input manual yang melelahkan.
               </p>
             </div>
-            <div className="pt-3 border-t border-[#252F42]/80 flex items-center gap-1.5 text-xs text-[#8FAFCB] font-medium">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#8FAFCB]" />
+            <div className="pt-3 border-t border-slate-200 dark:border-[#2b2b2b]/80 flex items-center gap-1.5 text-xs text-[#7dd3fc] font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#7dd3fc]" />
               <span>Google Classroom API</span>
             </div>
           </div>
 
           {/* Card 2: Tutor AI Terpersonalisasi */}
-          <div className="p-6 sm:p-7 rounded-2xl bg-[#161F30] border border-[#252F42] flex flex-col justify-between space-y-4 hover:border-[#B0B1F2]/40 transition-colors">
+          <div className="p-6 sm:p-7 rounded-2xl bg-slate-50 dark:bg-[#161616] border border-slate-200 dark:border-[#2b2b2b] flex flex-col justify-between space-y-4 hover:border-[#a5b4fc]/40 transition-colors">
             <div>
-              <div className="w-10 h-10 rounded-[10px] bg-[#121927] border border-[#252F42] flex items-center justify-center mb-4 text-[#B0B1F2]">
+              <div className="w-10 h-10 rounded-[10px] bg-white dark:bg-[#141414] border border-slate-200 dark:border-[#2b2b2b] flex items-center justify-center mb-4 text-[#a5b4fc]">
                 <Brain className="w-5 h-5" />
               </div>
-              <h3 className="font-heading font-semibold text-lg text-[#F1F0EC] mb-2">
+              <h3 className="font-heading font-semibold text-lg text-slate-900 dark:text-[#f5f5f5] mb-2">
                 Tutor AI Terpersonalisasi
               </h3>
-              <p className="text-sm text-[#9AA6B8] leading-relaxed">
+              <p className="text-sm text-slate-500 dark:text-[#a3a3a3] leading-relaxed">
                 AI beradaptasi dengan gaya belajarmu, membedah instruksi tugas yang
                 rumit, dan menyusun panduan belajar langkah demi langkah.
               </p>
             </div>
-            <div className="pt-3 border-t border-[#252F42]/80 flex items-center gap-1.5 text-xs text-[#B0B1F2] font-medium">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#B0B1F2]" />
+            <div className="pt-3 border-t border-slate-200 dark:border-[#2b2b2b]/80 flex items-center gap-1.5 text-xs text-[#a5b4fc] font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#a5b4fc]" />
               <span>Adaptif & Sokratik</span>
             </div>
           </div>
 
           {/* Card 3: Kurasi Materi Instan */}
-          <div className="p-6 sm:p-7 rounded-2xl bg-[#161F30] border border-[#252F42] flex flex-col justify-between space-y-4 hover:border-[#91C9B5]/40 transition-colors">
+          <div className="p-6 sm:p-7 rounded-2xl bg-slate-50 dark:bg-[#161616] border border-slate-200 dark:border-[#2b2b2b] flex flex-col justify-between space-y-4 hover:border-[#34d399]/40 transition-colors">
             <div>
-              <div className="w-10 h-10 rounded-[10px] bg-[#121927] border border-[#252F42] flex items-center justify-center mb-4 text-[#91C9B5]">
+              <div className="w-10 h-10 rounded-[10px] bg-white dark:bg-[#141414] border border-slate-200 dark:border-[#2b2b2b] flex items-center justify-center mb-4 text-[#34d399]">
                 <BookOpen className="w-5 h-5" />
               </div>
-              <h3 className="font-heading font-semibold text-lg text-[#F1F0EC] mb-2">
+              <h3 className="font-heading font-semibold text-lg text-slate-900 dark:text-[#f5f5f5] mb-2">
                 Kurasi Materi Instan
               </h3>
-              <p className="text-sm text-[#9AA6B8] leading-relaxed">
+              <p className="text-sm text-slate-500 dark:text-[#a3a3a3] leading-relaxed">
                 Langsung dapatkan rekomendasi video YouTube terpercaya dan ringkasan
                 bacaan berkualitas yang tepat sasaran untuk tiap tugas.
               </p>
             </div>
-            <div className="pt-3 border-t border-[#252F42]/80 flex items-center gap-1.5 text-xs text-[#91C9B5] font-medium">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#91C9B5]" />
+            <div className="pt-3 border-t border-slate-200 dark:border-[#2b2b2b]/80 flex items-center gap-1.5 text-xs text-[#34d399] font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#34d399]" />
               <span>Video & Referensi Terpercaya</span>
             </div>
           </div>
         </div>
 
         {/* Human Academic Note */}
-        <div className="mt-16 pt-8 border-t border-[#252F42]/80 w-full flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-[#69758A]">
+        <div className="mt-16 pt-8 border-t border-slate-200 dark:border-[#2b2b2b]/80 w-full flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400 dark:text-[#737373]">
           <div className="flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#9294E8]" />
+            <span className="w-1.5 h-1.5 rounded-full bg-[#818cf8]" />
             <span>Ubur Ubur • Asisten Belajar Mandiri & Terstruktur</span>
           </div>
           <span>Dirancang untuk kenyamanan belajar tanpa distraksi</span>

@@ -7,10 +7,9 @@ import {
   ListTodo,
   CheckCheck,
   X,
-  AlertCircle,
-  BookOpen,
 } from "lucide-react";
 import { TodoTask } from "../types";
+import { cn } from "@/lib/utils";
 
 interface StatsBannerProps {
   tasks: TodoTask[];
@@ -42,13 +41,75 @@ export const StatsBanner: React.FC<StatsBannerProps> = ({
   const completionPercentage =
     total > 0 ? Math.round((completed / total) * 100) : 0;
 
+  const cards: {
+    id: string;
+    filter: "all" | "pending" | "completed" | "ai-ready";
+    label: string;
+    value: number;
+    icon: React.ElementType;
+    tint: string;
+    sub: React.ReactNode;
+  }[] = [
+    {
+      id: "stat-filter-all-btn",
+      filter: "all",
+      label: "Total Tugas",
+      value: total,
+      icon: ListTodo,
+      tint: "text-indigo-600 dark:text-[#818cf8] bg-indigo-50 dark:bg-[#141414]",
+      sub: `${pending} masih perlu dikerjakan`,
+    },
+    {
+      id: "stat-filter-pending-btn",
+      filter: "pending",
+      label: "Harus Dikerjakan",
+      value: pending,
+      icon: Clock,
+      tint: "text-amber-600 dark:text-[#fbbf24] bg-amber-50 dark:bg-[#141414]",
+      sub:
+        urgentTasks > 0
+          ? `${urgentTasks} mendekati batas waktu`
+          : "Aman, semua tenggat masih longgar",
+    },
+    {
+      id: "stat-filter-ai-ready-btn",
+      filter: "ai-ready",
+      label: "Ada Video & Tips",
+      value: aiAnalyzed,
+      icon: Sparkles,
+      tint: "text-violet-600 dark:text-[#a5b4fc] bg-violet-50 dark:bg-[#141414]",
+      sub: "Sudah dianalisis AI",
+    },
+    {
+      id: "stat-filter-completed-btn",
+      filter: "completed",
+      label: "Selesai",
+      value: completed,
+      icon: CheckCircle2,
+      tint: "text-emerald-600 dark:text-[#34d399] bg-emerald-50 dark:bg-[#141414]",
+      sub: (
+        <div className="flex items-center gap-2">
+          <div className="h-1.5 flex-1 rounded-full bg-slate-100 dark:bg-[#141414] overflow-hidden">
+            <div
+              className="h-full bg-emerald-600 dark:bg-[#34d399] rounded-full transition-all duration-500 ease-out"
+              style={{ width: `${completionPercentage}%` }}
+            />
+          </div>
+          <span className="font-bold text-emerald-600 dark:text-[#34d399]">
+            {completionPercentage}%
+          </span>
+        </div>
+      ),
+    },
+  ];
+
   return (
-    <div className="space-y-3 mb-4">
+    <div className="space-y-3 mb-5">
       {/* Real-time Sync Alert Notification */}
       {syncNotification && (
         <div
           id="sync-notification-alert"
-          className="flex items-center justify-between p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-2xl text-xs sm:text-sm shadow-2xs animate-in fade-in duration-200"
+          className="flex items-center justify-between p-3.5 bg-emerald-50 text-emerald-900 rounded-2xl text-xs sm:text-sm shadow-xs animate-in fade-in duration-200"
         >
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="p-1 rounded-lg bg-emerald-100 text-emerald-700 shrink-0">
@@ -66,158 +127,64 @@ export const StatsBanner: React.FC<StatsBannerProps> = ({
         </div>
       )}
 
-      {/* Progress Card & Friendly Motivation */}
-      <div className="bg-white dark:bg-[#161F30] rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-[#252F42] shadow-2xs transition-colors">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-[10px] bg-indigo-50 dark:bg-[#121927] text-indigo-600 dark:text-[#9294E8] flex items-center justify-center font-bold text-base shrink-0 border border-indigo-100 dark:border-[#252F42]">
-              {completionPercentage === 100 ? (
-                <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-[#91C9B5]" />
-              ) : (
-                <BookOpen className="w-5 h-5 text-indigo-600 dark:text-[#9294E8]" />
+      {/* Metric Cards */}
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+        {cards.map((card) => {
+          const active = currentFilter === card.filter;
+          const Icon = card.icon;
+          return (
+            <button
+              key={card.id}
+              id={card.id}
+              onClick={() => onQuickFilter(card.filter)}
+              className={cn(
+                "relative rounded-2xl p-4 text-left transition-colors cursor-pointer shadow-2xs border",
+                active
+                  ? "bg-indigo-50/60 dark:bg-[#1c1c24] border-indigo-500/40 dark:border-[#818cf8]/40"
+                  : "bg-white dark:bg-[#161616] border-slate-200/80 dark:border-[#262626] hover:border-slate-300 dark:hover:border-[#333]"
               )}
-            </div>
-            <div>
-              <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-[#F1F0EC] leading-snug font-heading">
-                {completionPercentage === 100
-                  ? "Hebat! Semua tugas kamu sudah selesai!"
-                  : `Kamu sudah menyelesaikan ${completed} dari ${total} tugas`}
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-[#9AA6B8] mt-0.5">
-                {pending > 0 ? (
-                  <span>
-                    Tersisa <strong className="text-slate-800 dark:text-[#F1F0EC] font-semibold">{pending} tugas</strong> lagi yang perlu diselesaikan.
-                    {urgentTasks > 0 && (
-                      <span className="text-amber-700 dark:text-[#E8DFC8] font-semibold ml-1 inline-flex items-center gap-1">
-                        <AlertCircle className="w-3 h-3 text-amber-600 dark:text-[#E8DFC8] inline" />
-                        {urgentTasks} tugas mendekati batas waktu
-                      </span>
-                    )}
-                  </span>
-                ) : (
-                  "Waktunya istirahat atau pelajari materi baru!"
-                )}
-              </p>
-            </div>
-          </div>
-
-          {/* Progress Bar with Percentage */}
-          <div className="flex items-center gap-3 sm:w-56 shrink-0">
-            <div className="h-2 w-full bg-slate-100 dark:bg-[#121927] rounded-full overflow-hidden border border-slate-100 dark:border-[#252F42]">
-              <div
-                className="h-full bg-indigo-600 dark:bg-[#9294E8] rounded-full transition-all duration-500 ease-out"
-                style={{ width: `${completionPercentage}%` }}
-              />
-            </div>
-            <span className="text-xs font-bold text-slate-700 dark:text-[#9AA6B8] min-w-[36px] text-right">
-              {completionPercentage}%
-            </span>
-          </div>
-        </div>
-
-        {/* Easy Filter Buttons (Harus Dikerjakan, Ada Materi, Selesai, Semua) */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-3 border-t border-slate-100 dark:border-[#252F42]">
-          {/* Harus Dikerjakan (Pending) */}
-          <button
-            id="stat-filter-pending-btn"
-            onClick={() => onQuickFilter("pending")}
-            className={`flex items-center justify-between px-3.5 py-2.5 rounded-[10px] border text-xs sm:text-sm font-bold transition-all cursor-pointer ${
-              currentFilter === "pending"
-                ? "bg-indigo-600 text-white border-indigo-600 shadow-xs dark:bg-[#1C273D] dark:text-[#F1F0EC] dark:border-[#9294E8]/60 dark:shadow-none"
-                : "bg-slate-50 dark:bg-[#121927] text-slate-700 dark:text-[#9AA6B8] border-slate-200 dark:border-[#252F42] hover:bg-slate-100 dark:hover:bg-[#1C273D] dark:hover:text-[#F1F0EC]"
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4" />
-              <span>Harus Dikerjakan</span>
-            </div>
-            <span
-              className={`px-1.5 py-0.5 rounded-[6px] text-xs font-bold ${
-                currentFilter === "pending"
-                  ? "bg-indigo-700 text-white dark:bg-[#252F42] dark:text-[#F1F0EC]"
-                  : "bg-white dark:bg-[#161F30] text-slate-700 dark:text-[#9AA6B8] border border-slate-200 dark:border-[#252F42]"
-              }`}
             >
-              {pending}
-            </span>
-          </button>
-
-          {/* Ada Bantuan Materi (AI Ready) */}
-          <button
-            id="stat-filter-ai-ready-btn"
-            onClick={() => onQuickFilter("ai-ready")}
-            className={`flex items-center justify-between px-3.5 py-2.5 rounded-[10px] border text-xs sm:text-sm font-bold transition-all cursor-pointer ${
-              currentFilter === "ai-ready"
-                ? "bg-violet-600 text-white border-violet-600 shadow-xs dark:bg-[#1C273D] dark:text-[#F1F0EC] dark:border-[#B0B1F2]/60 dark:shadow-none"
-                : "bg-slate-50 dark:bg-[#121927] text-slate-700 dark:text-[#9AA6B8] border-slate-200 dark:border-[#252F42] hover:bg-slate-100 dark:hover:bg-[#1C273D] dark:hover:text-[#F1F0EC]"
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-[#9294E8]" />
-              <span>Ada Video/Tips</span>
-            </div>
-            <span
-              className={`px-1.5 py-0.5 rounded-[6px] text-xs font-bold ${
-                currentFilter === "ai-ready"
-                  ? "bg-violet-700 text-white dark:bg-[#252F42] dark:text-[#F1F0EC]"
-                  : "bg-white dark:bg-[#161F30] text-slate-700 dark:text-[#9AA6B8] border border-slate-200 dark:border-[#252F42]"
-              }`}
-            >
-              {aiAnalyzed}
-            </span>
-          </button>
-
-          {/* Sudah Selesai (Completed) */}
-          <button
-            id="stat-filter-completed-btn"
-            onClick={() => onQuickFilter("completed")}
-            className={`flex items-center justify-between px-3.5 py-2.5 rounded-[10px] border text-xs sm:text-sm font-bold transition-all cursor-pointer ${
-              currentFilter === "completed"
-                ? "bg-emerald-600 text-white border-emerald-600 shadow-xs dark:bg-[#1C273D] dark:text-[#91C9B5] dark:border-[#91C9B5]/60 dark:shadow-none"
-                : "bg-slate-50 dark:bg-[#121927] text-slate-700 dark:text-[#9AA6B8] border-slate-200 dark:border-[#252F42] hover:bg-slate-100 dark:hover:bg-[#1C273D] dark:hover:text-[#F1F0EC]"
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-500 dark:text-[#91C9B5]" />
-              <span>Sudah Selesai</span>
-            </div>
-            <span
-              className={`px-1.5 py-0.5 rounded-[6px] text-xs font-bold ${
-                currentFilter === "completed"
-                  ? "bg-emerald-700 text-white dark:bg-[#252F42] dark:text-[#91C9B5]"
-                  : "bg-white dark:bg-[#161F30] text-slate-700 dark:text-[#9AA6B8] border border-slate-200 dark:border-[#252F42]"
-              }`}
-            >
-              {completed}
-            </span>
-          </button>
-
-          {/* Semua Tugas (All) */}
-          <button
-            id="stat-filter-all-btn"
-            onClick={() => onQuickFilter("all")}
-            className={`flex items-center justify-between px-3.5 py-2.5 rounded-[10px] border text-xs sm:text-sm font-bold transition-all cursor-pointer ${
-              currentFilter === "all"
-                ? "bg-slate-900 text-white border-slate-900 shadow-xs dark:bg-[#F1F0EC] dark:text-[#0B0F17] dark:border-transparent dark:shadow-none"
-                : "bg-slate-50 dark:bg-[#121927] text-slate-700 dark:text-[#9AA6B8] border-slate-200 dark:border-[#252F42] hover:bg-slate-100 dark:hover:bg-[#1C273D] dark:hover:text-[#F1F0EC]"
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <ListTodo className="w-4 h-4" />
-              <span>Semua Tugas</span>
-            </div>
-            <span
-              className={`px-1.5 py-0.5 rounded-[6px] text-xs font-bold ${
-                currentFilter === "all"
-                  ? "bg-slate-800 text-white dark:bg-[#0B0F17]/20 dark:text-[#0B0F17]"
-                  : "bg-white dark:bg-[#161F30] text-slate-700 dark:text-[#9AA6B8] border border-slate-200 dark:border-[#252F42]"
-              }`}
-            >
-              {total}
-            </span>
-          </button>
-        </div>
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-[#737373]">
+                    {card.label}
+                  </p>
+                  <p className="mt-0.5 text-2xl font-extrabold tracking-tight text-slate-900 dark:text-[#f5f5f5]">
+                    {card.value}
+                  </p>
+                </div>
+                <div
+                  className={cn(
+                    "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
+                    card.tint
+                  )}
+                >
+                  <Icon className="w-4 h-4" />
+                </div>
+              </div>
+              <div className="mt-2.5 text-xs text-slate-500 dark:text-[#a3a3a3] min-h-[14px] truncate">
+                {card.sub}
+              </div>
+              {active && (
+                <span className="absolute left-4 right-4 -bottom-px h-0.5 rounded-full bg-indigo-600 dark:bg-[#818cf8] opacity-70" />
+              )}
+            </button>
+          );
+        })}
       </div>
+
+      {/* Friendly Motivation */}
+      <p className="px-1 text-xs text-slate-500 dark:text-[#a3a3a3]">
+        {completionPercentage === 100 && total > 0
+          ? "Hebat! Semua tugas sudah selesai. Waktunya istirahat atau pelajari materi baru."
+          : `Kamu sudah menyelesaikan ${completed} dari ${total} tugas.`}
+        {urgentTasks > 0 && pending > 0 && (
+          <span className="text-amber-700 dark:text-[#fbbf24] font-semibold">
+            {" "}
+            · {urgentTasks} tugas mendekati batas waktu.
+          </span>
+        )}
+      </p>
     </div>
   );
 };

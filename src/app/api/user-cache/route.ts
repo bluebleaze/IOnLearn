@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, tasks, preferences, aiConfig } = body;
+    const { email, tasks, preferences, aiConfig, todos, notes } = body;
 
     if (!email) {
       return NextResponse.json({ error: 'Email required' }, { status: 400 });
@@ -52,6 +52,8 @@ export async function POST(request: NextRequest) {
       tasks: tasks || [],
       preferences: preferences || null,
       aiConfig: aiConfig || null,
+      todos: todos || [],
+      notes: notes || [],
       updatedAt: new Date().toISOString(),
     };
     writeCache(cache);
