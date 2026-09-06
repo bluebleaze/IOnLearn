@@ -74,6 +74,22 @@ const SidebarBody: React.FC<SidebarProps & { onNavigate: () => void }> = (
   props
 ) => {
   const router = useRouter();
+  const [isDark, setIsDark] = React.useState(false);
+
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      setIsDark(document.documentElement.classList.contains("dark"));
+      const observer = new MutationObserver(() => {
+        setIsDark(document.documentElement.classList.contains("dark"));
+      });
+      observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ["class"],
+      });
+      return () => observer.disconnect();
+    }
+  }, []);
+
   const fire = (action: () => void) => () => {
     action();
     props.onNavigate();
@@ -83,14 +99,9 @@ const SidebarBody: React.FC<SidebarProps & { onNavigate: () => void }> = (
       {/* Brand */}
       <div className="flex items-center gap-2.5 px-4 shrink-0 h-16 border-b border-slate-200 dark:border-[#2b2b2b]">
         <img
-          src="/logos/logoionlearnfulltext.png"
+          src={isDark ? "/logos/logoionlearnfulltext-dark.png" : "/logos/logoionlearnfulltext.png"}
           alt="IOnLearn"
-          className="h-7 w-auto dark:hidden object-contain"
-        />
-        <img
-          src="/logos/logoionlearnfulltext-dark.png"
-          alt="IOnLearn"
-          className="h-7 w-auto hidden dark:block object-contain"
+          className="h-7 w-auto object-contain"
         />
       </div>
 

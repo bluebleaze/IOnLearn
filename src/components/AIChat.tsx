@@ -1821,7 +1821,7 @@ export const AIChat: React.FC<AIChatProps> = ({
             {/* Logo / Brand Mark */}
             <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-[#141414] border border-indigo-100 dark:border-[#262626] flex items-center justify-center mb-3.5 shadow-2xs">
               <img
-                src="/logos/Logoionlearnkecil.png"
+                src="/logos/logoionlearnkecil.png"
                 alt="IOnLearn"
                 className="w-7 h-7 object-contain"
               />

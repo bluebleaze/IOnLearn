@@ -380,7 +380,7 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
                 className="mr-1 sm:mr-2 h-4 bg-slate-200/40 dark:bg-[#222222]/60"
               />
               <img
-                src="/logos/Logoionlearnkecil.png"
+                src="/logos/logoionlearnkecil.png"
                 alt="IOnLearn"
                 className="md:hidden size-5 object-contain"
               />

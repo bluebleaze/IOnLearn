@@ -10,11 +10,11 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
   icons: {
     icon: [
-      { url: '/logos/Logoionlearnkecil.png', type: 'image/png' },
+      { url: '/logos/logoionlearnkecil.png', type: 'image/png' },
       { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
       { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
     ],
-    shortcut: ['/logos/Logoionlearnkecil.png'],
+    shortcut: ['/logos/logoionlearnkecil.png'],
     apple: [
       { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
     ],

@@ -86,14 +86,9 @@ export function LandingPage({
       <header className="px-5 sm:px-8 py-4 flex items-center justify-between border-b border-slate-200 dark:border-[#2b2b2b] bg-white/90 dark:bg-[#0c0c0c]/90 backdrop-blur-md sticky top-0 z-20 w-full">
         <a href="/" className="flex items-center gap-3">
           <img
-            src="/logos/logoionlearnfulltext.png"
+            src={isDark ? "/logos/logoionlearnfulltext-dark.png" : "/logos/logoionlearnfulltext.png"}
             alt="IOnLearn"
-            className="h-8 sm:h-9 w-auto dark:hidden object-contain"
-          />
-          <img
-            src="/logos/logoionlearnfulltext-dark.png"
-            alt="IOnLearn"
-            className="h-8 sm:h-9 w-auto hidden dark:block object-contain"
+            className="h-8 sm:h-9 w-auto object-contain"
           />
         </a>
 
@@ -140,7 +135,7 @@ export function LandingPage({
         {/* Academic Purpose Pill */}
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-100 dark:bg-[#141414] border border-slate-200 dark:border-[#2b2b2b] text-xs font-medium text-slate-500 dark:text-[#a3a3a3] mb-8">
           <img
-            src="/logos/Logoionlearnkecil.png"
+            src="/logos/logoionlearnkecil.png"
             alt="IOnLearn"
             className="w-4 h-4 object-contain shrink-0"
           />
@@ -270,7 +265,7 @@ export function LandingPage({
         <div className="mt-16 pt-8 border-t border-slate-200 dark:border-[#2b2b2b]/80 w-full flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400 dark:text-[#737373]">
           <div className="flex items-center gap-2">
             <img
-              src="/logos/Logoionlearnkecil.png"
+              src="/logos/logoionlearnkecil.png"
               alt="IOnLearn"
               className="h-4 w-auto object-contain"
             />
