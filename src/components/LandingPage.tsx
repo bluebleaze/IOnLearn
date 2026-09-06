@@ -261,7 +261,7 @@ export function LandingPage({
           </div>
         </div>
 
-        {/* Human Academic Note */}
+        {/* Human Academic Note & Legal Links */}
         <div className="mt-16 pt-8 border-t border-slate-200 dark:border-[#2b2b2b]/80 w-full flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400 dark:text-[#737373]">
           <div className="flex items-center gap-2">
             <img
@@ -271,7 +271,21 @@ export function LandingPage({
             />
             <span>IOnLearn • Asisten Belajar Mandiri & Terstruktur</span>
           </div>
-          <span>Dirancang untuk kenyamanan belajar tanpa distraksi</span>
+          <div className="flex items-center gap-3">
+            <a
+              href="/terms"
+              className="hover:text-slate-700 dark:hover:text-slate-300 transition-colors hover:underline"
+            >
+              Ketentuan Layanan
+            </a>
+            <span>•</span>
+            <a
+              href="/privacy"
+              className="hover:text-slate-700 dark:hover:text-slate-300 transition-colors hover:underline"
+            >
+              Kebijakan Privasi
+            </a>
+          </div>
         </div>
       </main>
     </div>
