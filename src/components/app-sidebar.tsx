@@ -24,6 +24,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { NavUser } from "@/components/nav-user";
 import { BrandText, APP_TAGLINE } from "@/lib/brand";
@@ -47,6 +48,8 @@ export function AppSidebar({
 }: AppSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const { state, isMobile } = useSidebar();
+  const isCollapsed = state === "collapsed" && !isMobile;
 
   const navItems = [
     {
@@ -103,32 +106,45 @@ export function AppSidebar({
               onClick={() => router.push("/")}
               className="cursor-pointer hover:bg-slate-100/80 dark:hover:bg-[#181818] transition-colors rounded-xl overflow-hidden whitespace-nowrap group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:justify-center"
             >
-              {/* Collapsed Icon: Logoionlearnkecil */}
-              <div className="hidden group-data-[collapsible=icon]:flex aspect-square size-8 items-center justify-center shrink-0">
-                <img
-                  src="/logos/Logoionlearnkecil.png"
-                  alt="IOnLearn"
-                  className="size-6 object-contain"
-                />
-              </div>
-              {/* Expanded Brand: Fulltext logo + tagline */}
-              <div className="flex flex-col gap-0.5 text-left leading-tight overflow-hidden whitespace-nowrap transition-[opacity,transform,max-width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] max-w-full px-1 group-data-[collapsible=icon]:hidden">
-                <div className="flex items-center">
+              {isCollapsed ? (
+                /* Collapsed Icon: Logoionlearnkecil */
+                <div className="flex aspect-square size-8 items-center justify-center shrink-0">
                   <img
-                    src="/logos/logoionlearnfulltext.png"
+                    src="/logos/Logoionlearnkecil.png"
                     alt="IOnLearn"
-                    className="h-6 w-auto dark:hidden object-contain"
-                  />
-                  <img
-                    src="/logos/logoionlearnfulltext-dark.png"
-                    alt="IOnLearn"
-                    className="h-6 w-auto hidden dark:block object-contain"
+                    className="size-6 object-contain"
                   />
                 </div>
-                <span className="truncate whitespace-nowrap text-[11px] text-slate-500 dark:text-[#737373]">
-                  {APP_TAGLINE}
-                </span>
-              </div>
+              ) : (
+                <>
+                  {/* CSS Fallback Icon for animation */}
+                  <div className="hidden group-data-[collapsible=icon]:!flex aspect-square size-8 items-center justify-center shrink-0">
+                    <img
+                      src="/logos/Logoionlearnkecil.png"
+                      alt="IOnLearn"
+                      className="size-6 object-contain"
+                    />
+                  </div>
+                  {/* Expanded Brand: Fulltext logo + tagline */}
+                  <div className="flex flex-col gap-0.5 text-left leading-tight overflow-hidden whitespace-nowrap transition-[opacity,transform,max-width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] max-w-full px-1 group-data-[collapsible=icon]:hidden">
+                    <div className="flex items-center">
+                      <img
+                        src="/logos/logoionlearnfulltext.png"
+                        alt="IOnLearn"
+                        className="h-6 w-auto dark:hidden object-contain"
+                      />
+                      <img
+                        src="/logos/logoionlearnfulltext-dark.png"
+                        alt="IOnLearn"
+                        className="h-6 w-auto hidden dark:block object-contain"
+                      />
+                    </div>
+                    <span className="truncate whitespace-nowrap text-[11px] text-slate-500 dark:text-[#737373]">
+                      {APP_TAGLINE}
+                    </span>
+                  </div>
+                </>
+              )}
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
