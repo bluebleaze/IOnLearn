@@ -151,24 +151,24 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   const renderModalContent = () => (
     <div className="flex flex-col h-full overflow-hidden bg-white dark:bg-[#161616] text-slate-900 dark:text-[#f3f3f3]">
       {/* 1. Header Section */}
-      <div className="p-5 sm:p-6 border-b border-slate-200/80 dark:border-[#262626] bg-white dark:bg-[#161616] shrink-0 space-y-3">
+      <div className="p-3.5 sm:p-6 border-b border-slate-200/80 dark:border-[#262626] bg-white dark:bg-[#161616] shrink-0 space-y-2.5 sm:space-y-3">
         {/* Top Utility Row: Badges & Action Buttons */}
-        <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center justify-between gap-2.5">
           {/* Metadata Badges */}
-          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-            <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-50 dark:bg-[#1f1f28] text-indigo-700 dark:text-[#a5b4fc] border border-indigo-100/80 dark:border-indigo-900/40">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
+            <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-50 dark:bg-[#1f1f28] text-indigo-700 dark:text-[#a5b4fc] border border-indigo-100/80 dark:border-indigo-900/40 truncate max-w-[160px] sm:max-w-none">
               {task.courseName || "Kuliah"}
             </span>
 
             {task.dueDateStr && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 dark:bg-[#202020] text-slate-700 dark:text-[#a3a3a3]">
-                <Clock className="w-3.5 h-3.5 text-slate-400" />
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 dark:bg-[#202020] text-slate-700 dark:text-[#a3a3a3] shrink-0">
+                <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                 <span>{task.dueDateStr}</span>
               </span>
             )}
 
             {task.points !== undefined && (
-              <span className="px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 dark:bg-[#202020] text-slate-600 dark:text-[#a3a3a3]">
+              <span className="px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 dark:bg-[#202020] text-slate-600 dark:text-[#a3a3a3] shrink-0">
                 {task.points} Poin
               </span>
             )}
@@ -181,8 +181,22 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
             )}
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+          {/* Top-Right Close Button for Mobile */}
+          <div className="flex items-center gap-1.5 shrink-0 sm:hidden">
+            <Button
+              variant="ghost"
+              size="iconSm"
+              onClick={onClose}
+              className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 bg-slate-100 dark:bg-[#202020] hover:bg-slate-200 dark:hover:bg-[#2a2a2a] rounded-xl border border-slate-200/80 dark:border-[#2b2b2b] transition cursor-pointer"
+              title="Tutup"
+              aria-label="Tutup"
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+
+          {/* Desktop Action Buttons */}
+          <div className="hidden sm:flex items-center gap-1.5 shrink-0 ml-auto">
             {onToggleComplete && (
               <Button
                 onClick={handleToggleTaskComplete}
@@ -224,18 +238,50 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
           </div>
         </div>
 
-        {/* Full-Width Title (Naturally wrapping, no horizontal squishing) */}
+        {/* Full-Width Title */}
         <div>
           <h2
-            className="text-lg sm:text-xl font-bold text-slate-900 dark:text-[#f3f3f3] tracking-tight font-heading leading-snug break-words"
+            className="text-base sm:text-xl font-bold text-slate-900 dark:text-[#f3f3f3] tracking-tight font-heading leading-snug break-words"
             title={task.title}
           >
             {task.title}
           </h2>
         </div>
 
+        {/* Mobile Quick Action Row (Tandai Selesai & Classroom Link) */}
+        <div className="flex sm:hidden items-center gap-2 pt-0.5">
+          {onToggleComplete && (
+            <Button
+              onClick={handleToggleTaskComplete}
+              variant={task.isCompleted ? "outline" : "emerald"}
+              size="sm"
+              className={`flex-1 h-9 text-xs rounded-xl font-medium ${
+                task.isCompleted
+                  ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800"
+                  : ""
+              }`}
+            >
+              <Check className="w-3.5 h-3.5 stroke-[3] mr-1.5" />
+              <span>{task.isCompleted ? "Ditandai Selesai" : "Tandai Selesai"}</span>
+            </Button>
+          )}
+
+          {task.classroomLink && (
+            <a
+              href={task.classroomLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="h-9 px-3 text-slate-600 hover:text-slate-900 dark:text-[#aaa] dark:hover:text-[#fff] bg-slate-100 dark:bg-[#202020] hover:bg-slate-200 dark:hover:bg-[#2a2a2a] rounded-xl border border-slate-200/80 dark:border-[#2b2b2b] transition cursor-pointer flex items-center gap-1.5 text-xs font-medium shrink-0"
+              title="Buka di Google Classroom"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span>Classroom</span>
+            </a>
+          )}
+        </div>
+
         {/* Ask AI Copilot Strip */}
-        <div className="flex flex-wrap items-center justify-between gap-2.5 p-2.5 sm:p-3 bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40 rounded-xl text-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 sm:p-3 bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40 rounded-xl text-xs">
           <div className="flex items-center gap-2 text-indigo-900 dark:text-indigo-200 font-medium">
             <Sparkles className="w-4 h-4 text-indigo-600 dark:text-[#818cf8] shrink-0" />
             <span>Butuh penjelasan konsep atau panduan tugas ini?</span>
@@ -246,7 +292,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
               onOpenChat(task.id);
             }}
             size="sm"
-            className="h-7 text-xs rounded-lg gap-1.5 font-semibold bg-indigo-600 hover:bg-indigo-700 text-white"
+            className="h-8 sm:h-7 text-xs rounded-lg gap-1.5 font-semibold bg-indigo-600 hover:bg-indigo-700 text-white w-full sm:w-auto shrink-0"
           >
             <MessageSquareText className="w-3.5 h-3.5" />
             <span>Tanya Asisten AI</span>
@@ -255,10 +301,10 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
       </div>
 
       {/* 2. Unified 4 Tabs Bar */}
-      <div className="px-5 sm:px-6 border-b border-slate-200/80 dark:border-[#262626] bg-white dark:bg-[#161616] flex items-center gap-1 overflow-x-auto no-scrollbar shrink-0 text-xs">
+      <div className="px-3.5 sm:px-6 border-b border-slate-200/80 dark:border-[#262626] bg-white dark:bg-[#161616] flex items-center gap-1 overflow-x-auto no-scrollbar shrink-0 text-xs scroll-smooth">
         <button
           onClick={() => setActiveTab("summary")}
-          className={`py-3 px-3.5 font-semibold border-b-2 transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+          className={`py-2.5 sm:py-3 px-3 sm:px-3.5 font-semibold border-b-2 transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
             activeTab === "summary"
               ? "border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400"
               : "border-transparent text-slate-500 dark:text-[#888] hover:text-slate-800 dark:hover:text-[#eee]"
@@ -270,7 +316,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
         <button
           onClick={() => setActiveTab("checklist")}
-          className={`py-3 px-3.5 font-semibold border-b-2 transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+          className={`py-2.5 sm:py-3 px-3 sm:px-3.5 font-semibold border-b-2 transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
             activeTab === "checklist"
               ? "border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400"
               : "border-transparent text-slate-500 dark:text-[#888] hover:text-slate-800 dark:hover:text-[#eee]"
@@ -282,7 +328,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
         <button
           onClick={() => setActiveTab("youtube")}
-          className={`py-3 px-3.5 font-semibold border-b-2 transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+          className={`py-2.5 sm:py-3 px-3 sm:px-3.5 font-semibold border-b-2 transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
             activeTab === "youtube"
               ? "border-rose-600 text-rose-600 dark:border-rose-400 dark:text-rose-400"
               : "border-transparent text-slate-500 dark:text-[#888] hover:text-slate-800 dark:hover:text-[#eee]"
@@ -294,7 +340,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
         <button
           onClick={() => setActiveTab("notes")}
-          className={`py-3 px-3.5 font-semibold border-b-2 transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+          className={`py-2.5 sm:py-3 px-3 sm:px-3.5 font-semibold border-b-2 transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
             activeTab === "notes"
               ? "border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400"
               : "border-transparent text-slate-500 dark:text-[#888] hover:text-slate-800 dark:hover:text-[#eee]"
@@ -306,7 +352,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
       </div>
 
       {/* 3. Tab Body Container */}
-      <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5 text-xs sm:text-sm">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-5 text-xs sm:text-sm">
         {/* TAB 1: RANGKUMAN AI */}
         {activeTab === "summary" && (
           <div className="space-y-5">
@@ -524,13 +570,13 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                     key={idx}
                     className="p-4 bg-slate-50 dark:bg-[#181818] rounded-xl border border-slate-200/80 dark:border-[#262626] space-y-2.5"
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="space-y-0.5">
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2.5 sm:gap-3">
+                      <div className="space-y-0.5 min-w-0 flex-1">
                         <span className="text-xs font-semibold text-rose-600 dark:text-rose-400 flex items-center gap-1">
-                          <Youtube className="w-3.5 h-3.5" />
-                          {video.channel || "YouTube Edukasi"}
+                          <Youtube className="w-3.5 h-3.5 shrink-0" />
+                          <span className="truncate">{video.channel || "YouTube Edukasi"}</span>
                         </span>
-                        <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-[#f3f3f3]">
+                        <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-[#f3f3f3] break-words">
                           {video.title}
                         </h4>
                       </div>
@@ -538,7 +584,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                         href={video.searchUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white flex items-center gap-1.5 shrink-0 shadow-2xs transition"
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white flex items-center justify-center gap-1.5 shrink-0 shadow-2xs transition w-full sm:w-auto"
                       >
                         <span>Tonton Video</span>
                         <ExternalLink className="w-3 h-3" />
@@ -556,7 +602,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
               <div className="text-center py-10 px-4 bg-slate-50 dark:bg-[#181818] rounded-2xl border border-slate-200/80 dark:border-[#262626] space-y-2">
                 <Youtube className="w-8 h-8 mx-auto text-red-500 opacity-60" />
                 <p className="text-xs text-slate-500">Belum ada video rekomendasi.</p>
-                <Button size="sm" onClick={() => onAnalyzeWithAI(task.id)} className="text-xs rounded-xl">
+                <Button size="sm" onClick={() => onAnalyzeWithAI(task.id)} className="text-xs rounded-xl w-full sm:w-auto">
                   Cari Video dengan AI
                 </Button>
               </div>
@@ -588,7 +634,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
               <Button
                 onClick={handleSaveNotes}
                 size="sm"
-                className="gap-1.5 text-xs rounded-xl font-semibold bg-indigo-600 hover:bg-indigo-700 text-white"
+                className="gap-1.5 text-xs rounded-xl font-semibold bg-indigo-600 hover:bg-indigo-700 text-white w-full sm:w-auto"
               >
                 {isSavedNotes ? <Check className="w-3.5 h-3.5" /> : <Save className="w-3.5 h-3.5" />}
                 <span>{isSavedNotes ? "Tersimpan!" : "Simpan Catatan"}</span>
@@ -599,15 +645,15 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
       </div>
 
       {/* 4. Footer Rail */}
-      <div className="p-4 border-t border-slate-200/80 dark:border-[#262626] bg-slate-50/70 dark:bg-[#141414] flex items-center justify-between gap-3 shrink-0 text-xs">
-        <span className="text-slate-400 dark:text-[#666]">
+      <div className="p-3.5 sm:p-4 border-t border-slate-200/80 dark:border-[#262626] bg-slate-50/70 dark:bg-[#141414] flex items-center justify-between gap-3 shrink-0 text-xs pb-[calc(0.875rem+env(safe-area-inset-bottom,0px))]">
+        <span className="text-slate-400 dark:text-[#666] truncate text-xs">
           IOnLearn Study Copilot
         </span>
         <Button
           variant="outline"
           size="sm"
           onClick={onClose}
-          className="text-xs rounded-xl border-slate-200/80 dark:border-[#2b2b2b]"
+          className="text-xs rounded-xl border-slate-200/80 dark:border-[#2b2b2b] px-4 shrink-0"
         >
           Tutup
         </Button>
@@ -632,8 +678,8 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
         />
 
         {/* Slide-over sheet from right */}
-        <div className="fixed inset-y-0 right-0 max-w-full flex pl-10 z-50">
-          <div className="w-screen max-w-2xl bg-white dark:bg-[#161616] border-l border-slate-200/80 dark:border-[#262626] shadow-2xl animate-in slide-in-from-right duration-250 flex flex-col">
+        <div className="fixed inset-y-0 right-0 max-w-full flex pl-0 sm:pl-10 z-50">
+          <div className="w-full sm:w-[42rem] max-w-full bg-white dark:bg-[#161616] border-l border-slate-200/80 dark:border-[#262626] shadow-2xl animate-in slide-in-from-right duration-250 flex flex-col h-full">
             {renderModalContent()}
           </div>
         </div>
@@ -646,7 +692,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent
         hideCloseButton
-        className="max-w-3xl h-[88vh] max-h-[820px] p-0 flex flex-col gap-0 overflow-hidden bg-white dark:bg-[#161616] border-slate-200/80 dark:border-[#262626] shadow-2xl rounded-2xl"
+        className="w-[calc(100%-1rem)] sm:w-full max-w-3xl h-[90dvh] sm:h-[88vh] max-h-[820px] p-0 flex flex-col gap-0 overflow-hidden bg-white dark:bg-[#161616] border-slate-200/80 dark:border-[#262626] shadow-2xl rounded-2xl"
       >
         <DialogTitle className="sr-only">{task.title}</DialogTitle>
         <DialogDescription className="sr-only">Detail tugas dan rangkuman materi pembelajaran</DialogDescription>

@@ -1,5 +1,11 @@
 /** @type {import('next').NextConfig} */
+
 const nextConfig = {
+
+    allowedDevOrigins: [
+        'overstep-ungloved-subscript.ngrok-free.dev',
+
+    ],
 
   async rewrites() {
     return [
@@ -11,5 +17,6 @@ const nextConfig = {
     ];
   },
 };
+
 
 export default nextConfig;
