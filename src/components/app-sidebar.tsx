@@ -8,7 +8,6 @@ import {
   MessageSquareText,
   ListTodo,
   NotebookPen,
-  GraduationCap,
   Sparkles,
   CheckCircle2,
   RefreshCw,
@@ -104,14 +103,29 @@ export function AppSidebar({
               onClick={() => router.push("/")}
               className="cursor-pointer hover:bg-slate-100/80 dark:hover:bg-[#181818] transition-colors rounded-xl overflow-hidden whitespace-nowrap group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:justify-center"
             >
-              <div className="flex aspect-square size-8 items-center justify-center rounded-[8px] bg-indigo-600 dark:bg-[#818cf8] text-white dark:text-[#0c0c0c] shrink-0 shadow-xs">
-                <GraduationCap className="size-4 stroke-[2.2]" />
+              {/* Collapsed Icon: Logoionlearnkecil */}
+              <div className="hidden group-data-[collapsible=icon]:flex aspect-square size-8 items-center justify-center shrink-0">
+                <img
+                  src="/logos/Logoionlearnkecil.png"
+                  alt="IOnLearn"
+                  className="size-6 object-contain"
+                />
               </div>
-              <div className="grid flex-1 text-left text-xs leading-tight overflow-hidden whitespace-nowrap transition-[opacity,transform,max-width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] max-w-full group-data-[collapsible=icon]:max-w-0 group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:-translate-x-2 group-data-[collapsible=icon]:pointer-events-none group-data-[collapsible=icon]:hidden">
-                <span className="truncate whitespace-nowrap font-extrabold text-slate-900 dark:text-[#f5f5f5] font-heading">
-                  <BrandText />
-                </span>
-                <span className="truncate whitespace-nowrap text-xs text-slate-500 dark:text-[#737373]">
+              {/* Expanded Brand: Fulltext logo + tagline */}
+              <div className="flex flex-col gap-0.5 text-left leading-tight overflow-hidden whitespace-nowrap transition-[opacity,transform,max-width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] max-w-full px-1 group-data-[collapsible=icon]:hidden">
+                <div className="flex items-center">
+                  <img
+                    src="/logos/logoionlearnfulltext.png"
+                    alt="IOnLearn"
+                    className="h-6 w-auto dark:hidden object-contain"
+                  />
+                  <img
+                    src="/logos/logoionlearnfulltext-dark.png"
+                    alt="IOnLearn"
+                    className="h-6 w-auto hidden dark:block object-contain"
+                  />
+                </div>
+                <span className="truncate whitespace-nowrap text-[11px] text-slate-500 dark:text-[#737373]">
                   {APP_TAGLINE}
                 </span>
               </div>

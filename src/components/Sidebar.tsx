@@ -1,7 +1,6 @@
 "use client";
 import React, { useEffect } from "react";
 import {
-  GraduationCap,
   LayoutDashboard,
   MessageSquareText,
   Plus,
@@ -83,17 +82,16 @@ const SidebarBody: React.FC<SidebarProps & { onNavigate: () => void }> = (
     <div className="flex flex-col h-full">
       {/* Brand */}
       <div className="flex items-center gap-2.5 px-4 shrink-0 h-16 border-b border-slate-200 dark:border-[#2b2b2b]">
-        <div className="w-8 h-8 rounded-[9px] bg-indigo-600 dark:bg-[#818cf8] flex items-center justify-center text-white dark:text-[#0c0c0c] shrink-0">
-          <GraduationCap className="w-4 h-4 stroke-[2.2]" />
-        </div>
-        <div className="min-w-0">
-          <span className="block font-extrabold text-sm tracking-tight text-slate-900 dark:text-[#f5f5f5] truncate font-heading">
-            <BrandText />
-          </span>
-          <p className="text-xs text-slate-500 dark:text-[#737373] truncate">
-            {APP_TAGLINE}
-          </p>
-        </div>
+        <img
+          src="/logos/logoionlearnfulltext.png"
+          alt="IOnLearn"
+          className="h-7 w-auto dark:hidden object-contain"
+        />
+        <img
+          src="/logos/logoionlearnfulltext-dark.png"
+          alt="IOnLearn"
+          className="h-7 w-auto hidden dark:block object-contain"
+        />
       </div>
 
       {/* Nav */}

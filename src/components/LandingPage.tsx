@@ -1,7 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import {
-  GraduationCap,
   ArrowRight,
   CalendarSync,
   Brain,
@@ -85,14 +84,18 @@ export function LandingPage({
 
       {/* Navbar */}
       <header className="px-5 sm:px-8 py-4 flex items-center justify-between border-b border-slate-200 dark:border-[#2b2b2b] bg-white/90 dark:bg-[#0c0c0c]/90 backdrop-blur-md sticky top-0 z-20 w-full">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-[#818cf8] rounded-[10px] flex items-center justify-center text-[#0c0c0c] shadow-xs shrink-0">
-            <GraduationCap className="w-5 h-5 stroke-[2.2]" />
-          </div>
-          <span className="font-heading text-lg font-bold tracking-tight text-slate-900 dark:text-[#f5f5f5]">
-            <BrandText />
-          </span>
-        </div>
+        <a href="/" className="flex items-center gap-3">
+          <img
+            src="/logos/logoionlearnfulltext.png"
+            alt="IOnLearn"
+            className="h-8 sm:h-9 w-auto dark:hidden object-contain"
+          />
+          <img
+            src="/logos/logoionlearnfulltext-dark.png"
+            alt="IOnLearn"
+            className="h-8 sm:h-9 w-auto hidden dark:block object-contain"
+          />
+        </a>
 
         <div className="flex items-center gap-2 sm:gap-3">
           {/* Theme Toggle */}
@@ -136,7 +139,11 @@ export function LandingPage({
       <main className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 py-16 sm:py-24 text-center max-w-4xl mx-auto w-full relative z-10">
         {/* Academic Purpose Pill */}
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-100 dark:bg-[#141414] border border-slate-200 dark:border-[#2b2b2b] text-xs font-medium text-slate-500 dark:text-[#a3a3a3] mb-8">
-          <span className="w-2 h-2 rounded-full bg-emerald-500" />
+          <img
+            src="/logos/Logoionlearnkecil.png"
+            alt="IOnLearn"
+            className="w-4 h-4 object-contain shrink-0"
+          />
           <span>Platform Produktivitas Akademik Siswa & Mahasiswa</span>
         </div>
 
@@ -262,8 +269,12 @@ export function LandingPage({
         {/* Human Academic Note */}
         <div className="mt-16 pt-8 border-t border-slate-200 dark:border-[#2b2b2b]/80 w-full flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400 dark:text-[#737373]">
           <div className="flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#818cf8]" />
-            <span>Ubur Ubur • Asisten Belajar Mandiri & Terstruktur</span>
+            <img
+              src="/logos/Logoionlearnkecil.png"
+              alt="IOnLearn"
+              className="h-4 w-auto object-contain"
+            />
+            <span>IOnLearn • Asisten Belajar Mandiri & Terstruktur</span>
           </div>
           <span>Dirancang untuk kenyamanan belajar tanpa distraksi</span>
         </div>

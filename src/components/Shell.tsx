@@ -377,7 +377,12 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
               <SidebarTrigger className="-ml-1 cursor-pointer hover:bg-slate-100 dark:hover:bg-[#161616] rounded-xl" />
               <Separator
                 orientation="vertical"
-                className="mr-2 h-4 bg-slate-200/40 dark:bg-[#222222]/60"
+                className="mr-1 sm:mr-2 h-4 bg-slate-200/40 dark:bg-[#222222]/60"
+              />
+              <img
+                src="/logos/Logoionlearnkecil.png"
+                alt="IOnLearn"
+                className="md:hidden size-5 object-contain"
               />
               <Breadcrumb>
                 <BreadcrumbList>

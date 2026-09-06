@@ -73,7 +73,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-16">
           {/* Title & Mobile Menu */}
-          <div className="flex items-center gap-1.5 min-w-0">
+          <div className="flex items-center gap-2.5 min-w-0">
             <Button
               id="navbar-mobile-menu-btn"
               variant="ghost"
@@ -84,11 +84,23 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <Menu className="w-4 h-4" />
             </Button>
-            <div className="min-w-0">
-              <h1 className="text-base sm:text-lg font-extrabold font-heading tracking-tight text-slate-900 dark:text-[#f5f5f5] truncate">
+            <a href="/" className="flex items-center gap-2 shrink-0">
+              <img
+                src="/logos/logoionlearnfulltext.png"
+                alt="IOnLearn"
+                className="h-7 sm:h-8 w-auto dark:hidden object-contain"
+              />
+              <img
+                src="/logos/logoionlearnfulltext-dark.png"
+                alt="IOnLearn"
+                className="h-7 sm:h-8 w-auto hidden dark:block object-contain"
+              />
+            </a>
+            <div className="hidden sm:block min-w-0 pl-2 border-l border-slate-200 dark:border-[#2b2b2b]">
+              <h1 className="text-sm font-bold font-heading tracking-tight text-slate-900 dark:text-[#f5f5f5] truncate">
                 Dashboard
               </h1>
-              <p className="hidden md:block text-xs text-slate-500 dark:text-[#737373] truncate">
+              <p className="text-xs text-slate-500 dark:text-[#737373] truncate">
                 {APP_TAGLINE}
               </p>
             </div>

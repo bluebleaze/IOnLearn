@@ -7,6 +7,18 @@ import { Toaster } from '@/components/ui/sonner';
 export const metadata: Metadata = {
   title: `${APP_NAME} - ${APP_TAGLINE}`,
   description: APP_DESCRIPTION,
+  manifest: '/manifest.json',
+  icons: {
+    icon: [
+      { url: '/logos/Logoionlearnkecil.png', type: 'image/png' },
+      { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+    ],
+    shortcut: ['/logos/Logoionlearnkecil.png'],
+    apple: [
+      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
+  },
 };
 
 export default function RootLayout({

@@ -1819,8 +1819,12 @@ export const AIChat: React.FC<AIChatProps> = ({
           /* ── EMPTY STATE: CLEAN MINIMALIST CENTERED HERO ── */
           <div className="flex flex-col items-center justify-center min-h-full py-12 px-4 sm:px-6 text-center max-w-2xl mx-auto">
             {/* Logo / Brand Mark */}
-            <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center mb-3.5 shadow-2xs">
-              <GraduationCap className="w-6 h-6" />
+            <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-[#141414] border border-indigo-100 dark:border-[#262626] flex items-center justify-center mb-3.5 shadow-2xs">
+              <img
+                src="/logos/Logoionlearnkecil.png"
+                alt="IOnLearn"
+                className="w-7 h-7 object-contain"
+              />
             </div>
 
             <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-[#f3f3f3] mb-1.5 tracking-tight">
