@@ -513,13 +513,18 @@ export const AIChat: React.FC<AIChatProps> = ({
 
   // Quick Action: Export AI answer to Study Notes
   const handleExportToNotes = (msg: ChatMessage | string) => {
+    const messageContent = typeof msg === "string" ? msg : msg.content;
+    const cleanContent = messageContent.replace(/```json[\s\S]*?```/g, "").trim();
+
     if (typeof msg !== "string" && msg.createdNote) {
+      const rawTitle = msg.createdNote.title || "";
+      const rawContent = msg.createdNote.content || cleanContent || messageContent;
       const newNote: StudyNote = {
         id: `note-${Date.now()}`,
-        title: msg.createdNote.title,
-        content: msg.createdNote.content,
-        subject: msg.createdNote.subject || activeTask?.courseName || activeNote?.subject || "Belajar AI",
-        tags: msg.createdNote.tags && msg.createdNote.tags.length > 0 ? msg.createdNote.tags : ["AI Copilot", currentMode],
+        title: rawTitle,
+        content: rawContent,
+        subject: msg.createdNote.subject || activeTask?.courseName || activeNote?.subject || "",
+        tags: Array.isArray(msg.createdNote.tags) ? msg.createdNote.tags : [],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -532,20 +537,18 @@ export const AIChat: React.FC<AIChatProps> = ({
       return;
     }
 
-    const messageContent = typeof msg === "string" ? msg : msg.content;
-    const cleanContent = messageContent.replace(/```json[\s\S]*?```/g, "").trim();
     const noteTitle = activeTask
-      ? `Catatan AI: ${activeTask.title}`
+      ? `Catatan: ${activeTask.title}`
       : activeNote
         ? `Lanjutan: ${activeNote.title}`
-        : `Catatan AI (${new Date().toLocaleDateString("id-ID")})`;
+        : `Catatan Materi (${new Date().toLocaleDateString("id-ID")})`;
 
     const newNote: StudyNote = {
       id: `note-${Date.now()}`,
       title: noteTitle,
       content: cleanContent || messageContent,
-      subject: activeTask?.courseName || activeNote?.subject || "Belajar AI",
-      tags: ["AI Copilot", currentMode],
+      subject: activeTask?.courseName || activeNote?.subject || "",
+      tags: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -821,8 +824,8 @@ export const AIChat: React.FC<AIChatProps> = ({
     if (!contextualTask && activeNote) {
       contextualTask = {
         id: activeNote.id,
-        title: activeNote.title,
-        description: `${activeNote.content}\n\n${activeNote.summary ? `Rangkuman AI:\n${activeNote.summary}` : ""
+        title: activeNote.title || "Catatan Materi",
+        description: `${activeNote.content || ""}\n\n${activeNote.summary ? `Rangkuman AI:\n${activeNote.summary}` : ""
           }`,
         courseName: activeNote.subject || "Catatan Materi",
         isCompleted: false,
@@ -898,14 +901,14 @@ export const AIChat: React.FC<AIChatProps> = ({
 
       // Automatically handle Note creation if AI produced createdNote
       let noteCreatedId: string | undefined;
-      if (res.createdNote && res.createdNote.title && res.createdNote.content) {
+      if (res.createdNote && (res.createdNote.title || res.createdNote.content)) {
         noteCreatedId = `note-${Date.now()}`;
         const newStudyNote: StudyNote = {
           id: noteCreatedId,
-          title: res.createdNote.title,
-          content: res.createdNote.content,
-          subject: res.createdNote.subject || activeTask?.courseName || activeNote?.subject || "Catatan AI",
-          tags: res.createdNote.tags && res.createdNote.tags.length > 0 ? res.createdNote.tags : ["AI Copilot", currentMode],
+          title: res.createdNote.title || "Catatan Materi AI",
+          content: res.createdNote.content || res.reply,
+          subject: res.createdNote.subject || activeTask?.courseName || activeNote?.subject || "",
+          tags: Array.isArray(res.createdNote.tags) ? res.createdNote.tags : [],
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
@@ -1072,8 +1075,8 @@ export const AIChat: React.FC<AIChatProps> = ({
       if (!contextualTask && activeNote) {
         contextualTask = {
           id: activeNote.id,
-          title: activeNote.title,
-          description: `${activeNote.content}\n\n${activeNote.summary ? `Rangkuman AI:\n${activeNote.summary}` : ""}`,
+          title: activeNote.title || "Catatan Materi",
+          description: `${activeNote.content || ""}\n\n${activeNote.summary ? `Rangkuman AI:\n${activeNote.summary}` : ""}`,
           courseName: activeNote.subject || "Catatan Materi",
           isCompleted: false,
           priority: "medium",
@@ -1098,14 +1101,14 @@ export const AIChat: React.FC<AIChatProps> = ({
       );
 
       let noteCreatedId: string | undefined = undefined;
-      if (res.createdNote && res.createdNote.title && res.createdNote.content) {
+      if (res.createdNote && (res.createdNote.title || res.createdNote.content)) {
         noteCreatedId = `note-${Date.now()}`;
         const newStudyNote: StudyNote = {
           id: noteCreatedId,
-          title: res.createdNote.title,
-          content: res.createdNote.content,
-          subject: res.createdNote.subject || activeTask?.courseName || activeNote?.subject || "Catatan AI",
-          tags: res.createdNote.tags && res.createdNote.tags.length > 0 ? res.createdNote.tags : ["AI Copilot", currentMode],
+          title: res.createdNote.title || "Catatan Materi AI",
+          content: res.createdNote.content || res.reply,
+          subject: res.createdNote.subject || activeTask?.courseName || activeNote?.subject || "",
+          tags: Array.isArray(res.createdNote.tags) ? res.createdNote.tags : [],
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
@@ -1981,31 +1984,31 @@ export const AIChat: React.FC<AIChatProps> = ({
 
                         {/* Interactive Created Note Card if AI made a note */}
                         {m.createdNote && (
-                          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-purple-500/10 to-indigo-500/10 border border-purple-500/30 dark:border-purple-400/20 space-y-2">
+                          <div className="p-3.5 rounded-2xl bg-slate-50/90 dark:bg-[#161616] border border-slate-200/80 dark:border-[#262626] shadow-2xs space-y-2">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 rounded-lg bg-purple-600 text-white flex items-center justify-center text-xs shadow-xs">
+                                <div className="w-6 h-6 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/40 flex items-center justify-center text-xs">
                                   <NotebookPen className="w-3.5 h-3.5" />
                                 </div>
-                                <span className="text-xs font-bold text-purple-900 dark:text-purple-300">
-                                  Catatan Materi Tersimpan Otomatis
+                                <span className="text-xs font-bold text-slate-900 dark:text-[#f3f3f3]">
+                                  Catatan Materi Tersimpan
                                 </span>
                               </div>
                               <button
                                 type="button"
                                 onClick={() => router.push("/notes")}
-                                className="text-xs font-semibold text-purple-600 dark:text-purple-400 hover:underline inline-flex items-center gap-0.5 cursor-pointer"
+                                className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-0.5 cursor-pointer"
                               >
                                 <span>Buka Catatan</span>
                                 <ChevronRight className="w-3 h-3" />
                               </button>
                             </div>
-                            <div className="bg-white/80 dark:bg-[#1c1c1c] p-2.5 rounded-xl border border-purple-200/50 dark:border-[#333]">
+                            <div className="bg-white dark:bg-[#1a1a1a] p-2.5 rounded-xl border border-slate-200/70 dark:border-[#2b2b2b]">
                               <p className="text-xs font-bold text-slate-900 dark:text-[#eee]">
                                 {m.createdNote.title}
                               </p>
                               {m.createdNote.subject && (
-                                <span className="inline-block mt-1 px-2 py-0.5 rounded text-xs font-semibold bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300">
+                                <span className="inline-block mt-1 px-2 py-0.5 rounded text-xs font-semibold bg-slate-100 dark:bg-[#242424] text-slate-700 dark:text-slate-300">
                                   {m.createdNote.subject}
                                 </span>
                               )}
@@ -2029,14 +2032,14 @@ export const AIChat: React.FC<AIChatProps> = ({
                           const subtasksList = todoData.subtasks || [];
 
                           return (
-                            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/30 dark:border-emerald-400/20 space-y-2.5">
+                            <div className="p-3.5 rounded-2xl bg-slate-50/90 dark:bg-[#161616] border border-slate-200/80 dark:border-[#262626] shadow-2xs space-y-2.5">
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                  <div className="w-6 h-6 rounded-lg bg-emerald-600 text-white flex items-center justify-center text-xs shadow-xs">
+                                  <div className="w-6 h-6 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/40 flex items-center justify-center text-xs">
                                     <CheckCircle2 className="w-3.5 h-3.5" />
                                   </div>
-                                  <span className="text-xs font-bold text-emerald-900 dark:text-emerald-300">
-                                    Tugas To-Do Tersimpan Otomatis
+                                  <span className="text-xs font-bold text-slate-900 dark:text-[#f3f3f3]">
+                                    To-Do Tersimpan
                                   </span>
                                 </div>
                                 <button
@@ -2049,14 +2052,14 @@ export const AIChat: React.FC<AIChatProps> = ({
                                 </button>
                               </div>
 
-                              <div className="bg-white/80 dark:bg-[#1c1c1c] p-3 rounded-xl border border-emerald-200/50 dark:border-[#333] space-y-2">
+                              <div className="bg-white dark:bg-[#1a1a1a] p-3 rounded-xl border border-slate-200/70 dark:border-[#2b2b2b] space-y-2">
                                 <div className="flex items-start justify-between gap-2">
                                   <div className="min-w-0">
                                     <p className="text-xs font-bold text-slate-900 dark:text-[#eee]">
                                       {todoData.title}
                                     </p>
                                     {todoData.description && (
-                                      <p className="text-[11px] text-slate-500 dark:text-[#888] mt-0.5 leading-relaxed">
+                                      <p className="text-xs text-slate-500 dark:text-[#888] mt-0.5 leading-relaxed">
                                         {todoData.description}
                                       </p>
                                     )}
@@ -2064,7 +2067,7 @@ export const AIChat: React.FC<AIChatProps> = ({
                                   <div className="flex items-center gap-1.5 shrink-0">
                                     {todoData.priority && (
                                       <span
-                                        className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${
+                                        className={`px-1.5 py-0.5 rounded text-xs font-bold uppercase ${
                                           todoData.priority === "high"
                                             ? "bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300"
                                             : todoData.priority === "low"
@@ -2076,7 +2079,7 @@ export const AIChat: React.FC<AIChatProps> = ({
                                       </span>
                                     )}
                                     {todoData.category && (
-                                      <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
+                                      <span className="px-1.5 py-0.5 rounded text-xs font-semibold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
                                         {todoData.category}
                                       </span>
                                     )}
@@ -2085,7 +2088,7 @@ export const AIChat: React.FC<AIChatProps> = ({
 
                                 {subtasksList.length > 0 && (
                                   <div className="pt-2 border-t border-slate-100 dark:border-[#282828] space-y-1.5">
-                                    <span className="text-[11px] font-semibold text-slate-500 dark:text-[#888] block">
+                                    <span className="text-xs font-semibold text-slate-500 dark:text-[#888] block">
                                       Sub-langkah ({subtasksList.length} langkah):
                                     </span>
                                     <div className="space-y-1">

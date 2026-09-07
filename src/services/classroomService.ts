@@ -114,7 +114,7 @@ export class ClassroomService {
 
   // Fetch all active courses for the student
   public static async fetchCourses(token: string): Promise<ClassroomCourse[]> {
-    const response = await fetch('https://classroom.googleapis.com/v1/courses?courseStates=ACTIVE', {
+    const response = await fetch('https://classroom.googleapis.com/v1/courses?courseStates=ACTIVE&pageSize=100', {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -135,7 +135,7 @@ export class ClassroomService {
   // Fetch coursework assignments for a course
   public static async fetchCourseWork(token: string, courseId: string): Promise<ClassroomCourseWork[]> {
     const response = await fetch(
-      `https://classroom.googleapis.com/v1/courses/${courseId}/courseWork?courseWorkStates=PUBLISHED`,
+      `https://classroom.googleapis.com/v1/courses/${courseId}/courseWork?courseWorkStates=PUBLISHED&pageSize=100`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -162,7 +162,7 @@ export class ClassroomService {
   public static async fetchSubmissions(token: string, courseId: string): Promise<Record<string, string>> {
     try {
       const response = await fetch(
-        `https://classroom.googleapis.com/v1/courses/${courseId}/courseWork/-/studentSubmissions?userId=me`,
+        `https://classroom.googleapis.com/v1/courses/${courseId}/courseWork/-/studentSubmissions?userId=me&pageSize=100`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -189,7 +189,28 @@ export class ClassroomService {
     }
   }
 
-  // Helper to format due date & time into readable Indonesian format
+  public static getLocalTimeZoneAbbr(): string {
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      if (tz === 'Asia/Jakarta' || tz === 'Asia/Pontianak') return 'WIB';
+      if (tz === 'Asia/Makassar' || tz === 'Asia/Ujung_Pandang' || tz === 'Asia/Denpasar') return 'WITA';
+      if (tz === 'Asia/Jayapura') return 'WIT';
+
+      const offsetMinutes = -new Date().getTimezoneOffset();
+      if (offsetMinutes === 420) return 'WIB';   // UTC+7
+      if (offsetMinutes === 480) return 'WITA';  // UTC+8
+      if (offsetMinutes === 540) return 'WIT';   // UTC+9
+
+      const formatter = new Intl.DateTimeFormat('id-ID', { timeZoneName: 'short' });
+      const parts = formatter.formatToParts(new Date());
+      const tzPart = parts.find(p => p.type === 'timeZoneName');
+      return tzPart ? tzPart.value : '';
+    } catch {
+      return '';
+    }
+  }
+
+  // Helper to format due date & time into readable Indonesian format following device/browser timezone
   public static formatDueDateTime(dueDate?: { year: number; month: number; day: number }, dueTime?: { hours?: number; minutes?: number }): { formattedStr: string; timestamp: number | null } {
     if (!dueDate || !dueDate.year || !dueDate.month || !dueDate.day) {
       return { formattedStr: 'Tidak ada tenggat waktu', timestamp: null };
@@ -201,8 +222,9 @@ export class ClassroomService {
     const hours = dueTime?.hours ?? 23;
     const minutes = dueTime?.minutes ?? 59;
 
-    const dateObj = new Date(year, month, day, hours, minutes);
-    const timestamp = dateObj.getTime();
+    // Google Classroom API returns dueDate & dueTime in UTC
+    const timestamp = Date.UTC(year, month, day, hours, minutes);
+    const dateObj = new Date(timestamp);
 
     const now = new Date();
     const isToday = now.toDateString() === dateObj.toDateString();
@@ -211,7 +233,15 @@ export class ClassroomService {
     tomorrow.setDate(tomorrow.getDate() + 1);
     const isTomorrow = tomorrow.toDateString() === dateObj.toDateString();
 
-    const timeStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')} WIB`;
+    const localHours = dateObj.getHours();
+    const localMinutes = dateObj.getMinutes();
+    const localDay = dateObj.getDate();
+    const localMonth = dateObj.getMonth();
+    const localYear = dateObj.getFullYear();
+
+    const tzAbbr = this.getLocalTimeZoneAbbr();
+    const tzSuffix = tzAbbr ? ` ${tzAbbr}` : '';
+    const timeStr = `${String(localHours).padStart(2, '0')}:${String(localMinutes).padStart(2, '0')}${tzSuffix}`;
 
     if (isToday) {
       return { formattedStr: `Hari ini, ${timeStr}`, timestamp };
@@ -226,7 +256,7 @@ export class ClassroomService {
     ];
 
     return {
-      formattedStr: `${day} ${monthsIndo[month]} ${year}, ${timeStr}`,
+      formattedStr: `${localDay} ${monthsIndo[localMonth]} ${localYear}, ${timeStr}`,
       timestamp,
     };
   }
@@ -266,14 +296,18 @@ export class ClassroomService {
       ]);
 
       for (const cw of courseWorks) {
-        // Abaikan tugas di luar batas rentang waktu yang ditentukan (default 2 bulan)
-        if (!isCourseWorkWithinDateRange(cw, dateRangeMonths)) {
+        const isTurnedIn = submissionsMap[cw.id] === 'TURNED_IN' || submissionsMap[cw.id] === 'RETURNED';
+
+        // Abaikan tugas yang sudah diserahkan/selesai jika di luar batas rentang waktu yang ditentukan (default 2 bulan)
+        // Tugas aktif yang belum diserahkan akan selalu disinkronkan agar tidak terlewat
+        if (isTurnedIn && !isCourseWorkWithinDateRange(cw, dateRangeMonths)) {
           continue;
         }
 
-        const existingIndex = updatedTasks.findIndex(t => t.courseWorkId === cw.id || (t.title === cw.title && t.courseName === course.name));
+        const existingIndex = updatedTasks.findIndex(
+          t => t.courseWorkId === cw.id || (t.courseId === course.id && t.title.trim().toLowerCase() === cw.title.trim().toLowerCase())
+        );
         const { formattedStr, timestamp } = this.formatDueDateTime(cw.dueDate, cw.dueTime);
-        const isTurnedIn = submissionsMap[cw.id] === 'TURNED_IN' || submissionsMap[cw.id] === 'RETURNED';
 
         // Calculate priority based on due date proximity
         let priority: 'low' | 'medium' | 'high' = 'medium';

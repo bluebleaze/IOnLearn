@@ -229,14 +229,14 @@ export function isCourseWorkWithinDateRange(cw: ClassroomCourseWork, dateRangeMo
   // Jika memiliki due date
   if (cw.dueDate && cw.dueDate.year && cw.dueDate.month && cw.dueDate.day) {
     const dueTime = cw.dueTime;
-    const dueObj = new Date(
+    const timestamp = Date.UTC(
       cw.dueDate.year,
       cw.dueDate.month - 1,
       cw.dueDate.day,
       dueTime?.hours ?? 23,
       dueTime?.minutes ?? 59
     );
-    return dueObj.getTime() >= cutoffTimestamp;
+    return timestamp >= cutoffTimestamp;
   }
 
   // Jika tidak ada due date, cek creationTime

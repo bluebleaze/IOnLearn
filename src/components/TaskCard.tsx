@@ -107,11 +107,21 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   const checklistTotal = task.aiAnalysis?.checklist?.length || 0;
   const checklistDone = task.aiAnalysis?.checklist?.filter((c) => c.done)?.length || 0;
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onOpenDetails(task);
+    }
+  };
+
   return (
     <div
       id={`task-card-${task.id}`}
+      role="button"
+      tabIndex={0}
       onClick={() => onOpenDetails(task)}
-      className={`group rounded-2xl p-4.5 sm:p-5 shadow-2xs border transition-all duration-150 flex flex-col justify-between cursor-pointer ${
+      onKeyDown={handleKeyDown}
+      className={`group rounded-2xl p-4.5 sm:p-5 shadow-2xs border transition-all duration-150 flex flex-col justify-between cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#121212] ${
         task.isCompleted
           ? "bg-slate-50/60 dark:bg-[#141414]/50 border-slate-200/70 dark:border-[#222] opacity-80"
           : "bg-white dark:bg-[#161616] border-slate-200/80 dark:border-[#262626] hover:border-indigo-400 dark:hover:border-indigo-900/60 hover:shadow-xs"
@@ -128,7 +138,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
             {dueBadge}
 
             {task.points !== undefined && (
-              <span className="text-xs text-slate-400 dark:text-[#777]">
+              <span className="text-xs text-slate-500 dark:text-[#a3a3a3]">
                 {task.points} pts
               </span>
             )}
@@ -137,16 +147,26 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           {/* Quick Checkbox Button */}
           <button
             id={`task-checkbox-${task.id}`}
+            type="button"
             onClick={handleCheck}
-            className={`w-5.5 h-5.5 rounded-md flex items-center justify-center transition cursor-pointer shrink-0 ${
-              task.isCompleted
-                ? "bg-emerald-500 text-white shadow-2xs"
-                : "border border-slate-300 hover:border-emerald-500 dark:border-[#444] text-slate-700 dark:text-[#f5f5f5]"
-            }`}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.stopPropagation();
+              }
+            }}
+            className="min-w-[44px] min-h-[44px] -m-2.5 flex items-center justify-center cursor-pointer shrink-0 focus-visible:outline-none"
             title={task.isCompleted ? "Tandai belum selesai" : "Tandai sudah selesai"}
-            aria-label={task.isCompleted ? "Tandai belum selesai" : "Tandai sudah selesai"}
+            aria-label={task.isCompleted ? `Tandai "${task.title}" belum selesai` : `Tandai "${task.title}" sudah selesai`}
           >
-            {task.isCompleted && <Check className="w-3 h-3 stroke-[3]" />}
+            <span
+              className={`w-5.5 h-5.5 rounded-md flex items-center justify-center transition focus-visible:ring-2 focus-visible:ring-emerald-500 ${
+                task.isCompleted
+                  ? "bg-emerald-500 text-white shadow-2xs"
+                  : "border border-slate-300 hover:border-emerald-500 dark:border-[#444] text-slate-700 dark:text-[#f5f5f5]"
+              }`}
+            >
+              {task.isCompleted && <Check className="w-3 h-3 stroke-[3]" />}
+            </span>
           </button>
         </div>
 
@@ -164,15 +184,15 @@ export const TaskCard: React.FC<TaskCardProps> = ({
 
         {/* Short Description */}
         {task.description && (
-          <p className="text-xs text-slate-500 dark:text-[#888] line-clamp-2 leading-relaxed">
+          <p className="text-xs text-slate-600 dark:text-[#a3a3a3] line-clamp-2 leading-relaxed">
             {truncateWords(task.description, 16)}
           </p>
         )}
 
         {/* Attachments Indicator (Clean count pill) */}
         {task.materials && task.materials.length > 0 && (
-          <div className="flex items-center gap-1 text-xs text-slate-400 dark:text-[#777]">
-            <Paperclip className="w-3 h-3" />
+          <div className="flex items-center gap-1 text-xs text-slate-500 dark:text-[#a3a3a3]">
+            <Paperclip className="w-3.5 h-3.5" />
             <span>{task.materials.length} Lampiran</span>
           </div>
         )}
@@ -192,13 +212,13 @@ export const TaskCard: React.FC<TaskCardProps> = ({
               Rangkuman AI
             </span>
             {checklistTotal > 0 && (
-              <span className="text-xs text-slate-500 dark:text-[#888]">
+              <span className="text-xs text-slate-600 dark:text-[#a3a3a3]">
                 {checklistDone}/{checklistTotal} Langkah
               </span>
             )}
           </div>
         ) : (
-          <span className="text-xs text-slate-400 dark:text-[#666]">
+          <span className="text-xs text-slate-500 dark:text-[#a3a3a3]">
             Klik untuk detail & AI
           </span>
         )}

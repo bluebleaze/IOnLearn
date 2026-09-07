@@ -119,9 +119,31 @@ export default function TasksPage() {
       })
       .sort((a, b) => {
         if (sortBy === "due-asc") {
-          const aDue = a.dueTimestamp || Infinity;
-          const bDue = b.dueTimestamp || Infinity;
-          return aDue - bDue;
+          const now = Date.now();
+          const aHasDue = typeof a.dueTimestamp === "number" && !isNaN(a.dueTimestamp);
+          const bHasDue = typeof b.dueTimestamp === "number" && !isNaN(b.dueTimestamp);
+
+          if (aHasDue && bHasDue) {
+            const aIsOverdue = (a.dueTimestamp as number) < now;
+            const bIsOverdue = (b.dueTimestamp as number) < now;
+
+            // Tugas yang belum lewat tenggat: urutkan dari tenggat terdekat
+            if (!aIsOverdue && !bIsOverdue) {
+              return (a.dueTimestamp as number) - (b.dueTimestamp as number);
+            }
+            // Tugas mendatang/belum lewat tenggat berada di ATAS tugas yang terlewatkan
+            if (!aIsOverdue && bIsOverdue) return -1;
+            if (aIsOverdue && !bIsOverdue) return 1;
+
+            // Jika sama-sama terlewatkan: urutkan yang paling baru terlewat di atas
+            return (b.dueTimestamp as number) - (a.dueTimestamp as number);
+          }
+
+          // Tugas bertenggat waktu berada di atas tugas tanpa tenggat waktu
+          if (aHasDue && !bHasDue) return -1;
+          if (!aHasDue && bHasDue) return 1;
+
+          return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
         }
         if (sortBy === "due-desc") {
           const aDue = a.dueTimestamp || -Infinity;
@@ -269,10 +291,10 @@ export default function TasksPage() {
   const isAllPendingDone = counts.all > 0 && counts.pending === 0;
 
   const renderDueBadge = (task: TodoTask) => {
-    if (!task.dueDateStr) return <span className="text-slate-400 dark:text-[#666]">-</span>;
+    if (!task.dueDateStr) return <span className="text-slate-500 dark:text-[#a3a3a3]">-</span>;
     if (task.isCompleted) {
       return (
-        <span className="inline-flex items-center gap-1 text-xs text-slate-500 dark:text-[#737373]">
+        <span className="inline-flex items-center gap-1 text-xs text-slate-500 dark:text-[#a3a3a3]">
           <Clock className="w-3 h-3 text-slate-400" />
           <span>{task.dueDateStr}</span>
         </span>
@@ -333,10 +355,11 @@ export default function TasksPage() {
               <button
                 type="button"
                 onClick={() => setViewMode("grid")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${viewMode === "grid"
+                className={`flex items-center justify-center gap-1.5 min-h-[44px] sm:min-h-0 px-3 py-2 sm:py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                  viewMode === "grid"
                     ? "bg-white dark:bg-[#252525] text-slate-900 dark:text-[#f3f3f3] shadow-2xs font-semibold"
                     : "text-slate-500 dark:text-[#777] hover:text-slate-800 dark:hover:text-[#eee]"
-                  }`}
+                }`}
                 title="Tampilan Grid"
               >
                 <LayoutGrid className="w-3.5 h-3.5" />
@@ -345,10 +368,11 @@ export default function TasksPage() {
               <button
                 type="button"
                 onClick={() => setViewMode("kanban")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${viewMode === "kanban"
+                className={`flex items-center justify-center gap-1.5 min-h-[44px] sm:min-h-0 px-3 py-2 sm:py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                  viewMode === "kanban"
                     ? "bg-white dark:bg-[#252525] text-slate-900 dark:text-[#f3f3f3] shadow-2xs font-semibold"
                     : "text-slate-500 dark:text-[#777] hover:text-slate-800 dark:hover:text-[#eee]"
-                  }`}
+                }`}
                 title="Tampilan Kanban"
               >
                 <Columns3 className="w-3.5 h-3.5" />
@@ -357,10 +381,11 @@ export default function TasksPage() {
               <button
                 type="button"
                 onClick={() => setViewMode("table")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${viewMode === "table"
+                className={`flex items-center justify-center gap-1.5 min-h-[44px] sm:min-h-0 px-3 py-2 sm:py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                  viewMode === "table"
                     ? "bg-white dark:bg-[#252525] text-slate-900 dark:text-[#f3f3f3] shadow-2xs font-semibold"
                     : "text-slate-500 dark:text-[#777] hover:text-slate-800 dark:hover:text-[#eee]"
-                  }`}
+                }`}
                 title="Tampilan Tabel"
               >
                 <TableProperties className="w-3.5 h-3.5" />
@@ -381,8 +406,8 @@ export default function TasksPage() {
                 onClick={() => setStatusTab("pending")}
                 className={
                   statusTab === "pending"
-                    ? "px-3 py-1.5 rounded-lg transition-colors cursor-pointer whitespace-nowrap font-semibold flex items-center gap-1.5 bg-amber-500 text-white shadow-2xs"
-                    : "px-3 py-1.5 rounded-lg transition-colors cursor-pointer whitespace-nowrap font-semibold flex items-center gap-1.5 text-slate-700 dark:text-[#888] hover:bg-slate-100 dark:hover:bg-[#222]"
+                    ? "min-h-[44px] sm:min-h-0 px-3 py-2 sm:py-1.5 rounded-lg transition-colors cursor-pointer whitespace-nowrap font-semibold flex items-center gap-1.5 bg-amber-500 text-white shadow-2xs"
+                    : "min-h-[44px] sm:min-h-0 px-3 py-2 sm:py-1.5 rounded-lg transition-colors cursor-pointer whitespace-nowrap font-semibold flex items-center gap-1.5 text-slate-700 dark:text-[#888] hover:bg-slate-100 dark:hover:bg-[#222]"
                 }
               >
                 <span>Perlu Dikerjakan</span>
@@ -401,11 +426,11 @@ export default function TasksPage() {
                 onClick={() => setStatusTab("ai-ready")}
                 className={
                   statusTab === "ai-ready"
-                    ? "px-3 py-1.5 rounded-lg transition-colors cursor-pointer whitespace-nowrap font-semibold flex items-center gap-1.5 bg-indigo-600 text-white shadow-2xs"
-                    : "px-3 py-1.5 rounded-lg transition-colors cursor-pointer whitespace-nowrap font-semibold flex items-center gap-1.5 text-slate-700 dark:text-[#888] hover:bg-slate-100 dark:hover:bg-[#222]"
+                    ? "min-h-[44px] sm:min-h-0 px-3 py-2 sm:py-1.5 rounded-lg transition-colors cursor-pointer whitespace-nowrap font-semibold flex items-center gap-1.5 bg-indigo-600 text-white shadow-2xs"
+                    : "min-h-[44px] sm:min-h-0 px-3 py-2 sm:py-1.5 rounded-lg transition-colors cursor-pointer whitespace-nowrap font-semibold flex items-center gap-1.5 text-slate-700 dark:text-[#888] hover:bg-slate-100 dark:hover:bg-[#222]"
                 }
               >
-                <Sparkles className="w-3 h-3" />
+                <Sparkles className="w-3.5 h-3.5" />
                 <span>Siap AI</span>
                 <span
                   className={
@@ -422,8 +447,8 @@ export default function TasksPage() {
                 onClick={() => setStatusTab("all")}
                 className={
                   statusTab === "all"
-                    ? "px-3 py-1.5 rounded-lg transition-colors cursor-pointer whitespace-nowrap font-semibold flex items-center gap-1.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xs"
-                    : "px-3 py-1.5 rounded-lg transition-colors cursor-pointer whitespace-nowrap font-semibold flex items-center gap-1.5 text-slate-700 dark:text-[#888] hover:bg-slate-100 dark:hover:bg-[#222]"
+                    ? "min-h-[44px] sm:min-h-0 px-3 py-2 sm:py-1.5 rounded-lg transition-colors cursor-pointer whitespace-nowrap font-semibold flex items-center gap-1.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xs"
+                    : "min-h-[44px] sm:min-h-0 px-3 py-2 sm:py-1.5 rounded-lg transition-colors cursor-pointer whitespace-nowrap font-semibold flex items-center gap-1.5 text-slate-700 dark:text-[#888] hover:bg-slate-100 dark:hover:bg-[#222]"
                 }
               >
                 <span>Semua</span>
@@ -442,8 +467,8 @@ export default function TasksPage() {
                 onClick={() => setStatusTab("completed")}
                 className={
                   statusTab === "completed"
-                    ? "px-3 py-1.5 rounded-lg transition-colors cursor-pointer whitespace-nowrap font-semibold flex items-center gap-1.5 bg-emerald-600 text-white shadow-2xs"
-                    : "px-3 py-1.5 rounded-lg transition-colors cursor-pointer whitespace-nowrap font-semibold flex items-center gap-1.5 text-slate-700 dark:text-[#888] hover:bg-slate-100 dark:hover:bg-[#222]"
+                    ? "min-h-[44px] sm:min-h-0 px-3 py-2 sm:py-1.5 rounded-lg transition-colors cursor-pointer whitespace-nowrap font-semibold flex items-center gap-1.5 bg-emerald-600 text-white shadow-2xs"
+                    : "min-h-[44px] sm:min-h-0 px-3 py-2 sm:py-1.5 rounded-lg transition-colors cursor-pointer whitespace-nowrap font-semibold flex items-center gap-1.5 text-slate-700 dark:text-[#888] hover:bg-slate-100 dark:hover:bg-[#222]"
                 }
               >
                 <span>Selesai</span>
@@ -626,22 +651,39 @@ export default function TasksPage() {
                           pendingTasks.map((task) => (
                             <div
                               key={task.id}
-                              className="bg-white dark:bg-[#181818] p-3.5 rounded-xl border border-slate-200/80 dark:border-[#262626] shadow-2xs space-y-2.5 hover:border-slate-300 dark:hover:border-[#3a3a3a] transition-colors cursor-pointer group"
+                              role="button"
+                              tabIndex={0}
+                              className="bg-white dark:bg-[#181818] p-3.5 rounded-xl border border-slate-200/80 dark:border-[#262626] shadow-2xs space-y-2.5 hover:border-slate-300 dark:hover:border-[#3a3a3a] transition-colors cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#141414]"
                               onClick={() => setActiveDetailTask(task)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  setActiveDetailTask(task);
+                                }
+                              }}
                             >
                               <div className="flex items-start justify-between gap-2">
                                 <span className="text-xs font-semibold px-2 py-0.5 rounded bg-indigo-50 dark:bg-[#1f1f28] text-indigo-700 dark:text-[#a5b4fc] truncate max-w-[140px]">
                                   {task.courseName || "Kuliah"}
                                 </span>
                                 <button
+                                  type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleToggleComplete(task.id);
                                   }}
-                                  className="w-5 h-5 rounded-md border border-slate-300 dark:border-[#444] hover:border-emerald-500 flex items-center justify-center shrink-0 cursor-pointer"
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter" || e.key === " ") {
+                                      e.stopPropagation();
+                                    }
+                                  }}
+                                  className="min-w-[44px] min-h-[44px] -m-2.5 flex items-center justify-center cursor-pointer shrink-0 focus-visible:outline-none"
                                   title="Tandai Selesai"
+                                  aria-label={`Tandai "${task.title}" selesai`}
                                 >
-                                  {task.isCompleted && <Check className="w-3 h-3 text-emerald-500 stroke-[3]" />}
+                                  <span className="w-5 h-5 rounded-md border border-slate-300 dark:border-[#444] hover:border-emerald-500 flex items-center justify-center transition focus-visible:ring-1 focus-visible:ring-emerald-500">
+                                    {task.isCompleted && <Check className="w-3 h-3 text-emerald-500 stroke-[3]" />}
+                                  </span>
                                 </button>
                               </div>
 
@@ -652,13 +694,15 @@ export default function TasksPage() {
                               <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100 dark:border-[#242424]">
                                 <div>{renderDueBadge(task)}</div>
                                 <button
+                                  type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleAnalyzeWithAI(task.id);
                                   }}
-                                  className="text-indigo-600 dark:text-[#818cf8] hover:underline flex items-center gap-1 font-medium"
+                                  className="min-h-[36px] sm:min-h-0 text-indigo-600 dark:text-[#818cf8] hover:underline flex items-center gap-1 font-medium"
+                                  aria-label={`Analisis AI untuk "${task.title}"`}
                                 >
-                                  <Sparkles className="w-3 h-3" />
+                                  <Sparkles className="w-3.5 h-3.5" />
                                   <span>Analisis AI</span>
                                 </button>
                               </div>
@@ -697,22 +741,39 @@ export default function TasksPage() {
                           aiReadyTasks.map((task) => (
                             <div
                               key={task.id}
-                              className="bg-white dark:bg-[#181818] p-3.5 rounded-xl border border-slate-200/80 dark:border-[#262626] shadow-2xs space-y-2.5 hover:border-indigo-500/40 transition-colors cursor-pointer group"
+                              role="button"
+                              tabIndex={0}
+                              className="bg-white dark:bg-[#181818] p-3.5 rounded-xl border border-slate-200/80 dark:border-[#262626] shadow-2xs space-y-2.5 hover:border-indigo-500/40 transition-colors cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#141414]"
                               onClick={() => setActiveDetailTask(task)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  setActiveDetailTask(task);
+                                }
+                              }}
                             >
                               <div className="flex items-start justify-between gap-2">
                                 <span className="text-xs font-semibold px-2 py-0.5 rounded bg-indigo-50 dark:bg-[#1f1f28] text-indigo-700 dark:text-[#a5b4fc] truncate max-w-[140px]">
                                   {task.courseName || "Kuliah"}
                                 </span>
                                 <button
+                                  type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleToggleComplete(task.id);
                                   }}
-                                  className="w-5 h-5 rounded-md border border-slate-300 dark:border-[#444] hover:border-emerald-500 flex items-center justify-center shrink-0 cursor-pointer"
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter" || e.key === " ") {
+                                      e.stopPropagation();
+                                    }
+                                  }}
+                                  className="min-w-[44px] min-h-[44px] -m-2.5 flex items-center justify-center cursor-pointer shrink-0 focus-visible:outline-none"
                                   title="Tandai Selesai"
+                                  aria-label={`Tandai "${task.title}" selesai`}
                                 >
-                                  {task.isCompleted && <Check className="w-3 h-3 text-emerald-500 stroke-[3]" />}
+                                  <span className="w-5 h-5 rounded-md border border-slate-300 dark:border-[#444] hover:border-emerald-500 flex items-center justify-center transition focus-visible:ring-1 focus-visible:ring-emerald-500">
+                                    {task.isCompleted && <Check className="w-3 h-3 text-emerald-500 stroke-[3]" />}
+                                  </span>
                                 </button>
                               </div>
 
@@ -722,9 +783,9 @@ export default function TasksPage() {
 
                               <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100 dark:border-[#242424]">
                                 <div>{renderDueBadge(task)}</div>
-                                <span className="text-xs text-indigo-600 dark:text-[#818cf8] font-medium flex items-center gap-0.5">
-                                  Buka Materi →
-                                </span>
+                                <div className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-[#818cf8] font-medium">
+                                  <span>{task.aiAnalysis?.checklist?.length || 0} Langkah</span>
+                                </div>
                               </div>
                             </div>
                           ))
@@ -734,7 +795,7 @@ export default function TasksPage() {
                   );
                 })()}
 
-                {/* Column 3: Terselesaikan */}
+                {/* Column 3: Selesai */}
                 {(() => {
                   const completedTasks = filteredTasks.filter((t) => t.isCompleted);
                   return (
@@ -743,7 +804,7 @@ export default function TasksPage() {
                         <div className="flex items-center gap-2">
                           <span className="w-2 h-2 rounded-full bg-emerald-500" />
                           <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-[#ccc]">
-                            Terselesaikan
+                            Selesai
                           </h3>
                         </div>
                         <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-white dark:bg-[#202020] text-slate-600 dark:text-[#888] shadow-2xs">
@@ -754,37 +815,55 @@ export default function TasksPage() {
                       <div className="space-y-2.5 min-h-[180px]">
                         {completedTasks.length === 0 ? (
                           <div className="border border-dashed border-slate-200 dark:border-[#262626] rounded-xl p-5 text-center text-slate-400 text-xs">
-                            <Clock className="w-4 h-4 mx-auto text-slate-300 dark:text-[#444] mb-1" />
-                            <p>Belum ada tugas diselesaikan</p>
+                            <Check className="w-4 h-4 mx-auto text-slate-300 dark:text-[#444] mb-1" />
+                            <p>Belum ada tugas selesai</p>
                           </div>
                         ) : (
                           completedTasks.map((task) => (
                             <div
                               key={task.id}
-                              className="bg-white/80 dark:bg-[#181818]/60 p-3.5 rounded-xl border border-slate-200/70 dark:border-[#242424] opacity-75 space-y-2 cursor-pointer hover:opacity-100 transition-opacity"
+                              role="button"
+                              tabIndex={0}
+                              className="bg-white dark:bg-[#181818] p-3.5 rounded-xl border border-slate-200/80 dark:border-[#262626] shadow-2xs space-y-2.5 opacity-75 hover:opacity-100 transition-all cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#141414]"
                               onClick={() => setActiveDetailTask(task)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  setActiveDetailTask(task);
+                                }
+                              }}
                             >
                               <div className="flex items-start justify-between gap-2">
-                                <span className="text-xs text-slate-500 dark:text-[#777] truncate max-w-[140px]">
+                                <span className="text-xs text-slate-600 dark:text-[#a3a3a3] truncate max-w-[140px]">
                                   {task.courseName}
                                 </span>
                                 <button
+                                  type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleToggleComplete(task.id);
                                   }}
-                                  className="w-5 h-5 rounded-md bg-emerald-500 text-white flex items-center justify-center shrink-0 cursor-pointer"
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter" || e.key === " ") {
+                                      e.stopPropagation();
+                                    }
+                                  }}
+                                  className="min-w-[44px] min-h-[44px] -m-2.5 flex items-center justify-center cursor-pointer shrink-0 focus-visible:outline-none"
                                   title="Batal Selesai"
+                                  aria-label={`Tandai "${task.title}" belum selesai`}
                                 >
-                                  <Check className="w-3 h-3 stroke-[3]" />
+                                  <span className="w-5 h-5 rounded-md bg-emerald-500 text-white flex items-center justify-center transition focus-visible:ring-1 focus-visible:ring-emerald-400">
+                                    <Check className="w-3 h-3 stroke-[3]" />
+                                  </span>
                                 </button>
                               </div>
-                              <h4 className="text-xs font-medium text-slate-600 dark:text-[#888] line-clamp-2">
+                              <h4 className="text-xs font-semibold text-slate-500 dark:text-[#888] line-through line-clamp-2 leading-relaxed">
                                 {truncateWords(task.title, 12)}
                               </h4>
-                              <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium inline-flex items-center gap-1">
-                                <Check className="w-3 h-3" /> Selesai
-                              </span>
+                              <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100 dark:border-[#242424] text-slate-500 dark:text-[#a3a3a3]">
+                                <div>Selesai</div>
+                                <span className="text-xs font-medium">Buka Detail →</span>
+                              </div>
                             </div>
                           ))
                         )}
@@ -830,7 +909,7 @@ export default function TasksPage() {
                             </button>
                           </td>
                           <td className="py-2.5 px-4 font-medium text-slate-900 dark:text-[#f3f3f3]">
-                            <span className={task.isCompleted ? "text-slate-400 dark:text-[#777]" : ""}>
+                            <span className={task.isCompleted ? "text-slate-500 dark:text-[#888]" : ""}>
                               {truncateWords(task.title, 12)}
                             </span>
                           </td>

@@ -9,14 +9,15 @@ import {
 import { ClassroomService } from "./classroomService";
 
 export async function readDriveFileContent(
-    token: string,
-    fileId: string,
+    token: string | null,
+    fileId?: string | null,
+    url?: string | null
 ): Promise<string | null> {
     try {
         const res = await fetch("/api/drive/read", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ token, fileId }),
+            body: JSON.stringify({ token, fileId, url }),
         });
         if (res.ok) {
             const data = await res.json();
@@ -24,9 +25,48 @@ export async function readDriveFileContent(
         }
         return null;
     } catch (e) {
-        console.error("Failed to read drive file via backend", e);
+        console.error("Failed to read drive/URL file via backend", e);
         return null;
     }
+}
+
+export function extractDriveFileId(urlStr?: string): string | null {
+    if (!urlStr) return null;
+    const match = urlStr.match(/\/(?:d|file\/d|document\/d|spreadsheets\/d|presentation\/d)\/([a-zA-Z0-9_-]+)/);
+    if (match && match[1]) return match[1];
+    try {
+        const parsed = new URL(urlStr);
+        return parsed.searchParams.get("id");
+    } catch {
+        return null;
+    }
+}
+
+async function extractMaterialsText(materials?: any[]): Promise<string> {
+    if (!materials || !Array.isArray(materials)) return "";
+    const token = ClassroomService.getStoredToken();
+
+    let extracted = "";
+    let processed = 0;
+    for (const m of materials) {
+        if (processed >= 3) break;
+        let fileId: string | null = m.driveFile?.driveFile?.id || null;
+        let url: string | null = m.link?.url || null;
+        let title: string = m.driveFile?.driveFile?.title || m.link?.title || "Dokumen Lampiran";
+
+        if (!fileId && url) {
+            fileId = extractDriveFileId(url);
+        }
+
+        if (fileId || url) {
+            const text = await readDriveFileContent(token, fileId, url);
+            if (text) {
+                extracted += `\n\n[Isi Lampiran: "${title}"]:\n` + text.substring(0, 6000);
+                processed++;
+            }
+        }
+    }
+    return extracted;
 }
 
 export function getGeminiModel() {
@@ -38,6 +78,9 @@ export async function analyzeTaskWithAI(
     userPreferences?: UserPreferences | null,
     aiConfig?: AIConfig | null,
 ): Promise<AIAnalysisResult> {
+    const extractedMaterialText = await extractMaterialsText(task.materials);
+    const enrichedDescription = (task.description || "") + (extractedMaterialText ? `\n\n--- LAMPIRAN DOKUMEN & SPREADSHEET ---\n${extractedMaterialText}` : "");
+
     const response = await fetch("/api/ai/analyze-task", {
         method: "POST",
         headers: {
@@ -45,7 +88,7 @@ export async function analyzeTaskWithAI(
         },
         body: JSON.stringify({
             title: task.title,
-            description: task.description,
+            description: enrichedDescription,
             courseName: task.courseName,
             materials: task.materials,
             userPreferences,
@@ -102,29 +145,35 @@ export async function sendChatMessageToAI(
         }[];
     }[];
 }> {
-    let extractedMaterialText = "";
-    // Try to load drive contents if there are materials
-    if (taskContext?.materials && Array.isArray(taskContext.materials)) {
-        const token = ClassroomService.getStoredToken();
-        if (token) {
-            // Only process the first 2 drive files to avoid huge payloads
-            let driveCount = 0;
-            for (const m of taskContext.materials) {
-                if (m.driveFile?.driveFile?.id && driveCount < 2) {
-                    const text = await readDriveFileContent(
-                        token,
-                        m.driveFile.driveFile.id,
-                    );
-                    if (text) {
-                        extractedMaterialText +=
-                            `\n\n[Isi Dokumen Lampiran "${m.driveFile.driveFile.title}"]:\n` +
-                            text.substring(0, 5000); // limit to 5000 chars per doc
-                        driveCount++;
-                    }
+    const extractedMaterialText = await extractMaterialsText(taskContext?.materials);
+
+    // Check if user's chat message contains URLs (e.g. Google Docs, Sheets, Drive, or Web links)
+    const lastUserMessage = [...messages].reverse().find((m) => m.role === "user");
+    let extractedMessageLinkText = "";
+    if (lastUserMessage?.content) {
+        const urlMatches = lastUserMessage.content.match(/(https?:\/\/[^\s<>"'{}|\\^`]+)/gi);
+        if (urlMatches && urlMatches.length > 0) {
+            const token = ClassroomService.getStoredToken();
+            const uniqueUrls = Array.from(new Set(urlMatches)).slice(0, 2);
+            for (const urlStr of uniqueUrls) {
+                const fileId = extractDriveFileId(urlStr);
+                const text = await readDriveFileContent(token, fileId, urlStr);
+                if (text && text.trim()) {
+                    extractedMessageLinkText += `\n\n[Isi Dokumen/Spreadsheet dari Link ${urlStr}]:\n${text.substring(0, 8000)}`;
                 }
             }
         }
     }
+
+    const processedMessages = messages.map((m, idx) => {
+        if (idx === messages.length - 1 && m.role === "user" && extractedMessageLinkText) {
+            return {
+                ...m,
+                content: m.content + extractedMessageLinkText,
+            };
+        }
+        return m;
+    });
 
     const response = await fetch("/api/ai/chat", {
         method: "POST",
@@ -132,7 +181,7 @@ export async function sendChatMessageToAI(
             "Content-Type": "application/json",
         },
         body: JSON.stringify({
-            messages,
+            messages: processedMessages,
             userPreferences,
             aiConfig,
             studyMode,
@@ -143,7 +192,7 @@ export async function sendChatMessageToAI(
                       description:
                           (taskContext.description || "") +
                           (extractedMaterialText
-                              ? `\n\n--- LAMPIRAN DOKUMEN ---\n${extractedMaterialText}`
+                              ? `\n\n--- LAMPIRAN DOKUMEN & SPREADSHEET ---\n${extractedMaterialText}`
                               : ""),
                       dueDateStr: taskContext.dueDateStr,
                       customNotes: taskContext.customNotes,

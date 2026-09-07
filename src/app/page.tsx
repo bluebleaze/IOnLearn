@@ -98,9 +98,29 @@ function HomeContent() {
 
   // Urgent tasks list (< 72h or priority high)
   const urgentTasks = useMemo(() => {
+    const now = Date.now();
     return tasks
       .filter((t) => !t.isCompleted)
-      .sort((a, b) => (a.dueTimestamp || Infinity) - (b.dueTimestamp || Infinity))
+      .sort((a, b) => {
+        const aHasDue = typeof a.dueTimestamp === "number" && !isNaN(a.dueTimestamp);
+        const bHasDue = typeof b.dueTimestamp === "number" && !isNaN(b.dueTimestamp);
+
+        if (aHasDue && bHasDue) {
+          const aIsOverdue = (a.dueTimestamp as number) < now;
+          const bIsOverdue = (b.dueTimestamp as number) < now;
+
+          if (!aIsOverdue && !bIsOverdue) {
+            return (a.dueTimestamp as number) - (b.dueTimestamp as number);
+          }
+          if (!aIsOverdue && bIsOverdue) return -1;
+          if (aIsOverdue && !bIsOverdue) return 1;
+
+          return (b.dueTimestamp as number) - (a.dueTimestamp as number);
+        }
+        if (aHasDue && !bHasDue) return -1;
+        if (!aHasDue && bHasDue) return 1;
+        return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+      })
       .slice(0, 4);
   }, [tasks]);
 
@@ -489,14 +509,14 @@ function HomeContent() {
                     >
                       <div className="flex items-center justify-between text-xs">
                         <span className="font-medium text-slate-900 dark:text-[#f3f3f3] line-clamp-1">
-                          {note.title}
+                          {note.title || "Tanpa Judul"}
                         </span>
                         <span className="text-xs text-slate-400 dark:text-[#666] shrink-0">
                           {note.subject || "Umum"}
                         </span>
                       </div>
                       <p className="text-xs text-slate-500 dark:text-[#888] line-clamp-1">
-                        {note.content}
+                        {(note.content || "").replace(/[#*`~_\[\]()>-]/g, "")}
                       </p>
                     </div>
                   ))}

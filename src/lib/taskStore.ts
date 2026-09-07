@@ -70,6 +70,7 @@ export function persist(tasks: TodoTask[]): void {
   if (typeof window === "undefined") return;
   localStorage.setItem(getStorageKey(TASKS_STORAGE_KEY), JSON.stringify(tasks));
   syncAllUserDataToCloud();
+  window.dispatchEvent(new Event("taskStoreChange"));
 }
 
 export function addTask(task: TodoTask): void {
@@ -160,12 +161,208 @@ export function toggleTodoComplete(
 // -------------------------------------------------------------
 // STUDY NOTES STORE
 // -------------------------------------------------------------
+const KNOWN_SUBJECTS = [
+  "Fisika",
+  "Matematika",
+  "Biologi",
+  "Kimia",
+  "Informatika",
+  "Pemrograman",
+  "Algoritma",
+  "Statistika",
+  "Kalkulus",
+  "Basis Data",
+  "Jaringan Komputer",
+  "Sistem Operasi",
+  "Bahasa Indonesia",
+  "Bahasa Inggris",
+  "Sejarah",
+  "Ekonomi",
+  "Geografi",
+  "Sosiologi",
+  "Akuntansi",
+  "Kewirausahaan",
+  "Kewarganegaraan",
+];
+
+const IGNORED_TAG_WORDS = new Set([
+  "ai copilot",
+  "ai",
+  "copilot",
+  "socratic",
+  "direct",
+  "quizzer",
+  "chat",
+  "chat ai",
+  "rangkuman",
+  "catatan ai",
+  "belajar ai",
+  "catatan",
+  "materi",
+  "general",
+  "umum",
+  "tag",
+  "tags",
+  "label",
+]);
+
+export function cleanAndNormalizeTags(rawTags: (string | undefined | null)[]): string[] {
+  const result: string[] = [];
+  const seen = new Set<string>();
+
+  for (const raw of rawTags) {
+    if (!raw || typeof raw !== "string") continue;
+    const parts = raw.split(",");
+    for (let p of parts) {
+      p = p.replace(/^[#\s*>-]+/, "").replace(/[*_`~#]/g, "").trim();
+      if (!p || p.length < 2) continue;
+      const lower = p.toLowerCase();
+      if (IGNORED_TAG_WORDS.has(lower)) continue;
+      if (seen.has(lower)) continue;
+
+      seen.add(lower);
+      if (lower === "uas" || lower === "uts" || lower === "ti" || lower === "si" || lower === "ipa" || lower === "ips") {
+        result.push(lower.toUpperCase());
+      } else {
+        const formatted = p.charAt(0).toUpperCase() + p.slice(1);
+        result.push(formatted);
+      }
+    }
+  }
+
+  return result.slice(0, 4);
+}
+
+export function sanitizeAndRepairNote(note: Partial<StudyNote>): StudyNote {
+  let title = (note.title || "").trim();
+  let content = (note.content || "").trim();
+  let subject = (note.subject || "").trim();
+  const rawTags: string[] = Array.isArray(note.tags) ? [...note.tags] : [];
+
+  // Case 1: content is empty or title contains the full markdown text / is excessively long
+  if (!content && title) {
+    content = title;
+
+    const firstLine = title.split("\n")[0].trim();
+    let cleanTitle = firstLine;
+    const delimMatch = firstLine.match(/^(.*?)(?:\s+[-–—]\s+|\.\s+###|\s*###|:\s+)/);
+    if (delimMatch && delimMatch[1] && delimMatch[1].trim().length >= 4) {
+      cleanTitle = delimMatch[1].trim();
+    } else {
+      const dotIdx = firstLine.indexOf(". ");
+      if (dotIdx > 4 && dotIdx <= 70) {
+        cleanTitle = firstLine.slice(0, dotIdx);
+      } else {
+        cleanTitle = firstLine.slice(0, 70);
+      }
+    }
+
+    cleanTitle = cleanTitle
+      .replace(/^[#\s*>-]+/, "")
+      .replace(/[*_`~]/g, "")
+      .replace(/["'{}]/g, "")
+      .trim();
+
+    title = cleanTitle || "Catatan Materi AI";
+  } else if (title.length > 80 || /[#*`~_]/.test(title)) {
+    const firstLine = title.split("\n")[0].trim();
+    let cleanTitle = firstLine.replace(/^[#\s*>-]+/, "").replace(/[*_`~]/g, "").replace(/["'{}]/g, "").trim();
+    const delimMatch = cleanTitle.match(/^(.*?)(?:\s+[-–—]\s+|\.\s+###|\s*###|:\s+)/);
+    if (delimMatch && delimMatch[1] && delimMatch[1].trim().length >= 4) {
+      cleanTitle = delimMatch[1].trim();
+    } else if (cleanTitle.length > 70) {
+      cleanTitle = cleanTitle.slice(0, 70).trim();
+    }
+    title = cleanTitle || "Catatan Materi AI";
+  }
+
+  // Extract any trailing embedded tag line from markdown content (e.g. "### Tag: #Fisika #Mekanika #Rotasi")
+  const trailingTagLineMatch = content.match(/(?:^|\n)\s*(?:###?\s*)?(?:Tag|Tags|Label|Labels|Hashtags)\s*:\s*([^\n]+)$/i);
+  if (trailingTagLineMatch && trailingTagLineMatch[1]) {
+    const lineTags = trailingTagLineMatch[1].match(/#?([a-zA-Z0-9_-]+)/g);
+    if (lineTags) {
+      lineTags.forEach((t) => {
+        const clean = t.replace(/^#/, "").trim();
+        if (clean) rawTags.push(clean);
+      });
+    }
+  }
+
+  // Strip trailing tag lines and trailing hashtags block from content so they don't duplicate
+  content = content
+    .replace(/(?:\r?\n)+\s*(?:###?\s*)?(?:Tag|Tags|Label|Labels|Hashtags)\s*:\s*[^\n]+$/i, "")
+    .replace(/(?:\r?\n)+\s*(?:#[a-zA-Z0-9_-]+\s*){1,10}$/i, "")
+    .trim();
+
+  // Normalize tags
+  let cleanedTags = cleanAndNormalizeTags(rawTags);
+
+  // Subject inference & cleanup
+  if (!subject || subject === "Belajar AI" || subject === "Catatan AI" || subject === "Umum") {
+    // Check if any tag is a known academic subject
+    const subjectFromTag = cleanedTags.find((t) =>
+      KNOWN_SUBJECTS.some((ks) => ks.toLowerCase() === t.toLowerCase())
+    );
+    if (subjectFromTag) {
+      subject = subjectFromTag;
+      // Remove it from tags to avoid duplicate
+      cleanedTags = cleanedTags.filter((t) => t.toLowerCase() !== subjectFromTag.toLowerCase());
+    } else {
+      // Check if title mentions a known subject
+      const subjectFromTitle = KNOWN_SUBJECTS.find((ks) =>
+        new RegExp(`\\b${ks}\\b`, "i").test(title)
+      );
+      if (subjectFromTitle) {
+        subject = subjectFromTitle;
+      } else {
+        subject = "Catatan Materi";
+      }
+    }
+  }
+
+  // Remove subject from tags if already present
+  if (subject) {
+    cleanedTags = cleanedTags.filter((t) => t.toLowerCase() !== subject.toLowerCase());
+  }
+
+  return {
+    id: note.id || `note-${Date.now()}`,
+    title: title || "Catatan Materi Baru",
+    content: content || title,
+    subject: subject || "Catatan Materi",
+    tags: cleanedTags,
+    summary: note.summary,
+    aiQuiz: note.aiQuiz,
+    createdAt: note.createdAt || new Date().toISOString(),
+    updatedAt: note.updatedAt || new Date().toISOString(),
+    userEmail: note.userEmail,
+  };
+}
+
 export function loadNotes(): StudyNote[] {
   if (typeof window === "undefined") return [];
   const saved = localStorage.getItem(getStorageKey(NOTES_STORAGE_KEY));
   if (!saved) return [];
   try {
-    return JSON.parse(saved) as StudyNote[];
+    const rawList = JSON.parse(saved) as StudyNote[];
+    if (!Array.isArray(rawList)) return [];
+    let needsResave = false;
+    const repaired = rawList.map((n) => {
+      // Auto-repair if note has missing/empty content, damaged long title, or unwanted system tags / trailing tag in content
+      const hasSystemTags = n.tags?.some((t) => IGNORED_TAG_WORDS.has(t.toLowerCase()) || t.startsWith("#"));
+      const hasTrailingTagInContent = n.content && /(?:^|\n)\s*(?:###?\s*)?(?:Tag|Tags|Label)\s*:/i.test(n.content);
+      const isCorrupted = !n.content || n.content.trim() === "" || (n.title && n.title.length > 80 && /[#*`~_]/.test(n.title));
+      
+      if (isCorrupted || hasSystemTags || hasTrailingTagInContent) {
+        needsResave = true;
+        return sanitizeAndRepairNote(n);
+      }
+      return n;
+    });
+    if (needsResave) {
+      localStorage.setItem(getStorageKey(NOTES_STORAGE_KEY), JSON.stringify(repaired));
+    }
+    return repaired;
   } catch {
     return [];
   }
@@ -180,7 +377,8 @@ export function persistNotes(notes: StudyNote[]): void {
 
 export function addNote(note: StudyNote): void {
   const notes = loadNotes();
-  notes.unshift(note);
+  const sanitized = sanitizeAndRepairNote(note);
+  notes.unshift(sanitized);
   persistNotes(notes);
 }
 

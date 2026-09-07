@@ -50,6 +50,7 @@ import {
   deleteNote,
   loadPreferences,
   loadAIConfig,
+  cleanAndNormalizeTags,
 } from "@/lib/taskStore";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
@@ -169,9 +170,9 @@ export default function NotesPage() {
       if (selectedSubject !== "all" && n.subject !== selectedSubject) return false;
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
-        const mTitle = n.title.toLowerCase().includes(q);
-        const mContent = n.content.toLowerCase().includes(q);
-        const mSubj = n.subject?.toLowerCase().includes(q);
+        const mTitle = (n.title || "").toLowerCase().includes(q);
+        const mContent = (n.content || "").toLowerCase().includes(q);
+        const mSubj = (n.subject || "").toLowerCase().includes(q);
         if (!mTitle && !mContent && !mSubj) return false;
       }
       return true;
@@ -190,10 +191,18 @@ export default function NotesPage() {
 
   const handleStartEdit = (note: StudyNote) => {
     setActiveNoteId(note.id);
-    setFormTitle(note.title);
+    setFormTitle(note.title || "");
     setFormSubject(note.subject || "");
-    setFormContent(note.content);
-    setFormTags(note.tags ? note.tags.join(", ") : "");
+    
+    // Strip trailing tag line if present in raw content
+    const cleanedContent = (note.content || "")
+      .replace(/(?:\r?\n)+\s*(?:###?\s*)?(?:Tag|Tags|Label|Labels|Hashtags)\s*:\s*[^\n]+$/i, "")
+      .replace(/(?:\r?\n)+\s*(?:#[a-zA-Z0-9_-]+\s*){1,10}$/i, "")
+      .trim();
+    
+    const cleanedTags = cleanAndNormalizeTags(note.tags || []);
+    setFormContent(cleanedContent);
+    setFormTags(cleanedTags.join(", "));
     setEditorTab("write");
     setIsEditing(true);
   };
@@ -337,10 +346,13 @@ export default function NotesPage() {
       return;
     }
 
-    const tagsArray = formTags
-      .split(",")
-      .map((t) => t.trim())
-      .filter(Boolean);
+    // Strip trailing tag lines from content
+    const cleanedContent = formContent
+      .replace(/(?:\r?\n)+\s*(?:###?\s*)?(?:Tag|Tags|Label|Labels|Hashtags)\s*:\s*[^\n]+$/i, "")
+      .replace(/(?:\r?\n)+\s*(?:#[a-zA-Z0-9_-]+\s*){1,10}$/i, "")
+      .trim();
+
+    const tagsArray = cleanAndNormalizeTags(formTags.split(","));
 
     const now = new Date().toISOString();
 
@@ -348,7 +360,7 @@ export default function NotesPage() {
       updateNote(activeNoteId, {
         title: formTitle.trim(),
         subject: formSubject.trim() || undefined,
-        content: formContent.trim(),
+        content: cleanedContent,
         tags: tagsArray,
         updatedAt: now,
       });
@@ -358,7 +370,7 @@ export default function NotesPage() {
         id: `note-${Date.now()}`,
         title: formTitle.trim(),
         subject: formSubject.trim() || undefined,
-        content: formContent.trim(),
+        content: cleanedContent,
         tags: tagsArray,
         createdAt: now,
         updatedAt: now,
@@ -595,6 +607,8 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                   return (
                     <div
                       key={note.id}
+                      role="button"
+                      tabIndex={0}
                       onClick={() => {
                         setActiveNoteId(note.id);
                         setIsEditing(false);
@@ -602,7 +616,17 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                         setUserAnswers({});
                         setQuizSubmitted(false);
                       }}
-                      className={`p-3.5 rounded-2xl border transition-all cursor-pointer text-left group ${
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setActiveNoteId(note.id);
+                          setIsEditing(false);
+                          setActiveQuiz(note.aiQuiz || null);
+                          setUserAnswers({});
+                          setQuizSubmitted(false);
+                        }
+                      }}
+                      className={`p-3.5 rounded-2xl border transition-all cursor-pointer text-left group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#121212] ${
                         isSelected
                           ? "bg-white dark:bg-[#1c1c1c] border-indigo-500/80 dark:border-indigo-500/80 shadow-sm ring-1 ring-indigo-500/20"
                           : "bg-white dark:bg-[#161616] border-slate-200/80 dark:border-[#262626] hover:border-slate-300 dark:hover:border-[#333]"
@@ -624,10 +648,10 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                             )}
                           </div>
                           <h3 className="text-xs font-semibold text-slate-900 dark:text-[#f3f3f3] truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                            {note.title}
+                            {note.title || "Tanpa Judul"}
                           </h3>
                           <p className="text-xs text-slate-500 dark:text-[#888] line-clamp-2 mt-1 leading-relaxed">
-                            {note.content.replace(/[#*`~_\[\]()>-]/g, "")}
+                            {(note.content || "").replace(/[#*`~_\[\]()>-]/g, "")}
                           </p>
                         </div>
                       </div>
@@ -1052,7 +1076,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                       pre: ({ children }) => <>{children}</>,
                     }}
                   >
-                    {activeNote.content}
+                    {activeNote.content || ""}
                   </Markdown>
                 </div>
 

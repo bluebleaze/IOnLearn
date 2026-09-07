@@ -262,7 +262,7 @@ export function LandingPage({
         </div>
 
         {/* Human Academic Note & Legal Links */}
-        <div className="mt-16 pt-8 border-t border-slate-200 dark:border-[#2b2b2b]/80 w-full flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400 dark:text-[#737373]">
+        <div className="mt-16 pt-8 border-t border-slate-200 dark:border-[#2b2b2b]/80 w-full flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 dark:text-[#a3a3a3]">
           <div className="flex items-center gap-2">
             <img
               src="/logos/logoionlearnkecil.png"

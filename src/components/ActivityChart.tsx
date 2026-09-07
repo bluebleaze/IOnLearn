@@ -61,7 +61,7 @@ export const ActivityChart: React.FC<ActivityChartProps> = ({ tasks }) => {
       </div>
 
       {totalActivity === 0 ? (
-        <p className="py-8 text-center text-xs text-slate-500 dark:text-[#737373]">
+        <p className="py-8 text-center text-xs text-slate-500 dark:text-[#a3a3a3]">
           Belum ada aktivitas minggu ini.
         </p>
       ) : (
@@ -89,7 +89,7 @@ export const ActivityChart: React.FC<ActivityChartProps> = ({ tasks }) => {
               </div>
             ))}
           </div>
-          <div className="flex justify-between mt-2.5 px-0.5 text-xs text-slate-400 dark:text-[#737373]">
+          <div className="flex justify-between mt-2.5 px-0.5 text-xs text-slate-500 dark:text-[#a3a3a3]">
             {days.map((day) => (
               <span
                 key={day.key}

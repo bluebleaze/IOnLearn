@@ -108,7 +108,7 @@ const SidebarBody: React.FC<SidebarProps & { onNavigate: () => void }> = (
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
         <div>
-          <p className="px-3 mb-1 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-[#737373]">
+          <p className="px-3 mb-1 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-[#a3a3a3]">
             Menu Utama
           </p>
           <div className="space-y-0.5">
@@ -126,7 +126,7 @@ const SidebarBody: React.FC<SidebarProps & { onNavigate: () => void }> = (
           </div>
         </div>
         <div>
-          <p className="px-3 mb-1 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-[#737373]">
+          <p className="px-3 mb-1 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-[#a3a3a3]">
             Lainnya
           </p>
           <div className="space-y-0.5">
@@ -180,7 +180,7 @@ const SidebarBody: React.FC<SidebarProps & { onNavigate: () => void }> = (
               <p className="text-xs font-semibold text-slate-800 dark:text-[#f5f5f5] truncate">
                 {props.userProfile.name?.split(" ")[0] || "Pelajar"}
               </p>
-              <p className="text-xs text-slate-500 dark:text-[#737373] truncate">
+              <p className="text-xs text-slate-500 dark:text-[#a3a3a3] truncate">
                 {props.userProfile.email}
               </p>
             </div>
@@ -189,7 +189,7 @@ const SidebarBody: React.FC<SidebarProps & { onNavigate: () => void }> = (
             )}
           </div>
         ) : (
-          <div className="px-1 text-xs text-slate-500 dark:text-[#737373]">
+          <div className="px-1 text-xs text-slate-500 dark:text-[#a3a3a3]">
             Belum terhubung akun Google.
           </div>
         )}

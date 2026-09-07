@@ -80,9 +80,9 @@ export const Navbar: React.FC<NavbarProps> = ({
               size="iconSm"
               onClick={onOpenMobileNav}
               title="Buka Menu"
-              className="md:hidden text-slate-500 hover:text-slate-800 dark:text-[#a3a3a3] dark:hover:text-[#f5f5f5] hover:bg-slate-100 dark:hover:bg-[#141414] rounded-xl"
+              className="md:hidden min-w-[44px] min-h-[44px] text-slate-500 hover:text-slate-800 dark:text-[#a3a3a3] dark:hover:text-[#f5f5f5] hover:bg-slate-100 dark:hover:bg-[#141414] rounded-xl"
             >
-              <Menu className="w-4 h-4" />
+              <Menu className="w-5 h-5" />
             </Button>
             <a href="/" className="flex items-center gap-2 shrink-0">
               <img
@@ -110,7 +110,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               size="sm"
               onClick={onOpenChat}
               title="Tanya penjelasan materi ke Asisten AI"
-              className="gap-1.5 dark:bg-[#141414] dark:border-[#2b2b2b] dark:text-[#a5b4fc] dark:hover:bg-[#161616]"
+              className="gap-1.5 min-h-[44px] sm:min-h-8 min-w-[44px] sm:min-w-0 px-3 dark:bg-[#141414] dark:border-[#2b2b2b] dark:text-[#a5b4fc] dark:hover:bg-[#161616]"
             >
               <MessageSquareText className="w-4 h-4 text-indigo-600 dark:text-[#a5b4fc] shrink-0" />
               <span className="hidden sm:inline">Tanya AI</span>
@@ -123,7 +123,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               size="iconSm"
               onClick={handleToggleTheme}
               title={currentTheme === "dark" ? "Ganti ke Mode Terang" : "Ganti ke Mode Gelap"}
-              className="text-slate-500 hover:text-slate-800 dark:text-[#a3a3a3] dark:hover:text-[#f5f5f5] hover:bg-slate-100 dark:hover:bg-[#141414] rounded-xl transition cursor-pointer"
+              className="min-w-[44px] min-h-[44px] text-slate-500 hover:text-slate-800 dark:text-[#a3a3a3] dark:hover:text-[#f5f5f5] hover:bg-slate-100 dark:hover:bg-[#141414] rounded-xl transition cursor-pointer"
             >
               {currentTheme === "dark" ? (
                 <Sun className="w-4 h-4 text-amber-400" />
@@ -138,7 +138,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <button
                   id="navbar-profile-menu-btn"
                   onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
-                  className="flex items-center gap-1.5 p-1 sm:px-2 sm:py-1 rounded-xl hover:bg-slate-100 dark:hover:bg-[#141414] transition cursor-pointer"
+                  className="min-w-[44px] min-h-[44px] flex items-center justify-center gap-1.5 p-1 sm:px-2 sm:py-1 rounded-xl hover:bg-slate-100 dark:hover:bg-[#141414] transition cursor-pointer"
                   title="Menu Akun & Pengaturan"
                 >
                   {userProfile?.picture ? (

@@ -139,7 +139,7 @@ export function AppSidebar({
                       className="h-6 w-auto object-contain"
                     />
                   </div>
-                  <span className="truncate whitespace-nowrap text-[11px] text-slate-500 dark:text-[#737373]">
+                  <span className="truncate whitespace-nowrap text-xs text-slate-500 dark:text-[#737373]">
                     {APP_TAGLINE}
                   </span>
                 </div>
@@ -152,7 +152,7 @@ export function AppSidebar({
       {/* Main Content */}
       <SidebarContent className="px-2 py-1 overflow-hidden whitespace-nowrap transition-[padding] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]">
         <SidebarGroup className="p-0 overflow-hidden">
-          <SidebarGroupLabel className="text-xs font-bold tracking-wider text-slate-400 dark:text-[#737373] uppercase px-2 mb-1.5 whitespace-nowrap truncate select-none">
+          <SidebarGroupLabel className="text-xs font-bold tracking-wider text-slate-500 dark:text-[#a3a3a3] uppercase px-2 mb-1.5 whitespace-nowrap truncate select-none">
             Menu Utama
           </SidebarGroupLabel>
           <SidebarGroupContent className="overflow-hidden">

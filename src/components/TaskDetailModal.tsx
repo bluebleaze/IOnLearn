@@ -187,11 +187,11 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
               variant="ghost"
               size="iconSm"
               onClick={onClose}
-              className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 bg-slate-100 dark:bg-[#202020] hover:bg-slate-200 dark:hover:bg-[#2a2a2a] rounded-xl border border-slate-200/80 dark:border-[#2b2b2b] transition cursor-pointer"
+              className="min-w-[44px] min-h-[44px] text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 bg-slate-100 dark:bg-[#202020] hover:bg-slate-200 dark:hover:bg-[#2a2a2a] rounded-xl border border-slate-200/80 dark:border-[#2b2b2b] transition cursor-pointer"
               title="Tutup"
               aria-label="Tutup"
             >
-              <X className="w-4 h-4" />
+              <X className="w-5 h-5" />
             </Button>
           </div>
 
@@ -255,13 +255,13 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
               onClick={handleToggleTaskComplete}
               variant={task.isCompleted ? "outline" : "emerald"}
               size="sm"
-              className={`flex-1 h-9 text-xs rounded-xl font-medium ${
+              className={`flex-1 min-h-[44px] text-xs rounded-xl font-medium ${
                 task.isCompleted
                   ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800"
                   : ""
               }`}
             >
-              <Check className="w-3.5 h-3.5 stroke-[3] mr-1.5" />
+              <Check className="w-4 h-4 stroke-[3] mr-1.5" />
               <span>{task.isCompleted ? "Ditandai Selesai" : "Tandai Selesai"}</span>
             </Button>
           )}
@@ -271,18 +271,18 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
               href={task.classroomLink}
               target="_blank"
               rel="noopener noreferrer"
-              className="h-9 px-3 text-slate-600 hover:text-slate-900 dark:text-[#aaa] dark:hover:text-[#fff] bg-slate-100 dark:bg-[#202020] hover:bg-slate-200 dark:hover:bg-[#2a2a2a] rounded-xl border border-slate-200/80 dark:border-[#2b2b2b] transition cursor-pointer flex items-center gap-1.5 text-xs font-medium shrink-0"
+              className="min-h-[44px] px-3.5 text-slate-600 hover:text-slate-900 dark:text-[#aaa] dark:hover:text-[#fff] bg-slate-100 dark:bg-[#202020] hover:bg-slate-200 dark:hover:bg-[#2a2a2a] rounded-xl border border-slate-200/80 dark:border-[#2b2b2b] transition cursor-pointer flex items-center gap-1.5 text-xs font-medium shrink-0"
               title="Buka di Google Classroom"
             >
-              <ExternalLink className="w-3.5 h-3.5" />
+              <ExternalLink className="w-4 h-4" />
               <span>Classroom</span>
             </a>
           )}
         </div>
 
         {/* Ask AI Copilot Strip */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 sm:p-3 bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40 rounded-xl text-xs">
-          <div className="flex items-center gap-2 text-indigo-900 dark:text-indigo-200 font-medium">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 sm:p-3 bg-slate-50 dark:bg-[#181818] border border-slate-200/80 dark:border-[#262626] rounded-xl text-xs">
+          <div className="flex items-center gap-2 text-slate-800 dark:text-[#e5e5e5] font-medium">
             <Sparkles className="w-4 h-4 text-indigo-600 dark:text-[#818cf8] shrink-0" />
             <span>Butuh penjelasan konsep atau panduan tugas ini?</span>
           </div>
@@ -292,9 +292,9 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
               onOpenChat(task.id);
             }}
             size="sm"
-            className="h-8 sm:h-7 text-xs rounded-lg gap-1.5 font-semibold bg-indigo-600 hover:bg-indigo-700 text-white w-full sm:w-auto shrink-0"
+            className="min-h-[44px] sm:min-h-7 text-xs rounded-lg gap-1.5 font-semibold bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 w-full sm:w-auto shrink-0"
           >
-            <MessageSquareText className="w-3.5 h-3.5" />
+            <MessageSquareText className="w-4 h-4" />
             <span>Tanya Asisten AI</span>
           </Button>
         </div>
@@ -304,7 +304,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
       <div className="px-3.5 sm:px-6 border-b border-slate-200/80 dark:border-[#262626] bg-white dark:bg-[#161616] flex items-center gap-1 overflow-x-auto no-scrollbar shrink-0 text-xs scroll-smooth">
         <button
           onClick={() => setActiveTab("summary")}
-          className={`py-2.5 sm:py-3 px-3 sm:px-3.5 font-semibold border-b-2 transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+          className={`min-h-[44px] py-2.5 sm:py-3 px-3 sm:px-3.5 font-semibold border-b-2 transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
             activeTab === "summary"
               ? "border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400"
               : "border-transparent text-slate-500 dark:text-[#888] hover:text-slate-800 dark:hover:text-[#eee]"
@@ -316,7 +316,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
         <button
           onClick={() => setActiveTab("checklist")}
-          className={`py-2.5 sm:py-3 px-3 sm:px-3.5 font-semibold border-b-2 transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+          className={`min-h-[44px] py-2.5 sm:py-3 px-3 sm:px-3.5 font-semibold border-b-2 transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
             activeTab === "checklist"
               ? "border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400"
               : "border-transparent text-slate-500 dark:text-[#888] hover:text-slate-800 dark:hover:text-[#eee]"
@@ -328,7 +328,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
         <button
           onClick={() => setActiveTab("youtube")}
-          className={`py-2.5 sm:py-3 px-3 sm:px-3.5 font-semibold border-b-2 transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+          className={`min-h-[44px] py-2.5 sm:py-3 px-3 sm:px-3.5 font-semibold border-b-2 transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
             activeTab === "youtube"
               ? "border-rose-600 text-rose-600 dark:border-rose-400 dark:text-rose-400"
               : "border-transparent text-slate-500 dark:text-[#888] hover:text-slate-800 dark:hover:text-[#eee]"
@@ -340,7 +340,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
         <button
           onClick={() => setActiveTab("notes")}
-          className={`py-2.5 sm:py-3 px-3 sm:px-3.5 font-semibold border-b-2 transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+          className={`min-h-[44px] py-2.5 sm:py-3 px-3 sm:px-3.5 font-semibold border-b-2 transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
             activeTab === "notes"
               ? "border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400"
               : "border-transparent text-slate-500 dark:text-[#888] hover:text-slate-800 dark:hover:text-[#eee]"
@@ -403,12 +403,12 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                 </div>
 
                 {/* Summary Text */}
-                <div className="p-4 bg-indigo-50/70 dark:bg-indigo-950/30 rounded-xl border border-indigo-100 dark:border-indigo-900/40 space-y-2">
-                  <h4 className="text-xs font-bold text-indigo-900 dark:text-indigo-300 flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                <div className="p-4 bg-slate-50 dark:bg-[#181818] rounded-xl border border-slate-200/80 dark:border-[#262626] space-y-2">
+                  <h4 className="text-xs font-bold text-slate-900 dark:text-[#f3f3f3] flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-indigo-600 dark:text-[#818cf8]" />
                     Ringkasan Materi & Intisari:
                   </h4>
-                  <p className="text-xs text-indigo-950 dark:text-indigo-200 leading-relaxed">
+                  <p className="text-xs text-slate-700 dark:text-[#d4d4d4] leading-relaxed">
                     {ai.summary}
                   </p>
                 </div>
@@ -423,9 +423,11 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                       {ai.keyConcepts.map((concept, idx) => (
                         <button
                           key={idx}
+                          type="button"
                           onClick={() => copyToClipboard(concept, concept)}
-                          className="px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 dark:bg-[#202020] dark:hover:bg-[#282828] text-slate-800 dark:text-[#eee] border border-slate-200/80 dark:border-[#2b2b2b] transition cursor-pointer flex items-center gap-1.5"
+                          className="px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 dark:bg-[#202020] dark:hover:bg-[#282828] text-slate-800 dark:text-[#eee] border border-slate-200/80 dark:border-[#2b2b2b] transition cursor-pointer flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-500"
                           title="Klik untuk menyalin konsep"
+                          aria-label={`Salin konsep "${concept}"`}
                         >
                           <span>{concept}</span>
                           {copiedConcept === concept ? (
@@ -483,7 +485,8 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                         href={link}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#181818] hover:bg-slate-100 dark:hover:bg-[#222] border border-slate-200/80 dark:border-[#262626] transition flex items-center justify-between gap-2"
+                        className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#181818] hover:bg-slate-100 dark:hover:bg-[#222] border border-slate-200/80 dark:border-[#262626] transition flex items-center justify-between gap-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-500"
+                        aria-label={`Buka lampiran "${title}"`}
                       >
                         <div className="flex items-center gap-2 truncate">
                           {mat.youtubeVideo ? (
@@ -526,23 +529,31 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                 {ai.checklist.map((item) => (
                   <div
                     key={item.id}
+                    role="checkbox"
+                    tabIndex={0}
+                    aria-checked={item.done}
                     onClick={() => onToggleChecklistItem(task.id, item.id)}
-                    className={`p-3 rounded-xl border transition-all cursor-pointer flex items-start gap-3 ${
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        onToggleChecklistItem(task.id, item.id);
+                      }
+                    }}
+                    className={`p-3 rounded-xl border transition-all cursor-pointer min-h-[44px] flex items-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
                       item.done
                         ? "bg-slate-50/70 dark:bg-[#151515] border-slate-200/70 dark:border-[#222] opacity-75"
                         : "bg-white dark:bg-[#181818] border-slate-200/80 dark:border-[#262626] hover:border-indigo-400 dark:hover:border-indigo-900/50"
                     }`}
                   >
-                    <button
-                      type="button"
-                      className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 mt-0.5 transition ${
+                    <div
+                      className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 transition ${
                         item.done
                           ? "bg-emerald-500 text-white"
                           : "border border-slate-300 dark:border-[#444]"
                       }`}
                     >
                       {item.done && <Check className="w-3 h-3 stroke-[3]" />}
-                    </button>
+                    </div>
                     <span className={`text-xs leading-relaxed ${item.done ? "line-through text-slate-400 dark:text-[#777]" : "text-slate-800 dark:text-[#eee]"}`}>
                       {item.text}
                     </span>
@@ -617,7 +628,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
               <label className="text-xs font-bold text-slate-700 dark:text-[#ccc] block">
                 Catatan Belajar & Draf Jawaban Anda:
               </label>
-              <p className="text-xs text-slate-400 dark:text-[#777]">
+              <p className="text-xs text-slate-600 dark:text-[#a3a3a3]">
                 Tuliskan poin penting, rumus, atau draf pengerjaan tugas di sini.
               </p>
             </div>
@@ -646,7 +657,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
       {/* 4. Footer Rail */}
       <div className="p-3.5 sm:p-4 border-t border-slate-200/80 dark:border-[#262626] bg-slate-50/70 dark:bg-[#141414] flex items-center justify-between gap-3 shrink-0 text-xs pb-[calc(0.875rem+env(safe-area-inset-bottom,0px))]">
-        <span className="text-slate-400 dark:text-[#666] truncate text-xs">
+        <span className="text-slate-500 dark:text-[#a3a3a3] truncate text-xs">
           IOnLearn Study Copilot
         </span>
         <Button

@@ -33,6 +33,8 @@ import {
 } from "@/components/ui/breadcrumb";
 import { CheckCircle2, RefreshCw, Sun, Moon } from "lucide-react";
 import { toggleThemeWithCircularAnimation } from "../lib/theme";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 
 interface ShellContextValue {
   userProfile: UserProfile | null;
@@ -71,7 +73,9 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
   useEffect(() => {
     setHydrated(true);
     setToken(ClassroomService.getStoredToken());
-    setUserProfile(ClassroomService.getUserProfile());
+    const storedProfile = ClassroomService.getUserProfile();
+    setUserProfile(storedProfile);
+
     if (typeof window !== "undefined") {
       setIsDark(document.documentElement.classList.contains("dark"));
       const savedSync = localStorage.getItem("last_classroom_sync");
@@ -79,6 +83,22 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
         setLastSyncedAt(new Date(savedSync));
       }
     }
+
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (firebaseUser) {
+        setUserProfile((prev) => {
+          const updated: UserProfile = {
+            name: firebaseUser.displayName || prev?.name || firebaseUser.email || "Pelajar",
+            email: firebaseUser.email || prev?.email || "",
+            picture: firebaseUser.photoURL || prev?.picture || undefined,
+          };
+          localStorage.setItem("classroom_user_profile", JSON.stringify(updated));
+          return updated;
+        });
+      }
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const handleToggleTheme = (e: React.MouseEvent) => {

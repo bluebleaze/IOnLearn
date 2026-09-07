@@ -1,6 +1,189 @@
 import { NextResponse } from "next/server";
 import { GoogleGenAI, Type } from "@google/genai";
 import { AIConfig } from "@/types";
+const KNOWN_SUBJECTS = [
+    "Fisika",
+    "Matematika",
+    "Biologi",
+    "Kimia",
+    "Informatika",
+    "Pemrograman",
+    "Algoritma",
+    "Statistika",
+    "Kalkulus",
+    "Basis Data",
+    "Jaringan Komputer",
+    "Sistem Operasi",
+    "Bahasa Indonesia",
+    "Bahasa Inggris",
+    "Sejarah",
+    "Ekonomi",
+    "Geografi",
+    "Sosiologi",
+    "Akuntansi",
+    "Kewirausahaan",
+    "Kewarganegaraan",
+];
+
+const IGNORED_TAG_WORDS = new Set([
+    "ai copilot",
+    "ai",
+    "copilot",
+    "socratic",
+    "direct",
+    "quizzer",
+    "chat",
+    "chat ai",
+    "rangkuman",
+    "catatan ai",
+    "belajar ai",
+    "catatan",
+    "materi",
+    "general",
+    "umum",
+    "tag",
+    "tags",
+    "label",
+]);
+
+function cleanAndNormalizeTags(rawTags: (string | undefined | null)[]): string[] {
+    const result: string[] = [];
+    const seen = new Set<string>();
+
+    for (const raw of rawTags) {
+        if (!raw || typeof raw !== "string") continue;
+        const parts = raw.split(",");
+        for (let p of parts) {
+            p = p.replace(/^[#\s*>-]+/, "").replace(/[*_`~#]/g, "").trim();
+            if (!p || p.length < 2) continue;
+            const lower = p.toLowerCase();
+            if (IGNORED_TAG_WORDS.has(lower)) continue;
+            if (seen.has(lower)) continue;
+
+            seen.add(lower);
+            if (lower === "uas" || lower === "uts" || lower === "ti" || lower === "si" || lower === "ipa" || lower === "ips") {
+                result.push(lower.toUpperCase());
+            } else {
+                const formatted = p.charAt(0).toUpperCase() + p.slice(1);
+                result.push(formatted);
+            }
+        }
+    }
+
+    return result.slice(0, 3);
+}
+
+function sanitizeNoteOutput(
+    rawNote: any,
+    replyText?: string,
+    taskContext?: any
+): { title: string; content: string; subject: string; tags: string[] } | undefined {
+    if (!rawNote || typeof rawNote !== "object") return undefined;
+
+    let rawTitle = typeof rawNote.title === "string" ? rawNote.title.trim() : "";
+    let rawContent = typeof rawNote.content === "string" ? rawNote.content.trim() : "";
+    let subject = typeof rawNote.subject === "string" && rawNote.subject.trim()
+        ? rawNote.subject.trim()
+        : taskContext?.courseName || "";
+    const rawTags: string[] = Array.isArray(rawNote.tags)
+        ? rawNote.tags.map((t: any) => String(t).trim()).filter(Boolean)
+        : [];
+
+    // If content is empty/missing, but title contains the whole note / markdown
+    if (!rawContent && rawTitle) {
+        rawContent = rawTitle;
+    }
+
+    // If content is still empty, fallback to replyText
+    if (!rawContent && replyText && replyText.trim()) {
+        rawContent = replyText.trim();
+    }
+
+    if (!rawContent && !rawTitle) {
+        return undefined;
+    }
+
+    // Extract a clean, concise title (under 70 chars, no markdown tokens)
+    let cleanTitle = rawTitle;
+    const firstLine = (rawTitle || rawContent).split("\n")[0].trim();
+    const delimMatch = firstLine.match(/^(.*?)(?:\s+[-–—]\s+|\.\s+###|\s*###|:\s+)/);
+    if (delimMatch && delimMatch[1] && delimMatch[1].trim().length >= 4) {
+        cleanTitle = delimMatch[1].trim();
+    } else {
+        const dotIdx = firstLine.indexOf(". ");
+        if (dotIdx > 4 && dotIdx <= 70) {
+            cleanTitle = firstLine.slice(0, dotIdx);
+        } else {
+            cleanTitle = firstLine.slice(0, 70);
+        }
+    }
+
+    cleanTitle = cleanTitle
+        .replace(/^[#\s*>-]+/, "")
+        .replace(/[*_`~]/g, "")
+        .replace(/["'{}]/g, "")
+        .trim();
+
+    if (!cleanTitle || cleanTitle.length < 3) {
+        cleanTitle = taskContext?.title ? `Catatan: ${taskContext.title}` : "Catatan Materi AI";
+    }
+
+    // Extract any trailing embedded tag line from markdown content (e.g. "### Tag: #Fisika #Mekanika #Rotasi")
+    const trailingTagLineMatch = rawContent.match(/(?:^|\n)\s*(?:###?\s*)?(?:Tag|Tags|Label|Labels|Hashtags)\s*:\s*([^\n]+)$/i);
+    if (trailingTagLineMatch && trailingTagLineMatch[1]) {
+        const lineTags = trailingTagLineMatch[1].match(/#?([a-zA-Z0-9_-]+)/g);
+        if (lineTags) {
+            lineTags.forEach((t: string) => {
+                const clean = t.replace(/^#/, "").trim();
+                if (clean) rawTags.push(clean);
+            });
+        }
+    }
+
+    // Strip trailing tag lines and trailing hashtags block from content so they don't duplicate
+    rawContent = rawContent
+        .replace(/(?:\r?\n)+\s*(?:###?\s*)?(?:Tag|Tags|Label|Labels|Hashtags)\s*:\s*[^\n]+$/i, "")
+        .replace(/(?:\r?\n)+\s*(?:#[a-zA-Z0-9_-]+\s*){1,10}$/i, "")
+        .trim();
+
+    // Ensure rawContent is not just the 1-line short title if replyText has more body
+    if (rawContent === cleanTitle && replyText && replyText.trim().length > cleanTitle.length) {
+        rawContent = replyText
+            .replace(/(?:\r?\n)+\s*(?:###?\s*)?(?:Tag|Tags|Label|Labels|Hashtags)\s*:\s*[^\n]+$/i, "")
+            .replace(/(?:\r?\n)+\s*(?:#[a-zA-Z0-9_-]+\s*){1,10}$/i, "")
+            .trim();
+    }
+
+    let cleanedTags = cleanAndNormalizeTags(rawTags);
+
+    // Subject inference & cleanup
+    if (!subject || subject === "Belajar AI" || subject === "Catatan AI" || subject === "Umum") {
+        const subjectFromTag = cleanedTags.find((t: string) =>
+            KNOWN_SUBJECTS.some((ks: string) => ks.toLowerCase() === t.toLowerCase())
+        );
+        if (subjectFromTag) {
+            subject = subjectFromTag;
+            cleanedTags = cleanedTags.filter((t: string) => t.toLowerCase() !== subjectFromTag.toLowerCase());
+        } else {
+            const subjectFromTitle = KNOWN_SUBJECTS.find((ks: string) =>
+                new RegExp(`\\b${ks}\\b`, "i").test(cleanTitle) || new RegExp(`\\b${ks}\\b`, "i").test(rawTitle)
+            );
+            subject = subjectFromTitle || (taskContext?.courseName ? taskContext.courseName : "Catatan Materi");
+        }
+    }
+
+    if (subject) {
+        cleanedTags = cleanedTags.filter((t: string) => t.toLowerCase() !== subject.toLowerCase());
+    }
+
+    return {
+        title: cleanTitle,
+        content: rawContent,
+        subject: subject || "Catatan Materi",
+        tags: cleanedTags,
+    };
+}
+
 function extractFallbackActions(
     lastUserMessage: string,
     replyText: string,
@@ -28,14 +211,18 @@ function extractFallbackActions(
             ? headingLine.replace(/^[#\s*]+/, "").trim()
             : lines[0]?.replace(/^[#\s*]+/, "").slice(0, 60) || "Catatan Materi AI";
 
-        const cleanTitle = rawTitle.replace(/["'{}]/g, "").slice(0, 80);
+        const cleanTitle = rawTitle.replace(/["'{}]/g, "").slice(0, 70);
 
-        createdNote = {
-            title: cleanTitle || (taskContext?.title ? `Catatan: ${taskContext.title}` : "Catatan Materi AI"),
-            content: replyText,
-            subject: taskContext?.courseName || "Belajar Mandiri",
-            tags: ["AI Copilot", "Rangkuman"],
-        };
+        createdNote = sanitizeNoteOutput(
+            {
+                title: cleanTitle || (taskContext?.title ? `Catatan: ${taskContext.title}` : "Catatan Materi AI"),
+                content: replyText,
+                subject: taskContext?.courseName || "Belajar Mandiri",
+                tags: ["AI Copilot", "Rangkuman"],
+            },
+            replyText,
+            taskContext
+        );
     }
 
     // Check To-Do intent: "to-do", "todo", "to do", "daftar tugas", "list tugas", "langkah", "action plan", "jadwal", "rencana"
@@ -152,7 +339,13 @@ Pedoman Anda:
 
 Fitur Otomatisasi Terintegrasi (Actions):
 - KETIKA PENGGUNA MEMINTA MEMBUATKAN CATATAN / MENYIMPAN CATATAN MATERI (misal: "buatkan catatan materi tentang...", "simpan ini ke catatan", "catatkan rangkuman ini"):
-  Isi field "createdNote" dengan objek { "title": "Judul Catatan", "content": "Isi lengkap catatan format Markdown terstruktur", "subject": "Nama Mata Pelajaran/Topik", "tags": ["tag1", "tag2"] }.
+  Isi field "createdNote" dengan objek:
+  {
+    "title": "Judul Singkat Catatan (Maks 6-8 kata, contoh: 'Konsep Momen Inersia & Rotasi', HANYA judul topik tanpa markdown/prefix)",
+    "content": "Isi lengkap materi format Markdown terstruktur. PENTING: JANGAN menambahkan baris '### Tag: ...' atau hashtag di akhir teks content, karena tag sudah terpisah di field 'tags'.",
+    "subject": "Nama Mata Pelajaran/Kuliah Asli (Contoh: Fisika, Matematika, Biologi, Kimia, Algoritma, BUKAN 'Belajar AI')",
+    "tags": ["Label1", "Label2"] (1-3 label akademik relevan tanpa simbol '#', contoh: ["Mekanika", "UAS", "Rumus"])
+  }
 - KETIKA PENGGUNA MEMINTA MEMBUATKAN TO-DO LIST / DAFTAR TUGAS / ACTION PLAN (misal: "buatkan to-do list belajar...", "jadikan to-do", "buat langkah to-do"):
   PENTING: Buat menjadi 1 tugas utama terpadu yang memuat kumpulan sub-langkah (subtasks). JANGAN membuat banyak tugas terpisah.
   Isi field "createdTodo" dengan objek:
@@ -193,7 +386,7 @@ Fitur Otomatisasi Terintegrasi (Actions):
                     role: "system",
                     content:
                         systemInstruction +
-                        '\n\nKEMBALIKAN OUTPUT HARUS HANYA DALAM BENTUK JSON OBJECT YANG VALID SESUAI SKEMA BERIKUT:\n{\n  "reply": "Jawaban Markdown",\n  "suggestedPrompts": ["Pertanyaan 1", "Pertanyaan 2"],\n  "createdNote": { "title": "Judul", "content": "Isi Markdown", "subject": "Mata Kuliah", "tags": ["tag"] },\n  "createdTodo": { "title": "Judul Rencana", "description": "Deskripsi", "priority": "medium", "category": "Materi", "subtasks": [{ "title": "Langkah 1" }, { "title": "Langkah 2" }] }\n}',
+                        '\n\nKEMBALIKAN OUTPUT HARUS HANYA DALAM BENTUK JSON OBJECT YANG VALID SESUAI SKEMA BERIKUT:\n{\n  "reply": "Jawaban Markdown",\n  "suggestedPrompts": ["Pertanyaan 1", "Pertanyaan 2"],\n  "createdNote": { "title": "Judul Singkat", "content": "Isi Markdown tanpa baris tag di akhir", "subject": "Nama Mata Kuliah", "tags": ["Mekanika", "UAS"] },\n  "createdTodo": { "title": "Judul Rencana", "description": "Deskripsi", "priority": "medium", "category": "Materi", "subtasks": [{ "title": "Langkah 1" }, { "title": "Langkah 2" }] }\n}',
                 },
                 ...messages.map((m: any) => {
                     if (m.attachments && Array.isArray(m.attachments) && m.attachments.length > 0) {
@@ -323,10 +516,10 @@ Fitur Otomatisasi Terintegrasi (Actions):
                             createdNote: {
                                 type: Type.OBJECT,
                                 description:
-                                    "Catatan materi baru yang otomatis dibuatkan dan disimpan jika pengguna meminta membuat catatan.",
+                                    "Catatan materi baru jika pengguna meminta catatan. Field 'title' HANYA judul singkat (maks 60 karakter), seluruh isi penjelasan masuk ke 'content'.",
                                 properties: {
-                                    title: { type: Type.STRING, description: "Judul catatan materi" },
-                                    content: { type: Type.STRING, description: "Isi lengkap catatan dalam Markdown" },
+                                    title: { type: Type.STRING, description: "Judul singkat topik catatan (maks 60 karakter, HANYA judul)" },
+                                    content: { type: Type.STRING, description: "Isi lengkap catatan format Markdown terstruktur" },
                                     subject: { type: Type.STRING, description: "Mata kuliah atau topik materi" },
                                     tags: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Tag materi" },
                                 },
@@ -380,7 +573,9 @@ Fitur Otomatisasi Terintegrasi (Actions):
         const lastUserMsg = [...messages].reverse().find((m: any) => m.role === "user")?.content || "";
         const fallback = extractFallbackActions(lastUserMsg, resultData.reply || responseText, taskContext);
 
-        const finalNote = resultData.createdNote || fallback.createdNote || undefined;
+        const finalNote = sanitizeNoteOutput(resultData.createdNote, resultData.reply || responseText, taskContext)
+            || fallback.createdNote
+            || undefined;
         const finalTodo = resultData.createdTodo || (resultData.createdTodos && resultData.createdTodos.length > 0 ? undefined : fallback.createdTodo) || undefined;
         const finalTodos = resultData.createdTodos || undefined;
 

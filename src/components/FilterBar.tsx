@@ -92,7 +92,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
       {/* Quick Subject Chips */}
       {courses.length > 0 && (
         <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 text-xs no-scrollbar pt-1">
-          <span className="text-slate-400 dark:text-[#737373] text-xs font-semibold mr-1 shrink-0">
+          <span className="text-slate-500 dark:text-[#a3a3a3] text-xs font-semibold mr-1 shrink-0">
             Pelajaran:
           </span>
           <button
