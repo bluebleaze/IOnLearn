@@ -58,9 +58,9 @@ export class ClassroomService {
         };
         safeSetItem(USER_PROFILE_KEY, JSON.stringify(profile));
         
-        // Caching for session (as per previous flow for compatibility, though memory is better)
+        // Persistent session storage
         safeSetItem(TOKEN_KEY, credential.accessToken);
-        safeSetItem(TOKEN_EXPIRY_KEY, (Date.now() + 3600 * 1000).toString());
+        safeSetItem(TOKEN_EXPIRY_KEY, (Date.now() + 30 * 24 * 3600 * 1000).toString());
         return { token: credential.accessToken, profile };
       }
     } catch (e: any) {
@@ -80,15 +80,7 @@ export class ClassroomService {
   // Check if current stored token is valid
   public static getStoredToken(): string | null {
     const token = safeGetItem(TOKEN_KEY);
-    const expiry = safeGetItem(TOKEN_EXPIRY_KEY);
-
-    if (!token || !expiry) return null;
-
-    if (Date.now() > parseInt(expiry, 10)) {
-      this.logout();
-      return null;
-    }
-
+    if (!token) return null;
     return token;
   }
 

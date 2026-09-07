@@ -194,13 +194,9 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
         error.message?.includes("401") ||
         error.message?.includes("kadaluwarsa");
       if (is401) {
-        setToken(null);
-        setUserProfile(null);
-        setLoginError(
-          "Sesi token Google Classroom Anda telah kadaluwarsa (401). Silakan klik 'Masuk dengan Google' untuk memperbarui akses."
-        );
-        toast.error("Sesi Google Kadaluwarsa", {
-          description: "Silakan masuk kembali dengan akun Google Anda.",
+        toast.warning("Akses Classroom Perlu Diperbarui", {
+          description:
+            "Sesi Google Classroom telah berakhir. Klik avatar profil atau tombol sinkronisasi untuk masuk kembali.",
         });
       } else {
         toast.warning("Sinkronisasi Offline", {
@@ -283,7 +279,6 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
         localStorage.setItem(key, JSON.stringify(newTasks));
         persist(newTasks);
         await syncWithToken(result.token, newTasks, result.profile.email);
-        router.replace("/");
       } else {
         setLoginError("Gagal mendapatkan akses dari Google.");
       }
