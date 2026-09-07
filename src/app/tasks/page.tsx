@@ -45,7 +45,7 @@ import { toast } from "@/components/ui/sonner";
 import confetti from "canvas-confetti";
 
 type ViewMode = "grid" | "kanban" | "table";
-type StatusFilter = "pending" | "ai-ready" | "all" | "completed";
+type StatusFilter = "all" | "urgent" | "later" | "overdue" | "completed";
 
 const truncateWords = (text: string, maxWords: number = 12): string => {
   if (!text) return "";
@@ -60,11 +60,16 @@ export default function TasksPage() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCourse, setSelectedCourse] = useState<string>("all");
-  const [statusTab, setStatusTab] = useState<StatusFilter>("pending");
+  const [statusTab, setStatusTab] = useState<StatusFilter>("all");
   const [sortBy, setSortBy] = useState<"due-asc" | "due-desc" | "priority" | "newest">("due-asc");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
-  const [activeDetailTask, setActiveDetailTask] = useState<TodoTask | null>(null);
+  const [activeDetailTaskId, setActiveDetailTaskId] = useState<string | null>(null);
   const [breakingDownTaskId, setBreakingDownTaskId] = useState<string | null>(null);
+
+  const activeDetailTask = useMemo(() => {
+    if (!activeDetailTaskId) return null;
+    return tasks.find((t) => t.id === activeDetailTaskId) || null;
+  }, [tasks, activeDetailTaskId]);
 
   useEffect(() => {
     setTasks(loadTasks());
@@ -85,22 +90,64 @@ export default function TasksPage() {
     return Array.from(map.entries()).map(([name, count]) => ({ name, count }));
   }, [tasks]);
 
-  // Key metrics
+  // Key metrics & Priority Counts
   const counts = useMemo(() => {
-    const pending = tasks.filter((t) => !t.isCompleted).length;
-    const completed = tasks.filter((t) => t.isCompleted).length;
-    const aiReady = tasks.filter((t) => !t.isCompleted && Boolean(t.aiAnalysis)).length;
-    return { all: tasks.length, pending, completed, aiReady };
+    const now = Date.now();
+    let urgent = 0;
+    let later = 0;
+    let overdue = 0;
+    let completed = 0;
+
+    tasks.forEach((t) => {
+      if (t.isCompleted) {
+        completed++;
+      } else if (typeof t.dueTimestamp === "number" && !isNaN(t.dueTimestamp) && t.dueTimestamp < now) {
+        overdue++;
+      } else if (
+        t.priority === "high" ||
+        (typeof t.dueTimestamp === "number" && !isNaN(t.dueTimestamp) && t.dueTimestamp - now <= 48 * 3600 * 1000) ||
+        (!t.dueTimestamp && t.priority !== "low")
+      ) {
+        urgent++;
+      } else {
+        later++;
+      }
+    });
+
+    return { all: tasks.length, urgent, later, overdue, completed };
   }, [tasks]);
 
   // Filter & Sort
   const filteredTasks = useMemo(() => {
+    const now = Date.now();
     return tasks
       .filter((task) => {
         if (viewMode !== "kanban") {
-          if (statusTab === "pending" && task.isCompleted) return false;
-          if (statusTab === "completed" && !task.isCompleted) return false;
-          if (statusTab === "ai-ready" && (!task.aiAnalysis || task.isCompleted)) return false;
+          if (statusTab === "urgent") {
+            if (task.isCompleted) return false;
+            const isOverdue = typeof task.dueTimestamp === "number" && !isNaN(task.dueTimestamp) && task.dueTimestamp < now;
+            if (isOverdue) return false;
+            const isUrgent =
+              task.priority === "high" ||
+              (typeof task.dueTimestamp === "number" && !isNaN(task.dueTimestamp) && task.dueTimestamp - now <= 48 * 3600 * 1000) ||
+              (!task.dueTimestamp && task.priority !== "low");
+            if (!isUrgent) return false;
+          } else if (statusTab === "later") {
+            if (task.isCompleted) return false;
+            const isOverdue = typeof task.dueTimestamp === "number" && !isNaN(task.dueTimestamp) && task.dueTimestamp < now;
+            if (isOverdue) return false;
+            const isUrgent =
+              task.priority === "high" ||
+              (typeof task.dueTimestamp === "number" && !isNaN(task.dueTimestamp) && task.dueTimestamp - now <= 48 * 3600 * 1000) ||
+              (!task.dueTimestamp && task.priority !== "low");
+            if (isUrgent) return false;
+          } else if (statusTab === "overdue") {
+            if (task.isCompleted) return false;
+            const isOverdue = typeof task.dueTimestamp === "number" && !isNaN(task.dueTimestamp) && task.dueTimestamp < now;
+            if (!isOverdue) return false;
+          } else if (statusTab === "completed") {
+            if (!task.isCompleted) return false;
+          }
         }
 
         if (selectedCourse !== "all" && (task.courseName?.trim() || "Umum") !== selectedCourse) {
@@ -288,7 +335,7 @@ export default function TasksPage() {
     toast.info("Tugas Dihapus", { description: "Tugas telah dihapus dari daftar." });
   };
 
-  const isAllPendingDone = counts.all > 0 && counts.pending === 0;
+  const isAllPendingDone = counts.all > 0 && counts.completed === counts.all;
 
   const renderDueBadge = (task: TodoTask) => {
     if (!task.dueDateStr) return <span className="text-slate-500 dark:text-[#a3a3a3]">-</span>;
@@ -392,100 +439,116 @@ export default function TasksPage() {
                 <span className="hidden sm:inline">Tabel</span>
               </button>
             </div>
-
-
           </div>
         </div>
 
-        {/* ── Single Unified Filter & Status Bar ── */}
         <div className="bg-white dark:bg-[#161616] rounded-2xl p-3.5 sm:p-4 space-y-3 border border-slate-200/80 dark:border-[#262626] shadow-2xs">
-          {/* Status Segment Filters */}
-          <div className="flex items-center justify-between gap-2 flex-wrap pb-1 border-b border-slate-100 dark:border-[#222]">
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar text-xs">
-              <button
-                onClick={() => setStatusTab("pending")}
-                className={
-                  statusTab === "pending"
-                    ? "min-h-[44px] sm:min-h-0 px-3 py-2 sm:py-1.5 rounded-lg transition-colors cursor-pointer whitespace-nowrap font-semibold flex items-center gap-1.5 bg-amber-500 text-white shadow-2xs"
-                    : "min-h-[44px] sm:min-h-0 px-3 py-2 sm:py-1.5 rounded-lg transition-colors cursor-pointer whitespace-nowrap font-semibold flex items-center gap-1.5 text-slate-700 dark:text-[#888] hover:bg-slate-100 dark:hover:bg-[#222]"
-                }
-              >
-                <span>Perlu Dikerjakan</span>
-                <span
-                  className={
-                    statusTab === "pending"
-                      ? "px-1.5 py-0.2 rounded-md text-xs bg-amber-600 text-amber-50"
-                      : "px-1.5 py-0.2 rounded-md text-xs bg-slate-100 dark:bg-[#222] text-slate-700 dark:text-[#ccc]"
-                  }
-                >
-                  {counts.pending}
-                </span>
-              </button>
-
-              <button
-                onClick={() => setStatusTab("ai-ready")}
-                className={
-                  statusTab === "ai-ready"
-                    ? "min-h-[44px] sm:min-h-0 px-3 py-2 sm:py-1.5 rounded-lg transition-colors cursor-pointer whitespace-nowrap font-semibold flex items-center gap-1.5 bg-indigo-600 text-white shadow-2xs"
-                    : "min-h-[44px] sm:min-h-0 px-3 py-2 sm:py-1.5 rounded-lg transition-colors cursor-pointer whitespace-nowrap font-semibold flex items-center gap-1.5 text-slate-700 dark:text-[#888] hover:bg-slate-100 dark:hover:bg-[#222]"
-                }
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Siap AI</span>
-                <span
-                  className={
-                    statusTab === "ai-ready"
-                      ? "px-1.5 py-0.2 rounded-md text-xs bg-indigo-700 text-indigo-50"
-                      : "px-1.5 py-0.2 rounded-md text-xs bg-slate-100 dark:bg-[#222] text-slate-700 dark:text-[#ccc]"
-                  }
-                >
-                  {counts.aiReady}
-                </span>
-              </button>
-
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar text-xs">
               <button
                 onClick={() => setStatusTab("all")}
-                className={
+                className={`min-h-[44px] sm:min-h-0 px-3 py-2 sm:py-1.5 rounded-lg transition-colors cursor-pointer whitespace-nowrap font-semibold flex items-center gap-1.5 ${
                   statusTab === "all"
-                    ? "min-h-[44px] sm:min-h-0 px-3 py-2 sm:py-1.5 rounded-lg transition-colors cursor-pointer whitespace-nowrap font-semibold flex items-center gap-1.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xs"
-                    : "min-h-[44px] sm:min-h-0 px-3 py-2 sm:py-1.5 rounded-lg transition-colors cursor-pointer whitespace-nowrap font-semibold flex items-center gap-1.5 text-slate-700 dark:text-[#888] hover:bg-slate-100 dark:hover:bg-[#222]"
-                }
+                    ? "bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xs"
+                    : "text-slate-700 dark:text-[#888] hover:bg-slate-100 dark:hover:bg-[#222]"
+                }`}
               >
                 <span>Semua</span>
                 <span
-                  className={
+                  className={`px-1.5 py-0.2 rounded-md text-xs ${
                     statusTab === "all"
-                      ? "px-1.5 py-0.2 rounded-md text-xs bg-slate-700 dark:bg-slate-200 text-slate-100 dark:text-slate-900"
-                      : "px-1.5 py-0.2 rounded-md text-xs bg-slate-100 dark:bg-[#222] text-slate-700 dark:text-[#ccc]"
-                  }
+                      ? "bg-slate-700 dark:bg-slate-200 text-slate-100 dark:text-slate-900"
+                      : "bg-slate-100 dark:bg-[#222] text-slate-700 dark:text-[#ccc]"
+                  }`}
                 >
                   {counts.all}
                 </span>
               </button>
 
               <button
-                onClick={() => setStatusTab("completed")}
-                className={
-                  statusTab === "completed"
-                    ? "min-h-[44px] sm:min-h-0 px-3 py-2 sm:py-1.5 rounded-lg transition-colors cursor-pointer whitespace-nowrap font-semibold flex items-center gap-1.5 bg-emerald-600 text-white shadow-2xs"
-                    : "min-h-[44px] sm:min-h-0 px-3 py-2 sm:py-1.5 rounded-lg transition-colors cursor-pointer whitespace-nowrap font-semibold flex items-center gap-1.5 text-slate-700 dark:text-[#888] hover:bg-slate-100 dark:hover:bg-[#222]"
-                }
+                onClick={() => setStatusTab("urgent")}
+                className={`min-h-[44px] sm:min-h-0 px-3 py-2 sm:py-1.5 rounded-lg transition-colors cursor-pointer whitespace-nowrap font-semibold flex items-center gap-1.5 ${
+                  statusTab === "urgent"
+                    ? "bg-rose-600 text-white shadow-2xs"
+                    : "text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+                }`}
               >
+                <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
+                <span>Perlu Dikerjakan</span>
+                <span
+                  className={`px-1.5 py-0.2 rounded-md text-xs ${
+                    statusTab === "urgent"
+                      ? "bg-rose-700 text-rose-50"
+                      : "bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300"
+                  }`}
+                >
+                  {counts.urgent}
+                </span>
+              </button>
+
+              <button
+                onClick={() => setStatusTab("later")}
+                className={`min-h-[44px] sm:min-h-0 px-3 py-2 sm:py-1.5 rounded-lg transition-colors cursor-pointer whitespace-nowrap font-semibold flex items-center gap-1.5 ${
+                  statusTab === "later"
+                    ? "bg-slate-700 text-white shadow-2xs"
+                    : "text-slate-600 dark:text-[#aaa] hover:bg-slate-100 dark:hover:bg-[#222]"
+                }`}
+              >
+                <span className="w-2 h-2 rounded-full bg-slate-400 shrink-0" />
+                <span>Nanti</span>
+                <span
+                  className={`px-1.5 py-0.2 rounded-md text-xs ${
+                    statusTab === "later"
+                      ? "bg-slate-800 text-slate-100"
+                      : "bg-slate-100 dark:bg-[#222] text-slate-700 dark:text-[#ccc]"
+                  }`}
+                >
+                  {counts.later}
+                </span>
+              </button>
+
+              <button
+                onClick={() => setStatusTab("overdue")}
+                className={`min-h-[44px] sm:min-h-0 px-3 py-2 sm:py-1.5 rounded-lg transition-colors cursor-pointer whitespace-nowrap font-semibold flex items-center gap-1.5 ${
+                  statusTab === "overdue"
+                    ? "bg-amber-500 text-white shadow-2xs"
+                    : "text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                }`}
+              >
+                <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                <span>Telat</span>
+                <span
+                  className={`px-1.5 py-0.2 rounded-md text-xs ${
+                    statusTab === "overdue"
+                      ? "bg-amber-600 text-amber-50"
+                      : "bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300"
+                  }`}
+                >
+                  {counts.overdue}
+                </span>
+              </button>
+
+              <button
+                onClick={() => setStatusTab("completed")}
+                className={`min-h-[44px] sm:min-h-0 px-3 py-2 sm:py-1.5 rounded-lg transition-colors cursor-pointer whitespace-nowrap font-semibold flex items-center gap-1.5 ${
+                  statusTab === "completed"
+                    ? "bg-emerald-600 text-white shadow-2xs"
+                    : "text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                }`}
+              >
+                <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
                 <span>Selesai</span>
                 <span
-                  className={
+                  className={`px-1.5 py-0.2 rounded-md text-xs ${
                     statusTab === "completed"
-                      ? "px-1.5 py-0.2 rounded-md text-xs bg-emerald-700 text-emerald-50"
-                      : "px-1.5 py-0.2 rounded-md text-xs bg-slate-100 dark:bg-[#222] text-slate-700 dark:text-[#ccc]"
-                  }
+                      ? "bg-emerald-700 text-emerald-50"
+                      : "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300"
+                  }`}
                 >
                   {counts.completed}
                 </span>
               </button>
             </div>
-          </div>
 
-          {/* Search, Sort, & Course Filter in one unified row */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
             <div className="relative flex-1">
               <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-[#737373]" />
@@ -506,7 +569,6 @@ export default function TasksPage() {
               )}
             </div>
 
-            {/* Course Selector Dropdown */}
             {coursesWithCounts.length > 0 && (
               <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-[#181818] border border-slate-200/80 dark:border-[#2b2b2b] px-2.5 py-1.5 rounded-xl shrink-0">
                 <Filter className="w-3 h-3 text-slate-400" />
@@ -525,7 +587,6 @@ export default function TasksPage() {
               </div>
             )}
 
-            {/* Sort Dropdown */}
             <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-[#181818] border border-slate-200/80 dark:border-[#2b2b2b] px-2.5 py-1.5 rounded-xl shrink-0">
               <ArrowUpDown className="w-3 h-3 text-slate-400" />
               <select
@@ -535,25 +596,41 @@ export default function TasksPage() {
               >
                 <option value="due-asc" className="bg-white dark:bg-[#181818]">Tenggat Terdekat</option>
                 <option value="due-desc" className="bg-white dark:bg-[#181818]">Tenggat Terjauh</option>
-                <option value="priority" className="bg-white dark:bg-[#181818]">Prioritas</option>
-                <option value="newest" className="bg-white dark:bg-[#181818]">Terbaru</option>
+                <option value="priority" className="bg-white dark:bg-[#181818]">Prioritas Tertinggi</option>
+                <option value="newest" className="bg-white dark:bg-[#181818]">Paling Baru Ditambahkan</option>
               </select>
             </div>
           </div>
         </div>
 
-        {/* ── Empty State ── */}
-        {statusTab === "pending" && isAllPendingDone && !searchQuery && selectedCourse === "all" ? (
-          <div className="text-center py-16 px-6 bg-white dark:bg-[#161616] rounded-2xl border border-slate-200/80 dark:border-[#262626] shadow-2xs space-y-4">
-            <div className="w-14 h-14 mx-auto rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-2xs">
-              <Coffee className="w-7 h-7 stroke-[1.8]" />
+        {!isLoaded ? (
+          <div className="py-20 flex flex-col items-center justify-center space-y-3">
+            <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+            <p className="text-xs text-slate-500">Memuat daftar tugas...</p>
+          </div>
+        ) : tasks.length === 0 ? (
+          <div className="text-center py-16 px-4 bg-white dark:bg-[#161616] rounded-2xl border border-slate-200/80 dark:border-[#262626] shadow-2xs space-y-3">
+            <div className="w-12 h-12 mx-auto rounded-2xl bg-slate-100 dark:bg-[#202020] flex items-center justify-center text-slate-400">
+              <BookOpen className="w-6 h-6" />
+            </div>
+            <h3 className="text-base font-semibold text-slate-900 dark:text-[#f3f3f3]">
+              Belum Ada Tugas
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-[#888] max-w-sm mx-auto">
+              Tugas dari Google Classroom akan muncul otomatis di sini setelah akun disinkronkan.
+            </p>
+          </div>
+        ) : statusTab !== "all" && filteredTasks.length === 0 && counts.all > 0 ? (
+          <div className="text-center py-14 px-6 bg-white dark:bg-[#161616] rounded-2xl border border-slate-200/80 dark:border-[#262626] shadow-2xs space-y-3">
+            <div className="w-12 h-12 mx-auto rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shadow-2xs">
+              <CheckCircle2 className="w-6 h-6" />
             </div>
             <div className="max-w-md mx-auto space-y-1">
               <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-[#f3f3f3] font-heading">
-                Semua tugas kuliah sudah selesai 🎉
+                Tidak ada tugas di kategori ini
               </h3>
               <p className="text-xs text-slate-500 dark:text-[#888] leading-relaxed">
-                Tidak ada tugas mendesak. Waktunya istirahat atau mengulas materi belajar.
+                Semua tugas pada filter ini telah ditangani atau belum tersedia.
               </p>
             </div>
             <div className="flex items-center justify-center gap-2 pt-2">
@@ -563,14 +640,7 @@ export default function TasksPage() {
                 onClick={() => setStatusTab("all")}
                 className="text-xs rounded-xl"
               >
-                Lihat Arsip ({counts.all})
-              </Button>
-              <Button
-                size="sm"
-                onClick={() => router.push("/notes")}
-                className="text-xs rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white"
-              >
-                Catatan Materi
+                Lihat Semua Tugas ({counts.all})
               </Button>
             </div>
           </div>
@@ -585,14 +655,14 @@ export default function TasksPage() {
             <p className="text-xs text-slate-500 dark:text-[#888] max-w-xs mx-auto">
               Coba sesuaikan filter pencarian atau pilih kategori lainnya.
             </p>
-            {(searchQuery || selectedCourse !== "all" || statusTab !== "pending") && (
+            {(searchQuery || selectedCourse !== "all" || statusTab !== "all") && (
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => {
                   setSearchQuery("");
                   setSelectedCourse("all");
-                  setStatusTab("pending");
+                  setStatusTab("all");
                 }}
                 className="mt-1 text-xs rounded-xl"
               >
@@ -602,7 +672,6 @@ export default function TasksPage() {
           </div>
         ) : (
           <>
-            {/* ── MODE 1: GRID VIEW ────────────────────────────── */}
             {viewMode === "grid" && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredTasks.map((task) => (
@@ -611,7 +680,7 @@ export default function TasksPage() {
                     task={task}
                     onToggleComplete={handleToggleComplete}
                     onAnalyzeWithAI={handleAnalyzeWithAI}
-                    onOpenDetails={(t) => setActiveDetailTask(t)}
+                    onOpenDetails={(t) => setActiveDetailTaskId(t.id)}
                     onOpenChat={(taskId) => router.push(`/chat?taskId=${taskId}`)}
                     onDeleteTask={handleDeleteTask}
                     onBreakdownToTodo={handleBreakdownToTodo}
@@ -621,17 +690,15 @@ export default function TasksPage() {
               </div>
             )}
 
-            {/* ── MODE 2: KANBAN VIEW ──────────────────────────── */}
             {viewMode === "kanban" && (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
-                {/* Column 1: Perlu Dikerjakan */}
                 {(() => {
                   const pendingTasks = filteredTasks.filter((t) => !t.isCompleted && !t.aiAnalysis);
                   return (
                     <div className="bg-slate-50/70 dark:bg-[#141414] p-3.5 rounded-2xl border border-slate-200/70 dark:border-[#222] space-y-3">
                       <div className="flex items-center justify-between px-1">
                         <div className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-amber-500" />
+                          <span className="w-2 h-2 rounded-full bg-rose-500" />
                           <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-[#ccc]">
                             Perlu Dikerjakan
                           </h3>
@@ -654,11 +721,11 @@ export default function TasksPage() {
                               role="button"
                               tabIndex={0}
                               className="bg-white dark:bg-[#181818] p-3.5 rounded-xl border border-slate-200/80 dark:border-[#262626] shadow-2xs space-y-2.5 hover:border-slate-300 dark:hover:border-[#3a3a3a] transition-colors cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#141414]"
-                              onClick={() => setActiveDetailTask(task)}
+                              onClick={() => setActiveDetailTaskId(task.id)}
                               onKeyDown={(e) => {
                                 if (e.key === "Enter" || e.key === " ") {
                                   e.preventDefault();
-                                  setActiveDetailTask(task);
+                                  setActiveDetailTaskId(task.id);
                                 }
                               }}
                             >
@@ -714,41 +781,40 @@ export default function TasksPage() {
                   );
                 })()}
 
-                {/* Column 2: Siap AI & Materi */}
                 {(() => {
-                  const aiReadyTasks = filteredTasks.filter((t) => !t.isCompleted && Boolean(t.aiAnalysis));
+                  const readyTasks = filteredTasks.filter((t) => !t.isCompleted && t.aiAnalysis);
                   return (
                     <div className="bg-slate-50/70 dark:bg-[#141414] p-3.5 rounded-2xl border border-slate-200/70 dark:border-[#222] space-y-3">
                       <div className="flex items-center justify-between px-1">
                         <div className="flex items-center gap-2">
                           <span className="w-2 h-2 rounded-full bg-indigo-500" />
                           <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-[#ccc]">
-                            Siap AI & Materi
+                            Siap Belajar (AI)
                           </h3>
                         </div>
                         <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-white dark:bg-[#202020] text-slate-600 dark:text-[#888] shadow-2xs">
-                          {aiReadyTasks.length}
+                          {readyTasks.length}
                         </span>
                       </div>
 
                       <div className="space-y-2.5 min-h-[180px]">
-                        {aiReadyTasks.length === 0 ? (
+                        {readyTasks.length === 0 ? (
                           <div className="border border-dashed border-slate-200 dark:border-[#262626] rounded-xl p-5 text-center text-slate-400 text-xs">
                             <Sparkles className="w-4 h-4 mx-auto text-slate-300 dark:text-[#444] mb-1" />
-                            <p>Belum ada tugas dianalisis</p>
+                            <p>Belum ada analisis AI</p>
                           </div>
                         ) : (
-                          aiReadyTasks.map((task) => (
+                          readyTasks.map((task) => (
                             <div
                               key={task.id}
                               role="button"
                               tabIndex={0}
-                              className="bg-white dark:bg-[#181818] p-3.5 rounded-xl border border-slate-200/80 dark:border-[#262626] shadow-2xs space-y-2.5 hover:border-indigo-500/40 transition-colors cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#141414]"
-                              onClick={() => setActiveDetailTask(task)}
+                              className="bg-white dark:bg-[#181818] p-3.5 rounded-xl border border-slate-200/80 dark:border-[#262626] shadow-2xs space-y-2.5 hover:border-slate-300 dark:hover:border-[#3a3a3a] transition-colors cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#141414]"
+                              onClick={() => setActiveDetailTaskId(task.id)}
                               onKeyDown={(e) => {
                                 if (e.key === "Enter" || e.key === " ") {
                                   e.preventDefault();
-                                  setActiveDetailTask(task);
+                                  setActiveDetailTaskId(task.id);
                                 }
                               }}
                             >
@@ -783,9 +849,10 @@ export default function TasksPage() {
 
                               <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100 dark:border-[#242424]">
                                 <div>{renderDueBadge(task)}</div>
-                                <div className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-[#818cf8] font-medium">
-                                  <span>{task.aiAnalysis?.checklist?.length || 0} Langkah</span>
-                                </div>
+                                <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
+                                  <CheckCircle2 className="w-3 h-3" />
+                                  <span>Tersedia</span>
+                                </span>
                               </div>
                             </div>
                           ))
@@ -795,7 +862,6 @@ export default function TasksPage() {
                   );
                 })()}
 
-                {/* Column 3: Selesai */}
                 {(() => {
                   const completedTasks = filteredTasks.filter((t) => t.isCompleted);
                   return (
@@ -815,7 +881,6 @@ export default function TasksPage() {
                       <div className="space-y-2.5 min-h-[180px]">
                         {completedTasks.length === 0 ? (
                           <div className="border border-dashed border-slate-200 dark:border-[#262626] rounded-xl p-5 text-center text-slate-400 text-xs">
-                            <Check className="w-4 h-4 mx-auto text-slate-300 dark:text-[#444] mb-1" />
                             <p>Belum ada tugas selesai</p>
                           </div>
                         ) : (
@@ -824,18 +889,18 @@ export default function TasksPage() {
                               key={task.id}
                               role="button"
                               tabIndex={0}
-                              className="bg-white dark:bg-[#181818] p-3.5 rounded-xl border border-slate-200/80 dark:border-[#262626] shadow-2xs space-y-2.5 opacity-75 hover:opacity-100 transition-all cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#141414]"
-                              onClick={() => setActiveDetailTask(task)}
+                              className="bg-white/60 dark:bg-[#141414] p-3.5 rounded-xl border border-slate-200/70 dark:border-[#202020] shadow-2xs space-y-2 opacity-80 hover:opacity-100 transition cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                              onClick={() => setActiveDetailTaskId(task.id)}
                               onKeyDown={(e) => {
                                 if (e.key === "Enter" || e.key === " ") {
                                   e.preventDefault();
-                                  setActiveDetailTask(task);
+                                  setActiveDetailTaskId(task.id);
                                 }
                               }}
                             >
                               <div className="flex items-start justify-between gap-2">
-                                <span className="text-xs text-slate-600 dark:text-[#a3a3a3] truncate max-w-[140px]">
-                                  {task.courseName}
+                                <span className="text-xs font-medium px-2 py-0.5 rounded bg-slate-100 dark:bg-[#1e1e1e] text-slate-600 dark:text-[#8e8e8e] truncate max-w-[140px]">
+                                  {task.courseName || "Kuliah"}
                                 </span>
                                 <button
                                   type="button"
@@ -849,21 +914,18 @@ export default function TasksPage() {
                                     }
                                   }}
                                   className="min-w-[44px] min-h-[44px] -m-2.5 flex items-center justify-center cursor-pointer shrink-0 focus-visible:outline-none"
-                                  title="Batal Selesai"
+                                  title="Tandai Belum Selesai"
                                   aria-label={`Tandai "${task.title}" belum selesai`}
                                 >
-                                  <span className="w-5 h-5 rounded-md bg-emerald-500 text-white flex items-center justify-center transition focus-visible:ring-1 focus-visible:ring-emerald-400">
+                                  <span className="w-5 h-5 rounded-md bg-emerald-500 text-white flex items-center justify-center transition">
                                     <Check className="w-3 h-3 stroke-[3]" />
                                   </span>
                                 </button>
                               </div>
-                              <h4 className="text-xs font-semibold text-slate-500 dark:text-[#888] line-through line-clamp-2 leading-relaxed">
+
+                              <h4 className="text-xs font-medium line-through text-slate-500 dark:text-[#777] line-clamp-2 leading-relaxed">
                                 {truncateWords(task.title, 12)}
                               </h4>
-                              <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100 dark:border-[#242424] text-slate-500 dark:text-[#a3a3a3]">
-                                <div>Selesai</div>
-                                <span className="text-xs font-medium">Buka Detail →</span>
-                              </div>
                             </div>
                           ))
                         )}
@@ -874,19 +936,17 @@ export default function TasksPage() {
               </div>
             )}
 
-            {/* ── MODE 3: COMPACT TABLE VIEW ──────────────────── */}
             {viewMode === "table" && (
-              <div className="bg-white dark:bg-[#161616] rounded-2xl border border-slate-200/80 dark:border-[#262626] shadow-2xs overflow-hidden">
+              <div className="bg-white dark:bg-[#161616] rounded-2xl border border-slate-200/80 dark:border-[#262626] overflow-hidden shadow-2xs">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs border-collapse">
                     <thead>
-                      <tr className="border-b border-slate-200/80 dark:border-[#262626] bg-slate-50/70 dark:bg-[#181818] text-slate-500 dark:text-[#888] font-semibold">
-                        <th className="py-3 px-4 w-10">Status</th>
+                      <tr className="border-b border-slate-200/80 dark:border-[#262626] bg-slate-50/70 dark:bg-[#181818] text-slate-600 dark:text-[#888]">
+                        <th className="py-3 px-4 w-10 text-center">Status</th>
                         <th className="py-3 px-4">Judul Tugas</th>
-                        <th className="py-3 px-4">Mata Kuliah</th>
+                        <th className="py-3 px-4 hidden md:table-cell">Mata Kuliah</th>
                         <th className="py-3 px-4">Batas Waktu</th>
-                        <th className="py-3 px-4">Poin</th>
-                        <th className="py-3 px-4">AI Materi</th>
+                        <th className="py-3 px-4 hidden sm:table-cell">AI Ready</th>
                         <th className="py-3 px-4 text-right">Aksi</th>
                       </tr>
                     </thead>
@@ -894,41 +954,42 @@ export default function TasksPage() {
                       {filteredTasks.map((task) => (
                         <tr
                           key={task.id}
-                          onClick={() => setActiveDetailTask(task)}
-                          className="hover:bg-slate-50/80 dark:hover:bg-[#1c1c1c] transition-colors cursor-pointer"
+                          className="hover:bg-slate-50/60 dark:hover:bg-[#1a1a1a] transition-colors cursor-pointer"
+                          onClick={() => setActiveDetailTaskId(task.id)}
                         >
-                          <td className="py-2.5 px-4" onClick={(e) => e.stopPropagation()}>
+                          <td className="py-2.5 px-4 text-center" onClick={(e) => e.stopPropagation()}>
                             <button
+                              type="button"
                               onClick={() => handleToggleComplete(task.id)}
-                              className={`w-5 h-5 rounded-md flex items-center justify-center transition cursor-pointer ${task.isCompleted
-                                  ? "bg-emerald-500 text-white"
-                                  : "border border-slate-300 dark:border-[#444] hover:border-indigo-500"
-                                }`}
+                              className="min-w-[44px] min-h-[44px] -m-2.5 flex items-center justify-center cursor-pointer mx-auto focus-visible:outline-none"
+                              title={task.isCompleted ? "Tandai Belum Selesai" : "Tandai Selesai"}
+                              aria-label={task.isCompleted ? `Tandai "${task.title}" belum selesai` : `Tandai "${task.title}" selesai`}
                             >
-                              {task.isCompleted && <Check className="w-3 h-3 stroke-[3]" />}
+                              <span
+                                className={`w-4.5 h-4.5 rounded-md flex items-center justify-center transition ${
+                                  task.isCompleted
+                                    ? "bg-emerald-500 text-white"
+                                    : "border border-slate-300 dark:border-[#444] hover:border-emerald-500"
+                                }`}
+                              >
+                                {task.isCompleted && <Check className="w-3 h-3 stroke-[3]" />}
+                              </span>
                             </button>
                           </td>
-                          <td className="py-2.5 px-4 font-medium text-slate-900 dark:text-[#f3f3f3]">
-                            <span className={task.isCompleted ? "text-slate-500 dark:text-[#888]" : ""}>
-                              {truncateWords(task.title, 12)}
+                          <td className="py-2.5 px-4 font-semibold text-slate-900 dark:text-[#f3f3f3] max-w-xs truncate">
+                            <span className={task.isCompleted ? "line-through text-slate-400 dark:text-[#777]" : ""}>
+                              {task.title}
                             </span>
                           </td>
-                          <td className="py-2.5 px-4 text-slate-600 dark:text-[#a0a0a0]">
-                            <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-[#222] text-xs font-medium">
-                              {task.courseName || "Umum"}
-                            </span>
+                          <td className="py-2.5 px-4 text-slate-600 dark:text-[#aaa] hidden md:table-cell truncate max-w-[160px]">
+                            {task.courseName || "Kuliah"}
                           </td>
-                          <td className="py-2.5 px-4">
-                            {renderDueBadge(task)}
-                          </td>
-                          <td className="py-2.5 px-4 text-slate-600 dark:text-[#a0a0a0]">
-                            {task.points !== undefined ? `${task.points} Pts` : "-"}
-                          </td>
-                          <td className="py-2.5 px-4">
+                          <td className="py-2.5 px-4 whitespace-nowrap">{renderDueBadge(task)}</td>
+                          <td className="py-2.5 px-4 hidden sm:table-cell">
                             {task.aiAnalysis ? (
-                              <span className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded-md">
+                              <span className="inline-flex items-center gap-1 text-xs text-indigo-600 dark:text-indigo-400 font-semibold">
                                 <Sparkles className="w-3 h-3" />
-                                <span>Siap</span>
+                                Siap
                               </span>
                             ) : (
                               <button
@@ -955,7 +1016,7 @@ export default function TasksPage() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => setActiveDetailTask(task)}
+                                onClick={() => setActiveDetailTaskId(task.id)}
                                 className="h-6.5 px-2.5 text-xs rounded-lg border-slate-200 dark:border-[#2b2b2b]"
                               >
                                 Detail
@@ -972,12 +1033,11 @@ export default function TasksPage() {
           </>
         )}
 
-        {/* Modal Task Detail */}
         {activeDetailTask && (
           <TaskDetailModal
             task={activeDetailTask}
             isOpen={Boolean(activeDetailTask)}
-            onClose={() => setActiveDetailTask(null)}
+            onClose={() => setActiveDetailTaskId(null)}
             onToggleComplete={handleToggleComplete}
             onToggleChecklistItem={handleToggleChecklistItem}
             onSaveNotes={handleSaveNotes}

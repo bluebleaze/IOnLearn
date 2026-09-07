@@ -178,6 +178,7 @@ export interface UserPreferences {
   learningStyle: string; // e.g., 'Visual', 'Membaca/Menulis', 'Praktik'
   explanationDetail: string; // e.g., 'Singkat', 'Detail', 'Bertahap'
   aiTone: string; // e.g., 'Santai', 'Tegas', 'Socratic'
+  defaultStudyMode?: 'socratic' | 'direct' | 'quizzer'; // Mode default AI Chat: 'socratic', 'direct', 'quizzer'
   classroomDateRangeMonths?: number; // Filter rentang bulan sinkronisasi tugas: 1, 2 (default), 3, 6, 12, atau 0 (semua)
   toastPosition?: ToastPosition; // Posisi notifikasi toast sonner (default: 'top-right')
   taskModalStyle?: 'modal' | 'drawer'; // Gaya pop-up detail tugas: 'drawer' (panel samping) atau 'modal' (tengah layar)

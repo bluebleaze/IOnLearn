@@ -41,6 +41,7 @@ import {
   Copy,
 } from "lucide-react";
 import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { Shell } from "@/components/Shell";
 import { StudyNote, StudyNoteQuizItem } from "@/types";
 import {
@@ -53,6 +54,12 @@ import {
   cleanAndNormalizeTags,
 } from "@/lib/taskStore";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { toast } from "@/components/ui/sonner";
 import confetti from "canvas-confetti";
 
@@ -105,6 +112,42 @@ const CodeBlock = ({ inline, className, children, ...props }: any) => {
       </div>
     </div>
   );
+};
+
+// Clean and normalize markdown table strings if rows lack proper newlines
+const formatMarkdownTables = (content: string): string => {
+  if (!content) return "";
+  let text = content;
+  text = text.replace(/\|\s*\|\s*(?=[^|\n]+?\|)/g, "|\n|");
+
+  const lines = text.split("\n");
+  const result: string[] = [];
+  let inTable = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const isTableRow = /^\s*\|.+?\|\s*$/.test(line);
+
+    if (isTableRow) {
+      if (!inTable) {
+        if (result.length > 0 && result[result.length - 1].trim() !== "") {
+          result.push("");
+        }
+        inTable = true;
+      }
+      result.push(line.trim());
+    } else {
+      if (inTable) {
+        if (line.trim() !== "") {
+          result.push("");
+        }
+        inTable = false;
+      }
+      result.push(line);
+    }
+  }
+
+  return result.join("\n");
 };
 
 export default function NotesPage() {
@@ -651,7 +694,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                             {note.title || "Tanpa Judul"}
                           </h3>
                           <p className="text-xs text-slate-500 dark:text-[#888] line-clamp-2 mt-1 leading-relaxed">
-                            {(note.content || "").replace(/[#*`~_\[\]()>-]/g, "")}
+                            {(note.content || "").replace(/[#*`~_\[\]()>-]/g, "").trim() || "Catatan kosong..."}
                           </p>
                         </div>
                       </div>
@@ -666,12 +709,10 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                             })}
                           </span>
                         </div>
-                        {note.tags && note.tags.length > 0 && (
-                          <div className="flex items-center gap-1 truncate max-w-[140px]">
-                            <Tag className="w-2.5 h-2.5" />
-                            <span>{note.tags.join(", ")}</span>
-                          </div>
-                        )}
+                        <div className="flex items-center gap-1 font-semibold text-indigo-600 dark:text-indigo-400 group-hover:translate-x-0.5 transition-transform">
+                          <span>Lihat Catatan</span>
+                          <ChevronRight className="w-3 h-3" />
+                        </div>
                       </div>
                     </div>
                   );
@@ -680,281 +721,9 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
             )}
           </div>
 
-          {/* Right Column: Note Editor / Detailed Viewer */}
+          {/* Right Column: Note Reader / Detailed Viewer */}
           <div className="lg:col-span-8">
-            {isEditing ? (
-              /* Note Edit / Create Form with Rich Markdown Toolbar */
-              <form
-                onSubmit={handleSaveNote}
-                className="bg-white dark:bg-[#161616] rounded-2xl p-5 sm:p-6 shadow-2xs border border-slate-200/80 dark:border-[#262626] space-y-4"
-              >
-                {/* Form Header with Action Buttons */}
-                <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-[#262626]">
-                  <h3 className="text-sm font-semibold text-slate-900 dark:text-[#f3f3f3]">
-                    {activeNoteId ? "Edit Catatan Materi" : "Tulis Catatan Materi Baru"}
-                  </h3>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setIsEditing(false)}
-                      className="text-xs rounded-xl"
-                    >
-                      Batal
-                    </Button>
-                    <Button
-                      type="submit"
-                      size="sm"
-                      className="text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-xs"
-                    >
-                      Simpan Catatan
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  {/* Title Input */}
-                  <div>
-                    <label className="text-xs font-semibold text-slate-700 dark:text-[#ccc] block mb-1">
-                      Judul Catatan / Topik Materi
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Contoh: Algoritma Pencarian Binary Search & Kompleksitas Waktu"
-                      value={formTitle}
-                      onChange={(e) => setFormTitle(e.target.value)}
-                      className="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-50 dark:bg-[#181818] border border-slate-200/80 dark:border-[#2b2b2b] text-slate-900 dark:text-[#f3f3f3] placeholder:text-slate-400 focus:outline-none focus:border-indigo-500/80"
-                      autoFocus
-                    />
-                  </div>
-
-                  {/* Subject & Tags */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs font-semibold text-slate-700 dark:text-[#ccc] block mb-1">
-                        Mata Pelajaran / Mata Kuliah
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Contoh: Algoritma & Pemrograman"
-                        value={formSubject}
-                        onChange={(e) => setFormSubject(e.target.value)}
-                        className="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-50 dark:bg-[#181818] border border-slate-200/80 dark:border-[#2b2b2b] text-slate-900 dark:text-[#f3f3f3] placeholder:text-slate-400 focus:outline-none focus:border-indigo-500/80"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-semibold text-slate-700 dark:text-[#ccc] block mb-1">
-                        Label / Tag (Pisahkan koma)
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Contoh: uas, sorting, search"
-                        value={formTags}
-                        onChange={(e) => setFormTags(e.target.value)}
-                        className="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-50 dark:bg-[#181818] border border-slate-200/80 dark:border-[#2b2b2b] text-slate-900 dark:text-[#f3f3f3] placeholder:text-slate-400 focus:outline-none focus:border-indigo-500/80"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Markdown Editor Container */}
-                  <div className="border border-slate-200/80 dark:border-[#2b2b2b] rounded-2xl overflow-hidden bg-slate-50/50 dark:bg-[#181818]/60">
-                    {/* Toolbar Header with Tab Switch & Formatting Controls */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 bg-slate-100/90 dark:bg-[#1c1c1c] border-b border-slate-200/80 dark:border-[#2b2b2b]">
-                      {/* Write vs Preview Mode Toggle */}
-                      <div className="flex items-center gap-1 bg-slate-200/70 dark:bg-[#262626] p-0.5 rounded-lg shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => setEditorTab("write")}
-                          className={`px-3 py-1 rounded-md text-xs font-medium transition cursor-pointer flex items-center gap-1.5 ${
-                            editorTab === "write"
-                              ? "bg-white dark:bg-[#181818] text-indigo-600 dark:text-indigo-400 shadow-xs font-semibold"
-                              : "text-slate-600 dark:text-[#888] hover:text-slate-900 dark:hover:text-[#eee]"
-                          }`}
-                        >
-                          <Edit3 className="w-3 h-3" />
-                          <span>Tulis</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setEditorTab("preview")}
-                          className={`px-3 py-1 rounded-md text-xs font-medium transition cursor-pointer flex items-center gap-1.5 ${
-                            editorTab === "preview"
-                              ? "bg-white dark:bg-[#181818] text-indigo-600 dark:text-indigo-400 shadow-xs font-semibold"
-                              : "text-slate-600 dark:text-[#888] hover:text-slate-900 dark:hover:text-[#eee]"
-                          }`}
-                        >
-                          <Eye className="w-3 h-3" />
-                          <span>Pratinjau</span>
-                        </button>
-                      </div>
-
-                      {/* Formatting Buttons Toolbar (Active when typing in Write mode) */}
-                      {editorTab === "write" && (
-                        <div className="flex items-center gap-0.5 flex-wrap overflow-x-auto no-scrollbar py-0.5">
-                          {/* Bold */}
-                          <button
-                            type="button"
-                            onClick={() => insertMarkdown("bold")}
-                            title="Tebal / Bold (Ctrl+B)"
-                            className="p-1.5 rounded-lg text-slate-700 dark:text-[#ccc] hover:bg-white dark:hover:bg-[#282828] hover:text-indigo-600 dark:hover:text-indigo-400 transition cursor-pointer"
-                          >
-                            <Bold className="w-3.5 h-3.5" />
-                          </button>
-                          {/* Italic */}
-                          <button
-                            type="button"
-                            onClick={() => insertMarkdown("italic")}
-                            title="Miring / Italic (Ctrl+I)"
-                            className="p-1.5 rounded-lg text-slate-700 dark:text-[#ccc] hover:bg-white dark:hover:bg-[#282828] hover:text-indigo-600 dark:hover:text-indigo-400 transition cursor-pointer"
-                          >
-                            <Italic className="w-3.5 h-3.5" />
-                          </button>
-                          {/* Strikethrough */}
-                          <button
-                            type="button"
-                            onClick={() => insertMarkdown("strikethrough")}
-                            title="Coret / Strikethrough"
-                            className="p-1.5 rounded-lg text-slate-700 dark:text-[#ccc] hover:bg-white dark:hover:bg-[#282828] hover:text-indigo-600 dark:hover:text-indigo-400 transition cursor-pointer"
-                          >
-                            <Strikethrough className="w-3.5 h-3.5" />
-                          </button>
-
-                          <div className="h-4 w-px bg-slate-300 dark:bg-[#333] mx-1" />
-
-                          {/* Headings */}
-                          <button
-                            type="button"
-                            onClick={() => insertMarkdown("h1")}
-                            title="Judul Utama H1 (# Judul)"
-                            className="p-1.5 rounded-lg text-slate-700 dark:text-[#ccc] hover:bg-white dark:hover:bg-[#282828] hover:text-indigo-600 dark:hover:text-indigo-400 transition cursor-pointer"
-                          >
-                            <Heading1 className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => insertMarkdown("h2")}
-                            title="Sub Judul H2 (## Sub Judul)"
-                            className="p-1.5 rounded-lg text-slate-700 dark:text-[#ccc] hover:bg-white dark:hover:bg-[#282828] hover:text-indigo-600 dark:hover:text-indigo-400 transition cursor-pointer"
-                          >
-                            <Heading2 className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => insertMarkdown("h3")}
-                            title="Poin H3 (### Poin)"
-                            className="p-1.5 rounded-lg text-slate-700 dark:text-[#ccc] hover:bg-white dark:hover:bg-[#282828] hover:text-indigo-600 dark:hover:text-indigo-400 transition cursor-pointer"
-                          >
-                            <Heading3 className="w-3.5 h-3.5" />
-                          </button>
-
-                          <div className="h-4 w-px bg-slate-300 dark:bg-[#333] mx-1" />
-
-                          {/* Lists */}
-                          <button
-                            type="button"
-                            onClick={() => insertMarkdown("bullet")}
-                            title="Daftar Poin / Bullet List (- Item)"
-                            className="p-1.5 rounded-lg text-slate-700 dark:text-[#ccc] hover:bg-white dark:hover:bg-[#282828] hover:text-indigo-600 dark:hover:text-indigo-400 transition cursor-pointer"
-                          >
-                            <List className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => insertMarkdown("number")}
-                            title="Daftar Nomor / Numbered List (1. Item)"
-                            className="p-1.5 rounded-lg text-slate-700 dark:text-[#ccc] hover:bg-white dark:hover:bg-[#282828] hover:text-indigo-600 dark:hover:text-indigo-400 transition cursor-pointer"
-                          >
-                            <ListOrdered className="w-3.5 h-3.5" />
-                          </button>
-
-                          <div className="h-4 w-px bg-slate-300 dark:bg-[#333] mx-1" />
-
-                          {/* Quote & Code & Link & Table */}
-                          <button
-                            type="button"
-                            onClick={() => insertMarkdown("quote")}
-                            title="Kutipan / Quote (> Catatan)"
-                            className="p-1.5 rounded-lg text-slate-700 dark:text-[#ccc] hover:bg-white dark:hover:bg-[#282828] hover:text-indigo-600 dark:hover:text-indigo-400 transition cursor-pointer"
-                          >
-                            <Quote className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => insertMarkdown("code")}
-                            title="Kode / Code Block (`kode` atau ```)"
-                            className="p-1.5 rounded-lg text-slate-700 dark:text-[#ccc] hover:bg-white dark:hover:bg-[#282828] hover:text-indigo-600 dark:hover:text-indigo-400 transition cursor-pointer"
-                          >
-                            <Code className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => insertMarkdown("link")}
-                            title="Tautan / Link (Ctrl+K)"
-                            className="p-1.5 rounded-lg text-slate-700 dark:text-[#ccc] hover:bg-white dark:hover:bg-[#282828] hover:text-indigo-600 dark:hover:text-indigo-400 transition cursor-pointer"
-                          >
-                            <Link2 className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => insertMarkdown("table")}
-                            title="Tabel Markdown"
-                            className="p-1.5 rounded-lg text-slate-700 dark:text-[#ccc] hover:bg-white dark:hover:bg-[#282828] hover:text-indigo-600 dark:hover:text-indigo-400 transition cursor-pointer"
-                          >
-                            <Table className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Editor / Live Preview Body */}
-                    {editorTab === "write" ? (
-                      <textarea
-                        ref={textareaRef}
-                        rows={14}
-                        onKeyDown={handleKeyDown}
-                        placeholder="Tuliskan materi kuliah, rumus, konsep penting, atau tempelkan catatan di sini... Gunakan Markdown seperti **tebal**, *miring*, # Judul, ``` kode, atau gunakan tombol toolbar di atas."
-                        value={formContent}
-                        onChange={(e) => setFormContent(e.target.value)}
-                        className="w-full p-4 text-xs bg-transparent border-0 text-slate-900 dark:text-[#f3f3f3] placeholder:text-slate-400 focus:outline-none leading-relaxed font-mono"
-                      />
-                    ) : (
-                      <div className="p-5 min-h-[320px] max-h-[500px] overflow-y-auto bg-white/50 dark:bg-[#161616]/50">
-                        {formContent.trim() ? (
-                          <div className="prose prose-sm dark:prose-invert max-w-none leading-relaxed break-words font-sans">
-                            <Markdown
-                              components={{
-                                code: CodeBlock,
-                                pre: ({ children }) => <>{children}</>,
-                              }}
-                            >
-                              {formContent}
-                            </Markdown>
-                          </div>
-                        ) : (
-                          <div className="flex flex-col items-center justify-center py-12 text-slate-400 text-xs">
-                            <NotebookPen className="w-6 h-6 mb-2 opacity-50" />
-                            <span>Belum ada isi catatan untuk dipratinjau.</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Keyboard Shortcuts Cheatsheet Info */}
-                  <div className="flex items-center justify-between text-xs text-slate-600 dark:text-[#888] px-1">
-                    <div className="flex items-center gap-3">
-                      <span>
-                        Pintasan keyboard: <kbd className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-[#252525] border border-slate-200 dark:border-[#333] font-mono text-xs">Ctrl+B</kbd> Tebal, <kbd className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-[#252525] border border-slate-200 dark:border-[#333] font-mono text-xs">Ctrl+I</kbd> Miring, <kbd className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-[#252525] border border-slate-200 dark:border-[#333] font-mono text-xs">Ctrl+K</kbd> Link
-                      </span>
-                    </div>
-                    <span className="text-slate-400">
-                      {formContent.length} karakter • {formContent.trim() ? formContent.trim().split(/\s+/).length : 0} kata
-                    </span>
-                  </div>
-                </div>
-              </form>
-            ) : activeNote ? (
+            {activeNote ? (
               /* Note Detail View with AI Tools & Markdown Prose */
               <div className="bg-white dark:bg-[#161616] rounded-2xl p-5 sm:p-6 shadow-2xs border border-slate-200/80 dark:border-[#262626] space-y-5">
                 {/* Top Action Bar */}
@@ -1057,12 +826,13 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                     </div>
                     <div className="prose prose-sm dark:prose-invert max-w-none text-xs text-slate-700 dark:text-[#d4d4d4] leading-relaxed">
                       <Markdown
+                        remarkPlugins={[remarkGfm]}
                         components={{
                           code: CodeBlock,
                           pre: ({ children }) => <>{children}</>,
                         }}
                       >
-                        {activeNote.summary}
+                        {formatMarkdownTables(activeNote.summary)}
                       </Markdown>
                     </div>
                   </div>
@@ -1071,12 +841,13 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                 {/* Main Note Content rendered in Markdown Prose */}
                 <div className="prose prose-sm dark:prose-invert max-w-none leading-relaxed break-words font-sans bg-slate-50/50 dark:bg-[#191919] p-5 rounded-2xl border border-slate-100 dark:border-[#262626]">
                   <Markdown
+                    remarkPlugins={[remarkGfm]}
                     components={{
                       code: CodeBlock,
                       pre: ({ children }) => <>{children}</>,
                     }}
                   >
-                    {activeNote.content || ""}
+                    {formatMarkdownTables(activeNote.content || "")}
                   </Markdown>
                 </div>
 
@@ -1234,6 +1005,293 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
             )}
           </div>
         </div>
+
+        {/* ── Modal: Note Create / Edit Dialog (Centered with Full-Screen Backdrop Blur & Font Inter) ── */}
+        <Dialog open={isEditing} onOpenChange={setIsEditing}>
+          <DialogContent
+            hideCloseButton
+            className="w-[calc(100%-1.5rem)] sm:w-full max-w-3xl max-h-[90vh] p-0 flex flex-col shadow-2xl rounded-2xl bg-white dark:bg-[#161616] border border-slate-200/80 dark:border-[#262626] font-inter overflow-hidden"
+          >
+            <DialogTitle className="sr-only">
+              {activeNoteId ? "Edit Catatan Materi" : "Tulis Catatan Materi Baru"}
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              Simpan materi belajar, rumus, dan konsep berbasis Markdown.
+            </DialogDescription>
+
+            {/* Form Header with Action Buttons */}
+            <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-100 dark:border-[#262626] shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                  <NotebookPen className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-[#f3f3f3] font-inter">
+                      {activeNoteId ? "Edit Catatan Materi" : "Tulis Catatan Materi Baru"}
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-[#888] font-inter">
+                      Simpan materi belajar, rumus, dan konsep berbasis Markdown.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsEditing(false)}
+                    className="text-xs rounded-xl text-slate-600 dark:text-[#888]"
+                  >
+                    Batal
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={(e) => handleSaveNote(e as any)}
+                    className="text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-xs"
+                  >
+                    Simpan Catatan
+                  </Button>
+                </div>
+              </div>
+
+              {/* Form Body Container (Scrollable) */}
+              <form onSubmit={handleSaveNote} className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 font-inter">
+                {/* Title Input */}
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-[#ccc] block mb-1">
+                    Judul Catatan / Topik Materi
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Contoh: Algoritma Pencarian Binary Search & Kompleksitas Waktu"
+                    value={formTitle}
+                    onChange={(e) => setFormTitle(e.target.value)}
+                    className="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-50 dark:bg-[#181818] border border-slate-200/80 dark:border-[#2b2b2b] text-slate-900 dark:text-[#f3f3f3] placeholder:text-slate-400 focus:outline-none focus:border-indigo-500/80 font-inter"
+                    autoFocus
+                  />
+                </div>
+
+                {/* Subject & Tags */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-700 dark:text-[#ccc] block mb-1">
+                      Mata Pelajaran / Mata Kuliah
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Contoh: Algoritma & Pemrograman"
+                      value={formSubject}
+                      onChange={(e) => setFormSubject(e.target.value)}
+                      className="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-50 dark:bg-[#181818] border border-slate-200/80 dark:border-[#2b2b2b] text-slate-900 dark:text-[#f3f3f3] placeholder:text-slate-400 focus:outline-none focus:border-indigo-500/80 font-inter"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-700 dark:text-[#ccc] block mb-1">
+                      Label / Tag (Pisahkan koma)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Contoh: uas, sorting, search"
+                      value={formTags}
+                      onChange={(e) => setFormTags(e.target.value)}
+                      className="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-50 dark:bg-[#181818] border border-slate-200/80 dark:border-[#2b2b2b] text-slate-900 dark:text-[#f3f3f3] placeholder:text-slate-400 focus:outline-none focus:border-indigo-500/80 font-inter"
+                    />
+                  </div>
+                </div>
+
+                {/* Markdown Editor Container */}
+                <div className="border border-slate-200/80 dark:border-[#2b2b2b] rounded-2xl overflow-hidden bg-slate-50/50 dark:bg-[#181818]/60">
+                  {/* Toolbar Header with Tab Switch & Formatting Controls */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 bg-slate-100/90 dark:bg-[#1c1c1c] border-b border-slate-200/80 dark:border-[#2b2b2b]">
+                    {/* Write vs Preview Mode Toggle */}
+                    <div className="flex items-center gap-1 bg-slate-200/70 dark:bg-[#262626] p-0.5 rounded-lg shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setEditorTab("write")}
+                        className={`px-3 py-1 rounded-md text-xs font-medium transition cursor-pointer flex items-center gap-1.5 ${
+                          editorTab === "write"
+                            ? "bg-white dark:bg-[#181818] text-indigo-600 dark:text-indigo-400 shadow-xs font-semibold"
+                            : "text-slate-600 dark:text-[#888] hover:text-slate-900 dark:hover:text-[#eee]"
+                        }`}
+                      >
+                        <Edit3 className="w-3 h-3" />
+                        <span>Tulis</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditorTab("preview")}
+                        className={`px-3 py-1 rounded-md text-xs font-medium transition cursor-pointer flex items-center gap-1.5 ${
+                          editorTab === "preview"
+                            ? "bg-white dark:bg-[#181818] text-indigo-600 dark:text-indigo-400 shadow-xs font-semibold"
+                            : "text-slate-600 dark:text-[#888] hover:text-slate-900 dark:hover:text-[#eee]"
+                        }`}
+                      >
+                        <Eye className="w-3 h-3" />
+                        <span>Pratinjau</span>
+                      </button>
+                    </div>
+
+                    {/* Formatting Buttons Toolbar */}
+                    {editorTab === "write" && (
+                      <div className="flex items-center gap-0.5 flex-wrap overflow-x-auto no-scrollbar py-0.5">
+                        <button
+                          type="button"
+                          onClick={() => insertMarkdown("bold")}
+                          title="Tebal / Bold (Ctrl+B)"
+                          className="p-1.5 rounded-lg text-slate-700 dark:text-[#ccc] hover:bg-white dark:hover:bg-[#282828] hover:text-indigo-600 dark:hover:text-indigo-400 transition cursor-pointer"
+                        >
+                          <Bold className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => insertMarkdown("italic")}
+                          title="Miring / Italic (Ctrl+I)"
+                          className="p-1.5 rounded-lg text-slate-700 dark:text-[#ccc] hover:bg-white dark:hover:bg-[#282828] hover:text-indigo-600 dark:hover:text-indigo-400 transition cursor-pointer"
+                        >
+                          <Italic className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => insertMarkdown("strikethrough")}
+                          title="Coret / Strikethrough"
+                          className="p-1.5 rounded-lg text-slate-700 dark:text-[#ccc] hover:bg-white dark:hover:bg-[#282828] hover:text-indigo-600 dark:hover:text-indigo-400 transition cursor-pointer"
+                        >
+                          <Strikethrough className="w-3.5 h-3.5" />
+                        </button>
+
+                        <div className="h-4 w-px bg-slate-300 dark:bg-[#333] mx-1" />
+
+                        <button
+                          type="button"
+                          onClick={() => insertMarkdown("h1")}
+                          title="Judul Utama H1"
+                          className="p-1.5 rounded-lg text-slate-700 dark:text-[#ccc] hover:bg-white dark:hover:bg-[#282828] hover:text-indigo-600 dark:hover:text-indigo-400 transition cursor-pointer"
+                        >
+                          <Heading1 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => insertMarkdown("h2")}
+                          title="Sub Judul H2"
+                          className="p-1.5 rounded-lg text-slate-700 dark:text-[#ccc] hover:bg-white dark:hover:bg-[#282828] hover:text-indigo-600 dark:hover:text-indigo-400 transition cursor-pointer"
+                        >
+                          <Heading2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => insertMarkdown("h3")}
+                          title="Poin H3"
+                          className="p-1.5 rounded-lg text-slate-700 dark:text-[#ccc] hover:bg-white dark:hover:bg-[#282828] hover:text-indigo-600 dark:hover:text-indigo-400 transition cursor-pointer"
+                        >
+                          <Heading3 className="w-3.5 h-3.5" />
+                        </button>
+
+                        <div className="h-4 w-px bg-slate-300 dark:bg-[#333] mx-1" />
+
+                        <button
+                          type="button"
+                          onClick={() => insertMarkdown("bullet")}
+                          title="Daftar Poin"
+                          className="p-1.5 rounded-lg text-slate-700 dark:text-[#ccc] hover:bg-white dark:hover:bg-[#282828] hover:text-indigo-600 dark:hover:text-indigo-400 transition cursor-pointer"
+                        >
+                          <List className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => insertMarkdown("number")}
+                          title="Daftar Nomor"
+                          className="p-1.5 rounded-lg text-slate-700 dark:text-[#ccc] hover:bg-white dark:hover:bg-[#282828] hover:text-indigo-600 dark:hover:text-indigo-400 transition cursor-pointer"
+                        >
+                          <ListOrdered className="w-3.5 h-3.5" />
+                        </button>
+
+                        <div className="h-4 w-px bg-slate-300 dark:bg-[#333] mx-1" />
+
+                        <button
+                          type="button"
+                          onClick={() => insertMarkdown("quote")}
+                          title="Kutipan"
+                          className="p-1.5 rounded-lg text-slate-700 dark:text-[#ccc] hover:bg-white dark:hover:bg-[#282828] hover:text-indigo-600 dark:hover:text-indigo-400 transition cursor-pointer"
+                        >
+                          <Quote className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => insertMarkdown("code")}
+                          title="Blok Kode"
+                          className="p-1.5 rounded-lg text-slate-700 dark:text-[#ccc] hover:bg-white dark:hover:bg-[#282828] hover:text-indigo-600 dark:hover:text-indigo-400 transition cursor-pointer"
+                        >
+                          <Code className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => insertMarkdown("link")}
+                          title="Tautan"
+                          className="p-1.5 rounded-lg text-slate-700 dark:text-[#ccc] hover:bg-white dark:hover:bg-[#282828] hover:text-indigo-600 dark:hover:text-indigo-400 transition cursor-pointer"
+                        >
+                          <Link2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => insertMarkdown("table")}
+                          title="Tabel"
+                          className="p-1.5 rounded-lg text-slate-700 dark:text-[#ccc] hover:bg-white dark:hover:bg-[#282828] hover:text-indigo-600 dark:hover:text-indigo-400 transition cursor-pointer"
+                        >
+                          <Table className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Editor / Live Preview Body */}
+                  {editorTab === "write" ? (
+                    <textarea
+                      ref={textareaRef}
+                      rows={12}
+                      onKeyDown={handleKeyDown}
+                      placeholder="Tuliskan materi kuliah, rumus, konsep penting, atau tempelkan catatan di sini... Gunakan Markdown seperti **tebal**, *miring*, # Judul, ``` kode, atau gunakan toolbar di atas."
+                      value={formContent}
+                      onChange={(e) => setFormContent(e.target.value)}
+                      className="w-full p-4 text-xs sm:text-sm bg-transparent border-0 text-slate-900 dark:text-[#f3f3f3] placeholder:text-slate-400 focus:outline-none leading-relaxed font-inter"
+                    />
+                  ) : (
+                    <div className="p-5 min-h-[280px] max-h-[440px] overflow-y-auto bg-white/50 dark:bg-[#161616]/50 font-inter">
+                      {formContent.trim() ? (
+                        <div className="prose prose-sm dark:prose-invert max-w-none leading-relaxed break-words font-inter">
+                          <Markdown
+                            remarkPlugins={[remarkGfm]}
+                            components={{
+                              code: CodeBlock,
+                              pre: ({ children }) => <>{children}</>,
+                            }}
+                          >
+                            {formatMarkdownTables(formContent)}
+                          </Markdown>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center py-12 text-slate-400 text-xs font-inter">
+                          <NotebookPen className="w-6 h-6 mb-2 opacity-50" />
+                          <span>Belum ada isi catatan untuk dipratinjau.</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer Info */}
+                <div className="flex items-center justify-between text-xs text-slate-500 dark:text-[#888] pt-1">
+                  <span>
+                    Pintasan keyboard: <kbd className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-[#252525] border border-slate-200 dark:border-[#333] font-mono text-xs">Ctrl+B</kbd> Tebal, <kbd className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-[#252525] border border-slate-200 dark:border-[#333] font-mono text-xs">Ctrl+I</kbd> Miring
+                  </span>
+                  <span>
+                    {formContent.length} karakter • {formContent.trim() ? formContent.trim().split(/\s+/).length : 0} kata
+                  </span>
+                </div>
+              </form>
+          </DialogContent>
+        </Dialog>
       </div>
     </Shell>
   );

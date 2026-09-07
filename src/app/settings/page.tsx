@@ -37,6 +37,9 @@ import {
   MessageSquare,
   Columns2,
   PanelLeft,
+  Brain,
+  Zap,
+  HelpCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toggleThemeWithCircularAnimation } from "@/lib/theme";
@@ -86,6 +89,7 @@ export default function SettingsPage() {
     learningStyle: "Netral",
     explanationDetail: "Netral",
     aiTone: "Ramah",
+    defaultStudyMode: "socratic",
     classroomDateRangeMonths: DEFAULT_DATE_RANGE_MONTHS,
     toastPosition: "top-right",
   });
@@ -101,6 +105,7 @@ export default function SettingsPage() {
     learningStyle: "Netral",
     explanationDetail: "Netral",
     aiTone: "Ramah",
+    defaultStudyMode: "socratic",
     classroomDateRangeMonths: DEFAULT_DATE_RANGE_MONTHS,
     toastPosition: "top-right",
   });
@@ -823,6 +828,55 @@ export default function SettingsPage() {
                   <option value="Sokratik">Sokratik (Memancing Pertanyaan Reflektif)</option>
                 </select>
                 <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-[#737373]" />
+              </div>
+            </div>
+
+            <div className="space-y-1.5 sm:col-span-2 pt-1">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-[#d4d4d4]">
+                Mode Belajar Asisten AI (Default)
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                {[
+                  {
+                    id: "socratic",
+                    label: "Sokratik",
+                    desc: "Membimbing berpikir bertahap dengan pertanyaan pemantik reflektif.",
+                    icon: Brain,
+                  },
+                  {
+                    id: "direct",
+                    label: "Ringkas",
+                    desc: "Jawaban padat, to-the-point, fokus inti materi.",
+                    icon: Zap,
+                  },
+                  {
+                    id: "quizzer",
+                    label: "Kuis",
+                    desc: "Tantangan soal interaktif & latihan mandiri.",
+                    icon: HelpCircle,
+                  },
+                ].map((mode) => {
+                  const isSelected = (prefs.defaultStudyMode || "socratic") === mode.id;
+                  const Icon = mode.icon;
+                  return (
+                    <button
+                      key={mode.id}
+                      type="button"
+                      onClick={() => setPrefs({ ...prefs, defaultStudyMode: mode.id as any })}
+                      className={`p-3 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between ${
+                        isSelected
+                          ? "bg-indigo-50/70 dark:bg-indigo-950/40 border-indigo-500/80 text-indigo-950 dark:text-indigo-200 ring-1 ring-indigo-500/30"
+                          : "bg-slate-50/50 dark:bg-[#141414] border-slate-200/80 dark:border-white/[0.08] text-slate-700 dark:text-[#ccc] hover:bg-slate-100 dark:hover:bg-[#1a1a1a]"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <Icon className={`w-4 h-4 ${isSelected ? "text-indigo-600 dark:text-indigo-400" : "text-slate-400"}`} />
+                        <span className="font-semibold text-xs text-slate-900 dark:text-[#f5f5f5]">{mode.label}</span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-[#888] leading-relaxed">{mode.desc}</p>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>

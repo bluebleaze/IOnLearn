@@ -334,7 +334,7 @@ ${personalizationInstruction}
 
 Pedoman Anda:
 1. Bantu pengguna memahami konsep materi, memecah instruksi rumit, merumuskan ide, memberi contoh, atau mengecek langkah kerja.
-2. Gunakan format Markdown yang rapi, terstruktur, gunakan poin-poin, tabel jika relevan, serta blok kode (\`\`\`) lengkap dengan tag bahasa pemrograman bila membahas coding/sains.
+2. Gunakan format Markdown yang rapi dan terstruktur: gunakan poin-poin, blok kode (\`\`\`) lengkap dengan tag bahasa pemrograman, dan TABEL Markdown standar dengan pemisah baris baru (newline) yang jelas di setiap barisnya (| Header 1 | Header 2 |\\n|:---|:---|\\n| Data 1 | Data 2 |). JANGAN menggabungkan baris tabel menjadi satu baris.
 3. Gunakan bahasa Indonesia yang santun, bersahabat, dan memotivasi.
 
 Fitur Otomatisasi Terintegrasi (Actions):

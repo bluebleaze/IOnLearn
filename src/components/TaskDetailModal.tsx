@@ -184,10 +184,25 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
           {/* Top-Right Close Button for Mobile */}
           <div className="flex items-center gap-1.5 shrink-0 sm:hidden">
             <Button
+              onClick={() => onAnalyzeWithAI(task.id)}
+              disabled={task.aiLoading}
+              size="sm"
+              className="min-h-[40px] px-2.5 gap-1.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xs"
+              title="Generate Semua (Rangkuman, Langkah, Video)"
+            >
+              {task.aiLoading ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Sparkles className="w-3.5 h-3.5" />
+              )}
+              <span>{task.aiLoading ? "AI..." : "Generate Semua"}</span>
+            </Button>
+
+            <Button
               variant="ghost"
               size="iconSm"
               onClick={onClose}
-              className="min-w-[44px] min-h-[44px] text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 bg-slate-100 dark:bg-[#202020] hover:bg-slate-200 dark:hover:bg-[#2a2a2a] rounded-xl border border-slate-200/80 dark:border-[#2b2b2b] transition cursor-pointer"
+              className="min-w-[40px] min-h-[40px] text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 bg-slate-100 dark:bg-[#202020] hover:bg-slate-200 dark:hover:bg-[#2a2a2a] rounded-xl border border-slate-200/80 dark:border-[#2b2b2b] transition cursor-pointer"
               title="Tutup"
               aria-label="Tutup"
             >
@@ -197,6 +212,26 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
           {/* Desktop Action Buttons */}
           <div className="hidden sm:flex items-center gap-1.5 shrink-0 ml-auto">
+            <Button
+              onClick={() => onAnalyzeWithAI(task.id)}
+              disabled={task.aiLoading}
+              size="sm"
+              className="gap-1.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs"
+              title="Generate Rangkuman, Langkah Kerja, Video, dan Catatan sekaligus dalam 1 klik"
+            >
+              {task.aiLoading ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Sedang Generate...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Generate Semua</span>
+                </>
+              )}
+            </Button>
+
             {onToggleComplete && (
               <Button
                 onClick={handleToggleTaskComplete}
@@ -684,7 +719,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
         {/* Backdrop overlay */}
         <div
           onClick={onClose}
-          className="fixed inset-0 bg-black/45 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
+          className="fixed inset-0 bg-black/70 dark:bg-black/80 backdrop-blur-md transition-opacity animate-in fade-in duration-200"
           aria-hidden="true"
         />
 

@@ -37,8 +37,13 @@ import {
   Clock,
   AlertTriangle,
   RotateCcw,
+  Mic,
+  MicOff,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import confetti from "canvas-confetti";
 import {
   AIConfig,
@@ -298,6 +303,46 @@ const CodeBlock = ({ inline, className, children, ...props }: any) => {
   );
 };
 
+// Clean and normalize markdown table strings if rows lack proper newlines
+const formatMarkdownTables = (content: string): string => {
+  if (!content) return "";
+  let text = content;
+  // 1. Split concatenated table rows `| ... | | ... |` or `|:---| | 1 |` into separate lines
+  text = text.replace(/\|\s*\|\s*(?=[^|\n]+?\|)/g, "|\n|");
+
+  // 2. Process line by line to ensure consecutive table rows stay together, with blank lines around the table block
+  const lines = text.split("\n");
+  const result: string[] = [];
+  let inTable = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const isTableRow = /^\s*\|.+?\|\s*$/.test(line);
+
+    if (isTableRow) {
+      if (!inTable) {
+        // Start of table block: ensure preceding blank line if previous line had content
+        if (result.length > 0 && result[result.length - 1].trim() !== "") {
+          result.push("");
+        }
+        inTable = true;
+      }
+      result.push(line.trim());
+    } else {
+      if (inTable) {
+        // End of table block: ensure a blank line after the table block
+        if (line.trim() !== "") {
+          result.push("");
+        }
+        inTable = false;
+      }
+      result.push(line);
+    }
+  }
+
+  return result.join("\n");
+};
+
 export const AIChat: React.FC<AIChatProps> = ({
   tasks: propTasks,
   notes: propNotes = [],
@@ -321,6 +366,44 @@ export const AIChat: React.FC<AIChatProps> = ({
   // Drawer History state
   const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false);
 
+  // Chat Style Mode (Claude style: Chat vs Cowork)
+  const [chatStyle, setChatStyle] = useState<"chat" | "cowork">("chat");
+  const [showCoworkModal, setShowCoworkModal] = useState(false);
+
+  const handleSelectChatStyle = (style: "chat" | "cowork") => {
+    if (style === "cowork") {
+      try {
+        const alreadySeen = sessionStorage.getItem("ionlearn_cowork_modal_seen");
+        if (!alreadySeen) {
+          setShowCoworkModal(true);
+          return;
+        }
+      } catch {
+        setShowCoworkModal(true);
+        return;
+      }
+    }
+    setChatStyle(style);
+  };
+
+  const handleCancelCowork = () => {
+    setShowCoworkModal(false);
+    setChatStyle("chat");
+  };
+
+  const handleConfirmCowork = () => {
+    setShowCoworkModal(false);
+    setChatStyle("cowork");
+    try {
+      sessionStorage.setItem("ionlearn_cowork_modal_seen", "true");
+    } catch { }
+  };
+
+  // Speech-to-Text (STT) and Text-to-Speech (TTS)
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
+  const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
+
   // Popover States
   const [isContextOpen, setIsContextOpen] = useState(false);
   const [contextTab, setContextTab] = useState<"tasks" | "notes">("tasks");
@@ -334,6 +417,146 @@ export const AIChat: React.FC<AIChatProps> = ({
     extractedText?: string;
   } | null>(null);
   const [previewPdfBlobUrl, setPreviewPdfBlobUrl] = useState<string | null>(null);
+
+  // Stop speech recognition and synthesis on unmount
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch { }
+      }
+      if (typeof window !== "undefined" && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
+
+  // Speech-to-Text handler
+  const toggleVoiceRecognition = () => {
+    if (typeof window === "undefined") return;
+    const SpeechRecognition =
+      (window as any).SpeechRecognition ||
+      (window as any).webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      toast.error("Browser tidak mendukung Speech-to-Text", {
+        description:
+          "Fitur ini memerlukan browser berbasis Chromium (Google Chrome, Edge) atau Safari terbaru.",
+      });
+      return;
+    }
+
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.lang = "id-ID";
+      recognition.continuous = false;
+      recognition.interimResults = true;
+
+      recognition.onstart = () => {
+        setIsListening(true);
+        toast.info("Mendengarkan suara...", {
+          description: "Bicaralah sekarang. Suara akan otomatis dikonversi ke teks.",
+        });
+      };
+
+      recognition.onresult = (event: any) => {
+        let transcript = "";
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript;
+        }
+        if (transcript) {
+          setInputPrompt((prev) => {
+            const trimmed = prev.trim();
+            return trimmed ? `${trimmed} ${transcript.trim()}` : transcript.trim();
+          });
+        }
+      };
+
+      recognition.onerror = (event: any) => {
+        console.warn("Speech recognition error:", event.error);
+        setIsListening(false);
+        if (event.error !== "no-speech") {
+          toast.error("Gagal merekam suara: " + event.error);
+        }
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
+    } catch (err: any) {
+      setIsListening(false);
+      toast.error("Gagal memulai mikrofon: " + err.message);
+    }
+  };
+
+  // Text-to-Speech handler
+  const handleToggleSpeechSynthesis = (msgId: string, text: string) => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+      toast.error("Browser tidak mendukung Text-to-Speech.");
+      return;
+    }
+
+    if (speakingMessageId === msgId) {
+      window.speechSynthesis.cancel();
+      setSpeakingMessageId(null);
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+
+    // Strip markdown code blocks, URLs, bold tags for natural speech
+    const cleanSpeechText = text
+      .replace(/```[\s\S]*?```/g, " Bagian kode program dilewati. ")
+      .replace(/`([^`]+)`/g, "$1")
+      .replace(/\[([^\]]+)\]\([^\)]+\)/g, "$1")
+      .replace(/[*_#~>]/g, "")
+      .replace(/\{[\s\S]*?\}/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    if (!cleanSpeechText) {
+      toast.info("Tidak ada teks yang dapat dibacakan.");
+      return;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(cleanSpeechText);
+    utterance.lang = "id-ID";
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+
+    const voices = window.speechSynthesis.getVoices();
+    const idVoice = voices.find(
+      (v) => v.lang.startsWith("id") || v.lang.includes("ID")
+    );
+    if (idVoice) {
+      utterance.voice = idVoice;
+    }
+
+    utterance.onstart = () => {
+      setSpeakingMessageId(msgId);
+    };
+
+    utterance.onend = () => {
+      setSpeakingMessageId(null);
+    };
+
+    utterance.onerror = (e) => {
+      console.warn("Speech synthesis error:", e);
+      setSpeakingMessageId(null);
+    };
+
+    window.speechSynthesis.speak(utterance);
+  };
 
   // Generate clean Blob URL for PDF preview in modal
   useEffect(() => {
@@ -363,13 +586,25 @@ export const AIChat: React.FC<AIChatProps> = ({
     };
   }, [previewFile]);
 
-  // @mention Autocomplete
-  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  // Format Selector Popover State
+  const [isFormatMenuOpen, setIsFormatMenuOpen] = useState(false);
+  const [activeAcceptFilter, setActiveAcceptFilter] = useState<string>(
+    ".pdf,.png,.jpg,.jpeg,.webp,.txt,.md,.json,.js,.ts,.tsx,.py,.java,.c,.cpp,.html,.css,.csv,image/*,application/pdf,text/*"
+  );
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const contextRef = useRef<HTMLDivElement>(null);
+  const formatMenuRef = useRef<HTMLDivElement>(null);
+
+  const handleSelectFormat = (acceptString: string) => {
+    setActiveAcceptFilter(acceptString);
+    setIsFormatMenuOpen(false);
+    setTimeout(() => {
+      fileInputRef.current?.click();
+    }, 50);
+  };
 
   // Synchronize Tasks and Notes
   useEffect(() => {
@@ -377,11 +612,14 @@ export const AIChat: React.FC<AIChatProps> = ({
     setNotes(loadNotes());
   }, [propTasks, propNotes]);
 
-  // Close context dropdown on outside click
+  // Close context dropdown & format menu on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (contextRef.current && !contextRef.current.contains(e.target as Node)) {
         setIsContextOpen(false);
+      }
+      if (formatMenuRef.current && !formatMenuRef.current.contains(e.target as Node)) {
+        setIsFormatMenuOpen(false);
       }
     };
     document.addEventListener("mousedown", handler);
@@ -451,7 +689,8 @@ export const AIChat: React.FC<AIChatProps> = ({
   }, [messages, isLoading, currentId]);
 
   const handleNewChat = (taskId?: string, noteId?: string) => {
-    const newSession = createSession(taskId, noteId, currentMode);
+    const preferredMode = userPreferences?.defaultStudyMode || currentMode || "socratic";
+    const newSession = createSession(taskId, noteId, preferredMode);
     setSessions((prev) => [newSession, ...prev]);
     setCurrentId(newSession.id);
     setIsHistoryDrawerOpen(false);
@@ -473,7 +712,6 @@ export const AIChat: React.FC<AIChatProps> = ({
       )
     );
     setIsContextOpen(false);
-    setMentionQuery(null);
   };
 
   const handleSelectNoteContext = (noteId: string | undefined) => {
@@ -485,7 +723,6 @@ export const AIChat: React.FC<AIChatProps> = ({
       )
     );
     setIsContextOpen(false);
-    setMentionQuery(null);
   };
 
   const handleDeleteSession = (sessionId: string, e: React.MouseEvent) => {
@@ -780,17 +1017,6 @@ export const AIChat: React.FC<AIChatProps> = ({
     // Auto resize
     e.target.style.height = "auto";
     e.target.style.height = `${Math.min(e.target.scrollHeight, 160)}px`;
-
-    // Detect @mention trigger
-    const cursorPos = e.target.selectionStart;
-    const textBeforeCursor = val.slice(0, cursorPos);
-    const lastAtMatch = textBeforeCursor.match(/@([\w\s-]*)$/);
-
-    if (lastAtMatch) {
-      setMentionQuery(lastAtMatch[1].toLowerCase());
-    } else {
-      setMentionQuery(null);
-    }
   };
 
   const handleSendMessage = async (customPrompt?: string) => {
@@ -820,6 +1046,10 @@ export const AIChat: React.FC<AIChatProps> = ({
       aiPromptPayload = `${aiPromptPayload}\n\n[Dokumen/File Terlampir]:\n${fileContext}`;
     }
 
+    if (chatStyle === "cowork") {
+      aiPromptPayload = `${aiPromptPayload}\n\n[Mode Kolaborasi / Cowork]: Berikan jawaban yang sangat terstruktur, jelas, lengkap dengan format siap pakai (misal rencana aksi bertahap, poin eksekusi langsung, atau template draf kerja).`;
+    }
+
     let contextualTask = activeTask;
     if (!contextualTask && activeNote) {
       contextualTask = {
@@ -846,7 +1076,6 @@ export const AIChat: React.FC<AIChatProps> = ({
 
     setInputPrompt("");
     setAttachedFiles([]);
-    setMentionQuery(null);
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }
@@ -916,7 +1145,7 @@ export const AIChat: React.FC<AIChatProps> = ({
         setNotes(loadNotes());
         try {
           confetti({ particleCount: 35, spread: 50, origin: { y: 0.8 } });
-        } catch {}
+        } catch { }
         toast.success("📝 Catatan Materi Baru Berhasil Disimpan!", {
           description: `"${newStudyNote.title}" telah ditambahkan ke Catatan Belajar.`,
           action: {
@@ -968,7 +1197,7 @@ export const AIChat: React.FC<AIChatProps> = ({
         addTodo(newTodo);
         try {
           confetti({ particleCount: 35, spread: 50, origin: { y: 0.8 } });
-        } catch {}
+        } catch { }
         toast.success(`✅ Tugas To-Do Berhasil Dibuat!`, {
           description: formattedSubtasks.length > 0
             ? `"${newTodo.title}" dibuat dengan ${formattedSubtasks.length} sub-langkah.`
@@ -1062,10 +1291,10 @@ export const AIChat: React.FC<AIChatProps> = ({
       prev.map((s) =>
         s.id === currentId
           ? {
-              ...s,
-              messages: historyToKeep,
-              updatedAt: Date.now(),
-            }
+            ...s,
+            messages: historyToKeep,
+            updatedAt: Date.now(),
+          }
           : s
       )
     );
@@ -1116,7 +1345,7 @@ export const AIChat: React.FC<AIChatProps> = ({
         setNotes(loadNotes());
         try {
           confetti({ particleCount: 35, spread: 50, origin: { y: 0.8 } });
-        } catch {}
+        } catch { }
         toast.success("📝 Catatan Materi Baru Berhasil Disimpan!", {
           description: `"${newStudyNote.title}" telah ditambahkan ke Catatan Belajar.`,
           action: {
@@ -1166,7 +1395,7 @@ export const AIChat: React.FC<AIChatProps> = ({
         addTodo(newTodo);
         try {
           confetti({ particleCount: 35, spread: 50, origin: { y: 0.8 } });
-        } catch {}
+        } catch { }
         toast.success(`✅ Tugas To-Do Berhasil Dibuat!`, {
           description: formattedSubtasks.length > 0
             ? `"${newTodo.title}" dibuat dengan ${formattedSubtasks.length} sub-langkah.`
@@ -1196,11 +1425,11 @@ export const AIChat: React.FC<AIChatProps> = ({
         prev.map((s) =>
           s.id === currentId
             ? {
-                ...s,
-                messages: [...historyToKeep, assistantMessage],
-                suggestedPrompts: res.suggestedPrompts || [],
-                updatedAt: Date.now(),
-              }
+              ...s,
+              messages: [...historyToKeep, assistantMessage],
+              suggestedPrompts: res.suggestedPrompts || [],
+              updatedAt: Date.now(),
+            }
             : s
         )
       );
@@ -1211,19 +1440,18 @@ export const AIChat: React.FC<AIChatProps> = ({
       const errorMessage: ChatMessage = {
         id: `msg-${Date.now() + 1}`,
         role: "assistant",
-        content: `⚠️ Maaf, terjadi kendala saat mengirim ulang pesan: ${
-          err.message || "Gagal memproses permintaan."
-        }`,
+        content: `⚠️ Maaf, terjadi kendala saat mengirim ulang pesan: ${err.message || "Gagal memproses permintaan."
+          }`,
         timestamp: Date.now(),
       };
       setSessions((prev) =>
         prev.map((s) =>
           s.id === currentId
             ? {
-                ...s,
-                messages: [...historyToKeep, errorMessage],
-                updatedAt: Date.now(),
-              }
+              ...s,
+              messages: [...historyToKeep, errorMessage],
+              updatedAt: Date.now(),
+            }
             : s
         )
       );
@@ -1272,19 +1500,7 @@ export const AIChat: React.FC<AIChatProps> = ({
     });
   }, [sessions, sessionSearchQuery]);
 
-  // Mention Suggestions Filter
-  const mentionSuggestions = useMemo(() => {
-    if (mentionQuery === null) return [];
-    const taskMatches = tasks
-      .filter((t) => t.title.toLowerCase().includes(mentionQuery))
-      .slice(0, 4)
-      .map((t) => ({ type: "task" as const, id: t.id, title: t.title, subtitle: t.courseName || "Tugas" }));
-    const noteMatches = notes
-      .filter((n) => n.title.toLowerCase().includes(mentionQuery))
-      .slice(0, 4)
-      .map((n) => ({ type: "note" as const, id: n.id, title: n.title, subtitle: n.subject || "Catatan" }));
-    return [...taskMatches, ...noteMatches];
-  }, [mentionQuery, tasks, notes]);
+
 
   const quickPrompts = [
     {
@@ -1399,7 +1615,7 @@ export const AIChat: React.FC<AIChatProps> = ({
                       <button
                         type="button"
                         onClick={() => handleRemoveAttachment(idx)}
-                        className="hover:text-rose-500 text-slate-400 p-1 rounded-md hover:bg-rose-50 dark:hover:bg-rose-950/30 cursor-pointer transition"
+                        className="text-rose-500 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300 p-1 rounded-md hover:bg-rose-50 dark:hover:bg-rose-950/30 cursor-pointer transition"
                         title="Hapus lampiran"
                       >
                         <X className="w-3 h-3" />
@@ -1410,39 +1626,6 @@ export const AIChat: React.FC<AIChatProps> = ({
               </div>
             )}
           </div>
-
-          {/* Mention Popover Menu */}
-          {mentionQuery !== null && mentionSuggestions.length > 0 && (
-            <div className="absolute bottom-full left-0 mb-2 w-72 sm:w-80 bg-white dark:bg-[#181818] rounded-2xl shadow-xl border border-slate-200/80 dark:border-[#2b2b2b] p-2 z-50 animate-in fade-in slide-in-from-bottom-2">
-              <div className="text-xs font-bold text-slate-400 uppercase tracking-wider px-2 py-1 flex items-center gap-1">
-                <AtSign className="w-3 h-3 text-indigo-500" />
-                <span>Pilih Konteks (@mention)</span>
-              </div>
-              <div className="space-y-1 mt-1 max-h-48 overflow-y-auto pr-1 text-xs">
-                {mentionSuggestions.map((item) => (
-                  <button
-                    key={`${item.type}-${item.id}`}
-                    type="button"
-                    onClick={() => {
-                      if (item.type === "task") handleSelectTaskContext(item.id);
-                      else handleSelectNoteContext(item.id);
-                    }}
-                    className="w-full text-left p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-[#242424] transition flex items-center justify-between gap-2 cursor-pointer"
-                  >
-                    <div className="min-w-0">
-                      <div className="font-semibold text-slate-900 dark:text-[#f0f0f0] truncate">
-                        {item.title}
-                      </div>
-                      <div className="text-xs text-slate-500 dark:text-[#888] truncate">
-                        {item.type === "task" ? "📌 " : "📝 "}
-                        {item.subtitle}
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Input Box Shell */}
@@ -1458,7 +1641,7 @@ export const AIChat: React.FC<AIChatProps> = ({
                 ? `Tanyakan tentang tugas "${activeTask.title}"…`
                 : activeNote
                   ? `Tanyakan tentang catatan "${activeNote.title}"…`
-                  : "Tanyakan konsep, rumus, kirim foto/PDF, atau ketik @ untuk panggil materi… (Enter untuk kirim)"
+                  : "Tanyakan konsep, rumus, lampirkan berkas, atau diskusikan tugas… (Enter untuk kirim)"
             }
             className="w-full bg-transparent border-0 focus:outline-none text-xs sm:text-sm text-slate-900 dark:text-[#ececec] placeholder:text-slate-400 dark:placeholder:text-[#666] pt-3.5 px-3.5 resize-none max-h-40 min-h-[24px] leading-relaxed"
           />
@@ -1466,64 +1649,160 @@ export const AIChat: React.FC<AIChatProps> = ({
           {/* Action Row inside Textarea */}
           <div className="flex items-center justify-between px-3 pb-2.5 pt-1">
             <div className="flex items-center gap-1 text-slate-400">
-              {/* Attachment Button */}
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="p-1.5 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer rounded-lg hover:bg-slate-100 dark:hover:bg-[#222]"
-                title="Lampirkan Dokumen (PDF, Foto/Gambar, Catatan, Kode)"
-              >
-                <Paperclip className="w-4 h-4" />
-              </button>
+              {/* Attachment Format Selector Popover */}
+              <div className="relative" ref={formatMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setIsFormatMenuOpen(!isFormatMenuOpen)}
+                  className={`p-1.5 transition-colors cursor-pointer rounded-lg ${isFormatMenuOpen
+                    ? "bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400"
+                    : "text-slate-500 dark:text-[#888] hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-[#222]"
+                    }`}
+                  title="Pilih Format Lampiran"
+                >
+                  <Paperclip className="w-4 h-4" />
+                </button>
+
+                {isFormatMenuOpen && (
+                  <div className="absolute left-0 bottom-full mb-2 w-64 bg-white dark:bg-[#1a1a1a] rounded-2xl shadow-xl border border-slate-200/80 dark:border-[#2a2a2a] p-2 z-50 animate-in fade-in slide-in-from-bottom-2">
+                    <div className="px-2.5 py-1 text-xs font-bold text-slate-500 dark:text-[#888] border-b border-slate-100 dark:border-[#262626] mb-1">
+                      Pilih Jenis Format:
+                    </div>
+                    <div className="space-y-0.5">
+                      <button
+                        type="button"
+                        onClick={() => handleSelectFormat(".pdf,.doc,.docx,.txt,.md,application/pdf")}
+                        className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium text-slate-700 dark:text-[#ddd] hover:bg-slate-100 dark:hover:bg-[#252525] transition cursor-pointer text-left"
+                      >
+                        <div className="w-6 h-6 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                          <FileText className="w-3.5 h-3.5" />
+                        </div>
+                        <div>
+                          <div className="font-semibold">Dokumen / PDF</div>
+                          <div className="text-xs text-slate-500 dark:text-[#888]">PDF, Word, Markdown, Teks</div>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleSelectFormat("image/*,.png,.jpg,.jpeg,.webp")}
+                        className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium text-slate-700 dark:text-[#ddd] hover:bg-slate-100 dark:hover:bg-[#252525] transition cursor-pointer text-left"
+                      >
+                        <div className="w-6 h-6 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                          <ImageIcon className="w-3.5 h-3.5" />
+                        </div>
+                        <div>
+                          <div className="font-semibold">Foto / Gambar Soal</div>
+                          <div className="text-xs text-slate-500 dark:text-[#888]">PNG, JPG, Screenshot</div>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleSelectFormat(".js,.ts,.tsx,.py,.java,.c,.cpp,.html,.css,.json,.sql")}
+                        className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium text-slate-700 dark:text-[#ddd] hover:bg-slate-100 dark:hover:bg-[#252525] transition cursor-pointer text-left"
+                      >
+                        <div className="w-6 h-6 rounded-lg bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
+                          <Code2 className="w-3.5 h-3.5" />
+                        </div>
+                        <div>
+                          <div className="font-semibold">Kode Pemrograman</div>
+                          <div className="text-xs text-slate-500 dark:text-[#888]">JS, Python, TS, Java, C++</div>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleSelectFormat(".txt,.md,.json,.csv,text/*")}
+                        className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium text-slate-700 dark:text-[#ddd] hover:bg-slate-100 dark:hover:bg-[#252525] transition cursor-pointer text-left"
+                      >
+                        <div className="w-6 h-6 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                          <NotebookPen className="w-3.5 h-3.5" />
+                        </div>
+                        <div>
+                          <div className="font-semibold">Catatan Teks / Data</div>
+                          <div className="text-xs text-slate-500 dark:text-[#888]">Catatan Teks, CSV, JSON</div>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <input
                 type="file"
                 ref={fileInputRef}
                 onChange={handleFileUpload}
                 className="hidden"
                 multiple
-                accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.md,.json,.js,.ts,.tsx,.py,.java,.c,.cpp,.html,.css,.csv,image/*,application/pdf,text/*"
+                accept={activeAcceptFilter}
               />
 
-              {/* @mention Shortcut Trigger */}
-              <button
-                type="button"
-                onClick={() => {
-                  setInputPrompt((prev) => prev + "@");
-                  setMentionQuery("");
-                  textareaRef.current?.focus();
-                }}
-                className="p-1.5 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer rounded-lg hover:bg-slate-100 dark:hover:bg-[#222]"
-                title="Panggil tugas atau catatan (@)"
-              >
-                <AtSign className="w-4 h-4" />
-              </button>
-
-              {/* Quick Context Selector Indicator */}
-              <button
-                type="button"
-                onClick={() => setIsContextOpen(true)}
-                className="text-xs px-2 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-[#222] font-medium text-slate-500 dark:text-[#888] flex items-center gap-1 cursor-pointer"
-              >
-                <BookOpen className="w-3 h-3" />
-                <span className="hidden sm:inline">Pilih Materi</span>
-              </button>
+              {/* Claude-style Segmented Mode Switcher: Chat | Cowork */}
+              <div className="flex items-center bg-slate-100 dark:bg-[#202020] p-0.5 rounded-lg border border-slate-200/60 dark:border-[#2a2a2a] text-xs font-medium">
+                <button
+                  type="button"
+                  onClick={() => handleSelectChatStyle("chat")}
+                  className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${chatStyle === "chat"
+                    ? "bg-white dark:bg-[#323232] text-slate-900 dark:text-white shadow-2xs font-semibold"
+                    : "text-slate-500 dark:text-[#888] hover:text-slate-800 dark:hover:text-[#eee]"
+                    }`}
+                  title="Mode Chat Reguler: Diskusi & tanya jawab interaktif"
+                >
+                  Chat
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSelectChatStyle("cowork")}
+                  className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${chatStyle === "cowork"
+                    ? "bg-white dark:bg-[#323232] text-slate-900 dark:text-white shadow-2xs font-semibold"
+                    : "text-slate-500 dark:text-[#888] hover:text-slate-800 dark:hover:text-[#eee]"
+                    }`}
+                  title="Mode Cowork: Rencana kerja terstruktur, draf aksi & hasil siap pakai"
+                >
+                  Cowork
+                </button>
+              </div>
             </div>
 
-            {/* Send Button */}
-            <button
-              type="button"
-              onClick={() => handleSendMessage()}
-              disabled={
-                (!inputPrompt.trim() && attachedFiles.length === 0) || isLoading
-              }
-              className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-30 disabled:hover:bg-indigo-600 text-white transition-all shrink-0 shadow-2xs cursor-pointer disabled:cursor-not-allowed"
-            >
-              {isLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
+            {/* Unified Dynamic Action Button: Mic (when empty) / Send (when text or files present) */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              {isListening ? (
+                <button
+                  type="button"
+                  onClick={toggleVoiceRecognition}
+                  className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-rose-500 text-white animate-pulse shadow-md shadow-rose-500/30 transition-all cursor-pointer"
+                  title="Sedang merekam suara... Klik untuk berhenti"
+                >
+                  <MicOff className="w-4 h-4" />
+                </button>
+              ) : inputPrompt.trim() || attachedFiles.length > 0 || isLoading ? (
+                <button
+                  type="button"
+                  onClick={() => handleSendMessage()}
+                  disabled={
+                    (!inputPrompt.trim() && attachedFiles.length === 0) || isLoading
+                  }
+                  className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-30 disabled:hover:bg-indigo-600 text-white transition-all shrink-0 shadow-2xs cursor-pointer disabled:cursor-not-allowed animate-in zoom-in-90 duration-150"
+                  title="Kirim pesan (Enter)"
+                >
+                  {isLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <ArrowUp className="w-4 h-4 stroke-[2.5]" />
+                  )}
+                </button>
               ) : (
-                <ArrowUp className="w-4 h-4 stroke-[2.5]" />
+                <button
+                  type="button"
+                  onClick={toggleVoiceRecognition}
+                  className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-slate-100 dark:bg-[#202020] text-slate-600 dark:text-[#aaa] hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-200/80 dark:hover:bg-[#282828] transition-all cursor-pointer animate-in zoom-in-90 duration-150"
+                  title="Input dengan Suara (Speech-to-Text)"
+                >
+                  <Mic className="w-4 h-4" />
+                </button>
               )}
-            </button>
+            </div>
           </div>
         </div>
 
@@ -1650,47 +1929,8 @@ export const AIChat: React.FC<AIChatProps> = ({
           )}
         </div>
 
-        {/* Right: Study Mode Switcher & History Drawer Button */}
+        {/* Right: History Drawer Button & New Chat */}
         <div className="flex items-center gap-2">
-          {/* Study Mode Selector Pills */}
-          <div className="flex items-center bg-slate-100 dark:bg-[#1c1c1c] p-0.5 rounded-xl text-xs font-semibold">
-            <button
-              type="button"
-              onClick={() => handleSetStudyMode("socratic")}
-              className={`px-2 sm:px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${currentMode === "socratic"
-                ? "bg-white dark:bg-[#282828] text-indigo-600 dark:text-indigo-300 shadow-2xs"
-                : "text-slate-500 hover:text-slate-800 dark:hover:text-[#eee]"
-                }`}
-              title="Tutor Sokratik: Membimbing berpikir bertahap"
-            >
-              <Brain className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Sokratik</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSetStudyMode("direct")}
-              className={`px-2 sm:px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${currentMode === "direct"
-                ? "bg-white dark:bg-[#282828] text-amber-600 dark:text-amber-300 shadow-2xs"
-                : "text-slate-500 hover:text-slate-800 dark:hover:text-[#eee]"
-                }`}
-              title="Penjelasan Ringkas: Jawaban padat to-the-point"
-            >
-              <Zap className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Ringkas</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSetStudyMode("quizzer")}
-              className={`px-2 sm:px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${currentMode === "quizzer"
-                ? "bg-white dark:bg-[#282828] text-emerald-600 dark:text-emerald-300 shadow-2xs"
-                : "text-slate-500 hover:text-slate-800 dark:hover:text-[#eee]"
-                }`}
-              title="Latihan & Kuis: Tantangan soal interaktif"
-            >
-              <HelpCircle className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Kuis</span>
-            </button>
-          </div>
 
           {/* History Drawer Trigger */}
           <button
@@ -1883,9 +2123,8 @@ export const AIChat: React.FC<AIChatProps> = ({
               return (
                 <div
                   key={m.id}
-                  className={`group flex gap-3.5 ${
-                    isUser ? "justify-end" : "justify-start items-start"
-                  }`}
+                  className={`group flex gap-3.5 ${isUser ? "justify-end" : "justify-start items-start"
+                    }`}
                 >
                   {!isUser && (
                     <div className="w-8 h-8 rounded-xl bg-indigo-600 dark:bg-indigo-500 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
@@ -1973,12 +2212,45 @@ export const AIChat: React.FC<AIChatProps> = ({
                       <div className="space-y-3">
                         <div className="prose prose-sm dark:prose-invert max-w-none leading-relaxed break-words">
                           <Markdown
+                            remarkPlugins={[remarkGfm]}
                             components={{
                               code: CodeBlock,
                               pre: ({ children }) => <>{children}</>,
+                              table: ({ children }) => (
+                                <div className="my-3.5 w-full overflow-x-auto rounded-2xl border border-slate-200/80 dark:border-[#2b2b2b] shadow-xs">
+                                  <table className="w-full min-w-[340px] text-xs sm:text-sm text-left border-collapse bg-white dark:bg-[#151515]">
+                                    {children}
+                                  </table>
+                                </div>
+                              ),
+                              thead: ({ children }) => (
+                                <thead className="bg-slate-100/90 dark:bg-[#1f1f1f] text-slate-900 dark:text-[#f2f2f2] font-bold border-b border-slate-200/80 dark:border-[#2b2b2b]">
+                                  {children}
+                                </thead>
+                              ),
+                              tbody: ({ children }) => (
+                                <tbody className="divide-y divide-slate-100 dark:divide-[#242424]">
+                                  {children}
+                                </tbody>
+                              ),
+                              tr: ({ children }) => (
+                                <tr className="hover:bg-slate-50/75 dark:hover:bg-[#1a1a1a] transition-colors">
+                                  {children}
+                                </tr>
+                              ),
+                              th: ({ children }) => (
+                                <th className="px-3.5 py-2.5 font-bold text-slate-900 dark:text-white border-r border-slate-200/60 dark:border-[#2a2a2a] last:border-r-0">
+                                  {children}
+                                </th>
+                              ),
+                              td: ({ children }) => (
+                                <td className="px-3.5 py-2.5 text-slate-700 dark:text-[#ccc] border-r border-slate-100 dark:border-[#222] last:border-r-0 leading-relaxed">
+                                  {children}
+                                </td>
+                              ),
                             }}
                           >
-                            {m.content}
+                            {formatMarkdownTables(m.content)}
                           </Markdown>
                         </div>
 
@@ -2023,7 +2295,7 @@ export const AIChat: React.FC<AIChatProps> = ({
                             description: m.createdTodos[0]?.description,
                             priority: m.createdTodos[0]?.priority || "medium",
                             category: m.createdTodos[0]?.category || "Belajar AI",
-                            subtasks: m.createdTodos.length > 1 
+                            subtasks: m.createdTodos.length > 1
                               ? m.createdTodos.map((t, idx) => ({ id: `st-${idx}`, title: t.title, isCompleted: false }))
                               : m.createdTodos[0]?.subtasks,
                           } : null);
@@ -2067,13 +2339,12 @@ export const AIChat: React.FC<AIChatProps> = ({
                                   <div className="flex items-center gap-1.5 shrink-0">
                                     {todoData.priority && (
                                       <span
-                                        className={`px-1.5 py-0.5 rounded text-xs font-bold uppercase ${
-                                          todoData.priority === "high"
-                                            ? "bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300"
-                                            : todoData.priority === "low"
+                                        className={`px-1.5 py-0.5 rounded text-xs font-bold uppercase ${todoData.priority === "high"
+                                          ? "bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300"
+                                          : todoData.priority === "low"
                                             ? "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
                                             : "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300"
-                                        }`}
+                                          }`}
                                       >
                                         {todoData.priority === "high" ? "Penting" : todoData.priority === "low" ? "Rendah" : "Sedang"}
                                       </span>
@@ -2112,7 +2383,7 @@ export const AIChat: React.FC<AIChatProps> = ({
                         })()}
 
                         {/* Message Quick Action Rail */}
-                        <div className="flex items-center gap-1.5 pt-1.5 border-t border-slate-100 dark:border-[#222]">
+                        <div className="flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-slate-100 dark:border-[#222]">
                           <button
                             type="button"
                             onClick={() => handleCopyText(m.content, m.id)}
@@ -2125,6 +2396,24 @@ export const AIChat: React.FC<AIChatProps> = ({
                               <Copy className="w-3 h-3" />
                             )}
                             <span>{copiedId === m.id ? "Tersalin" : "Salin"}</span>
+                          </button>
+
+                          {/* Text-to-Speech Read Aloud Button */}
+                          <button
+                            type="button"
+                            onClick={() => handleToggleSpeechSynthesis(m.id, m.content)}
+                            className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs transition cursor-pointer ${speakingMessageId === m.id
+                              ? "text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 font-semibold"
+                              : "text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-[#202020]"
+                              }`}
+                            title={speakingMessageId === m.id ? "Hentikan pembacaan suara" : "Dengarkan jawaban (Text-to-Speech)"}
+                          >
+                            {speakingMessageId === m.id ? (
+                              <VolumeX className="w-3 h-3 text-indigo-600 animate-pulse" />
+                            ) : (
+                              <Volume2 className="w-3 h-3" />
+                            )}
+                            <span>{speakingMessageId === m.id ? "Berhenti" : "Dengarkan"}</span>
                           </button>
 
                           <button
@@ -2230,9 +2519,8 @@ export const AIChat: React.FC<AIChatProps> = ({
               <div className="flex items-center gap-2.5 min-w-0 pr-2">
                 {/* Format Box Badge */}
                 <span
-                  className={`px-2 py-0.5 rounded-md text-xs font-black uppercase tracking-wider shrink-0 ${
-                    getFileFormatBadge(previewFile.name, previewFile.type).badgeClass
-                  }`}
+                  className={`px-2 py-0.5 rounded-md text-xs font-black uppercase tracking-wider shrink-0 ${getFileFormatBadge(previewFile.name, previewFile.type).badgeClass
+                    }`}
                 >
                   {getFileFormatBadge(previewFile.name, previewFile.type).label}
                 </span>
@@ -2274,7 +2562,7 @@ export const AIChat: React.FC<AIChatProps> = ({
             {/* Modal Content */}
             <div className="flex-1 overflow-auto p-3 sm:p-4 bg-slate-100/50 dark:bg-[#111111]/80 min-h-[400px]">
               {previewFile.type === "image" ||
-              /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(previewFile.name) ? (
+                /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(previewFile.name) ? (
                 <div className="flex flex-col items-center justify-center min-h-[350px]">
                   {previewFile.dataUrl ? (
                     <img
@@ -2313,6 +2601,97 @@ export const AIChat: React.FC<AIChatProps> = ({
                   </pre>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 5. Claude-style Cowork Introduction Modal ── */}
+      {showCoworkModal && (
+        <div
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={handleCancelCowork}
+        >
+          <div
+            className="w-full max-w-md rounded-3xl overflow-hidden shadow-2xl border border-slate-200/40 dark:border-[#333] flex flex-col animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Top Light Illustration Area */}
+            <div className="relative bg-[#f6f4ee] dark:bg-[#1e1e1e] h-48 flex items-center justify-center p-6 select-none border-b border-[#e8e4da] dark:border-[#2a2a2a]">
+              {/* Close Button */}
+              <button
+                type="button"
+                onClick={handleCancelCowork}
+                className="absolute top-3.5 right-3.5 w-7 h-7 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center transition cursor-pointer"
+                title="Tutup (Kembali ke Chat)"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
+              {/* Graphic Mock of the Pill Switch with Pointer Cursor */}
+              <div className="relative">
+                <div className="flex items-center bg-[#e4e0d5] dark:bg-[#2c2c2c] p-1.5 rounded-2xl shadow-inner border border-[#d8d3c5] dark:border-[#3a3a3a]">
+                  <div className="px-5 py-2 rounded-xl bg-white dark:bg-[#383838] shadow-sm text-slate-900 dark:text-white font-medium text-xs sm:text-sm">
+                    Chat
+                  </div>
+                  <div className="px-5 py-2 rounded-xl text-slate-400 dark:text-[#888] font-medium text-xs sm:text-sm">
+                    Cowork
+                  </div>
+                </div>
+
+                {/* Simulated mouse pointer clicking Cowork */}
+                <div className="absolute -bottom-3.5 right-6 pointer-events-none drop-shadow-md">
+                  <svg
+                    className="w-6 h-6 text-black dark:text-white fill-current"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M4 2l16 11-7.5 1.5 4.5 7.5-3 1.5-4.5-7.5L4 20V2z" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Dark Information Area */}
+            <div className="bg-[#141414] text-white p-6 sm:p-7 space-y-4">
+              <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white font-serif">
+                Don&apos;t just chat. Cowork.
+              </h2>
+
+              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                Dengan mode <strong>Cowork</strong>, AI bertindak sebagai rekan kolaborator mandiri untuk mengerjakan tugas kompleks: merancang draf, menganalisis dokumen, hingga menyusun poin eksekusi.
+              </p>
+
+              <ul className="space-y-2 text-xs sm:text-sm text-slate-300">
+                <li className="flex items-start gap-2.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400 mt-2 shrink-0" />
+                  <span>Langsung menghasilkan draf dokumen, laporan, dan kode siap pakai</span>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400 mt-2 shrink-0" />
+                  <span>Menyusun rencana aksi langkah demi langkah secara terstruktur</span>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400 mt-2 shrink-0" />
+                  <span>Otomatis sinkronisasi hasil kerja ke Catatan Belajar & To-Do List</span>
+                </li>
+              </ul>
+
+              <div className="flex items-center justify-end gap-2.5 pt-3">
+                <button
+                  type="button"
+                  onClick={handleCancelCowork}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold bg-[#262626] text-slate-300 hover:bg-[#333] hover:text-white transition cursor-pointer"
+                >
+                  Nanti
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmCowork}
+                  className="px-4 py-2 rounded-xl text-xs font-bold bg-white text-slate-900 hover:bg-slate-100 shadow-md transition cursor-pointer"
+                >
+                  Coba Cowork
+                </button>
+              </div>
             </div>
           </div>
         </div>
