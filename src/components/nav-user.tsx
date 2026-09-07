@@ -47,7 +47,7 @@ export function NavUser({
   onDisconnectGoogle,
 }: NavUserProps) {
   const router = useRouter();
-  const { isMobile } = useSidebar();
+  const { isMobile, setOpenMobile } = useSidebar();
 
   const getInitials = (name: string) => {
     if (!name) return "U";
@@ -114,7 +114,10 @@ export function NavUser({
             
             <DropdownMenuGroup className="space-y-0.5">
               <DropdownMenuItem
-                onClick={() => router.push("/settings")}
+                onClick={() => {
+                  if (isMobile) setOpenMobile(false);
+                  router.push("/settings");
+                }}
                 className="cursor-pointer gap-2 px-2 py-1.5 rounded-lg text-xs font-medium text-slate-700 dark:text-[#a3a3a3] hover:text-slate-900 dark:hover:text-[#f5f5f5] hover:bg-slate-100/80 dark:hover:bg-[#1c1c1c] outline-none"
               >
                 <Settings className="w-4 h-4 text-slate-500 dark:text-[#737373]" />
@@ -143,7 +146,10 @@ export function NavUser({
               <>
                 <DropdownMenuSeparator className="bg-slate-100 dark:bg-white/[0.06] my-1" />
                 <DropdownMenuItem
-                  onClick={onDisconnectGoogle}
+                  onClick={() => {
+                    if (isMobile) setOpenMobile(false);
+                    onDisconnectGoogle();
+                  }}
                   className="cursor-pointer gap-2 px-2 py-1.5 rounded-lg text-xs font-medium text-rose-600 dark:text-[#f87171] hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-700 dark:hover:text-[#f87171] outline-none"
                 >
                   <LogOut className="w-4 h-4" />

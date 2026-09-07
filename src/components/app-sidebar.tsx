@@ -29,6 +29,7 @@ import {
 import { NavUser } from "@/components/nav-user";
 import { BrandText, APP_TAGLINE } from "@/lib/brand";
 import { UserProfile } from "@/services/classroomService";
+import { cn } from "@/lib/utils";
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   userProfile?: UserProfile | null;
@@ -48,7 +49,7 @@ export function AppSidebar({
 }: AppSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { state, isMobile } = useSidebar();
+  const { state, isMobile, setOpenMobile } = useSidebar();
   const isCollapsed = state === "collapsed" && !isMobile;
   const [isDark, setIsDark] = React.useState(false);
 
@@ -118,8 +119,11 @@ export function AppSidebar({
             <SidebarMenuButton
               size="lg"
               tooltip="IOnLearn"
-              onClick={() => router.push("/")}
-              className="cursor-pointer hover:bg-slate-100/80 dark:hover:bg-[#181818] transition-colors rounded-xl overflow-hidden whitespace-nowrap group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:justify-center"
+              onClick={() => {
+                if (isMobile) setOpenMobile(false);
+                router.push("/");
+              }}
+              className="cursor-pointer hover:bg-slate-100/80 dark:hover:bg-[#181818] transition-colors rounded-xl overflow-hidden whitespace-nowrap group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:justify-center pr-8"
             >
               {isCollapsed ? (
                 /* Collapsed Icon: logoionlearnkecil */
@@ -163,21 +167,24 @@ export function AppSidebar({
                     asChild
                     isActive={item.isActive}
                     tooltip={item.title}
-                    className={`h-9 rounded-xl font-medium text-xs transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] overflow-hidden whitespace-nowrap group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:justify-center cursor-pointer ${
+                    className={cn(
+                      "rounded-xl font-medium transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] overflow-hidden whitespace-nowrap group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:justify-center cursor-pointer",
+                      isMobile ? "h-11 text-xs" : "h-9 text-xs",
                       item.isActive
                         ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 font-semibold [&_svg]:text-indigo-600 dark:[&_svg]:text-indigo-400"
                         : "text-slate-600 dark:text-[#a3a3a3] hover:text-slate-900 dark:hover:text-[#f5f5f5] hover:bg-slate-100/80 dark:hover:bg-[#181818]"
-                    }`}
+                    )}
                   >
                     <a
                       href={item.url}
                       onClick={(e) => {
                         e.preventDefault();
+                        if (isMobile) setOpenMobile(false);
                         router.push(item.url);
                       }}
-                      className="flex items-center gap-2.5 px-2.5 py-2 w-full transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:gap-0"
+                      className="flex items-center gap-2.5 px-3 py-2 w-full transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:gap-0"
                     >
-                      <item.icon className="size-4 shrink-0 transition-transform duration-150 group-hover:[&_svg]:scale-105" />
+                      <item.icon className="size-4.5 shrink-0 transition-transform duration-150 group-hover:[&_svg]:scale-105" />
                       <span className="truncate whitespace-nowrap transition-[opacity,transform,max-width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] max-w-full group-data-[collapsible=icon]:max-w-0 group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:-translate-x-2 group-data-[collapsible=icon]:pointer-events-none group-data-[collapsible=icon]:hidden">
                         {item.title}
                       </span>

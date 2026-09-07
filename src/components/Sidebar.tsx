@@ -221,10 +221,10 @@ export const Sidebar: React.FC<SidebarProps> = (props) => {
       {mobileOpen && (
         <div className="fixed inset-0 z-50 md:hidden">
           <div
-            className="absolute inset-0 bg-slate-900/60 dark:bg-black/60 backdrop-blur-xs"
+            className="absolute inset-0 bg-black/60 dark:bg-black/75 backdrop-blur-md animate-[sheet-fade-in_300ms_ease_forwards]"
             onClick={onCloseMobileSidebar}
           />
-          <aside className="absolute inset-y-0 left-0 w-72 max-w-[85vw] border-r border-slate-200 dark:border-[#2b2b2b] bg-slate-50 dark:bg-[#0c0c0c] shadow-2xl animate-in slide-in-from-left-1/2 duration-200">
+          <aside className="absolute inset-y-0 left-0 w-72 max-w-[85vw] border-r border-slate-200 dark:border-[#2b2b2b] bg-white dark:bg-[#0c0c0c] text-slate-900 dark:text-[#f5f5f5] shadow-2xl animate-[sheet-slide-in-left_320ms_cubic-bezier(0.16,1,0.3,1)_forwards]">
             <SidebarBody {...props} onNavigate={onCloseMobileSidebar} />
           </aside>
         </div>
