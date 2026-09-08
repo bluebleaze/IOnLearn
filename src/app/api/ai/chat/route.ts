@@ -188,12 +188,15 @@ function extractFallbackActions(
     lastUserMessage: string,
     replyText: string,
     taskContext?: any
-): { createdNote?: any; createdTodo?: any } {
+): { createdNote?: any; createdTodo?: any; createdDocument?: any; createdSlides?: any; createdImage?: any } {
     if (!replyText || replyText.length < 15) return {};
 
     const lowerUser = (lastUserMessage || "").toLowerCase();
     let createdNote: any = undefined;
     let createdTodo: any = undefined;
+    let createdDocument: any = undefined;
+    let createdSlides: any = undefined;
+    let createdImage: any = undefined;
 
     // Check Note intent: "catatan", "catat", "rangkum", "ringkas", "materi", "note", "simpan"
     const wantsNote =
@@ -269,7 +272,101 @@ function extractFallbackActions(
         }
     }
 
-    return { createdNote, createdTodo };
+    // Check Document intent: "pdf", "word", "docx", "makalah", "dokumen"
+    const wantsDocx = lowerUser.includes("word") || lowerUser.includes("docx") || lowerUser.includes(".docx");
+    const wantsPdf = lowerUser.includes("pdf") || lowerUser.includes(".pdf");
+    if (wantsDocx || wantsPdf) {
+        const lines = replyText.split("\n").map((l) => l.trim()).filter(Boolean);
+        const headingLine = lines.find((l) => l.startsWith("#"));
+        const docTitle = headingLine
+            ? headingLine.replace(/^[#\s*]+/, "").trim().slice(0, 80)
+            : taskContext?.title || "Dokumen Materi Belajar";
+
+        createdDocument = {
+            type: wantsDocx ? "docx" : "pdf",
+            title: docTitle,
+            content: replyText,
+            fileName: `${docTitle.toLowerCase().replace(/[^a-z0-9]+/g, "_")}.${wantsDocx ? "docx" : "pdf"}`,
+            description: `Dokumen ${wantsDocx ? "Word (.docx)" : "PDF (.pdf)"} siap unduh.`,
+            subject: taskContext?.courseName,
+        };
+    }
+
+    // Check Presentation Slides intent: "slide", "presentasi", "ppt", "pptx", "powerpoint"
+    const wantsSlides =
+        lowerUser.includes("slide") ||
+        lowerUser.includes("presentasi") ||
+        lowerUser.includes("ppt") ||
+        lowerUser.includes("pptx") ||
+        lowerUser.includes("powerpoint");
+
+    if (wantsSlides) {
+        const rawSections = replyText.split(/(?:^|\n)(?=#+\s*(?:Slide|\d+|Bagian|Topik))/i);
+        const parsedSlides: { title: string; bullets: string[]; notes?: string }[] = [];
+
+        for (const sec of rawSections) {
+            const secLines = sec.trim().split("\n").map((l) => l.trim()).filter(Boolean);
+            if (secLines.length === 0) continue;
+
+            const slideTitle = secLines[0].replace(/^[#\s*]+/, "").slice(0, 70);
+            const bullets: string[] = [];
+            let notes = "";
+
+            for (let i = 1; i < secLines.length; i++) {
+                const l = secLines[i];
+                if (l.toLowerCase().startsWith("notes:") || l.toLowerCase().startsWith("catatan:")) {
+                    notes = l.replace(/^(notes|catatan):\s*/i, "");
+                } else if (/^[-*•\d\.]\s+/.test(l)) {
+                    bullets.push(l.replace(/^[-*•\d\.]\s+/, ""));
+                } else if (bullets.length < 5 && l.length > 5 && !l.startsWith("#")) {
+                    bullets.push(l);
+                }
+            }
+
+            if (slideTitle && (bullets.length > 0 || parsedSlides.length === 0)) {
+                parsedSlides.push({
+                    title: slideTitle,
+                    bullets: bullets.slice(0, 5),
+                    notes: notes || undefined,
+                });
+            }
+        }
+
+        if (parsedSlides.length > 0) {
+            createdSlides = {
+                title: taskContext?.title || parsedSlides[0]?.title || "Materi Presentasi",
+                theme: "indigo",
+                slides: parsedSlides.slice(0, 10),
+                fileName: `${(taskContext?.title || "presentasi").toLowerCase().replace(/[^a-z0-9]+/g, "_")}.pptx`,
+                subject: taskContext?.courseName,
+            };
+        }
+    }
+
+    // Check Image intent: "gambarkan", "buatkan gambar", "ilustrasikan", "generate image", "lukiskan", "gambar"
+    const wantsImage =
+        lowerUser.includes("gambarkan") ||
+        lowerUser.includes("buatkan gambar") ||
+        lowerUser.includes("bikin gambar") ||
+        lowerUser.includes("ilustrasikan") ||
+        lowerUser.includes("generate image") ||
+        lowerUser.includes("lukiskan");
+
+    if (wantsImage) {
+        const cleanPrompt = lastUserMessage
+            .replace(/^(tolong\s+)?(gambarkan|buatkan gambar|bikin gambar|ilustrasikan|generate image|lukiskan)\s+/i, "")
+            .trim();
+
+        if (cleanPrompt.length > 3) {
+            createdImage = {
+                prompt: cleanPrompt,
+                caption: cleanPrompt.slice(0, 60),
+                aspectRatio: "16:9",
+            };
+        }
+    }
+
+    return { createdNote, createdTodo, createdDocument, createdSlides, createdImage };
 }
 
 export async function POST(req: Request) {
@@ -359,7 +456,37 @@ Fitur Otomatisasi Terintegrasi (Actions):
       { "title": "Sub-langkah 2: ..." }
     ]
   }
-- Jika pengguna tidak meminta membuat catatan atau to-do, jangan sertakan field createdNote atau createdTodo (kosongkan/abaikan).`;
+- KETIKA PENGGUNA MEMINTA DOKUMEN DALAM BENTUK WORD (.DOCX) ATAU PDF (.PDF) (misal: "kirim dalam bentuk pdf", "buatkan makalah word", "format docx", "buat file pdf"):
+  Isi field "createdDocument" dengan objek:
+  {
+    "type": "docx" | "pdf",
+    "title": "Judul Dokumen (Contoh: 'Makalah Perkembangan Revolusi Industri')",
+    "content": "Isi lengkap materi format Markdown terstruktur dengan heading, poin, dan tabel jika ada",
+    "fileName": "nama_dokumen.docx" (atau .pdf),
+    "description": "Keterangan singkat isi dokumen"
+  }
+- KETIKA PENGGUNA MEMINTA SLIDE / PRESENTASI (misal: "buatkan presentasi slide tentang...", "bikin ppt", "buatkan slide powerpoint", "buat 5 slide"):
+  Isi field "createdSlides" dengan objek:
+  {
+    "title": "Judul Utama Presentasi",
+    "theme": "indigo" | "dark" | "emerald" | "amber",
+    "slides": [
+      {
+        "title": "Judul Slide 1",
+        "bullets": ["Poin materi 1", "Poin materi 2", "Poin materi 3"],
+        "notes": "Catatan pembicara singkat untuk slide ini"
+      }
+    ],
+    "fileName": "nama_presentasi.pptx"
+  }
+- KETIKA PENGGUNA MEMINTA GAMBAR / ILUSTRASI / DIAGRAM VISUAL (misal: "gambarkan struktur sel", "buatkan gambar ilustrasi fotosintesis", "generate image of..."):
+  Isi field "createdImage" dengan objek:
+  {
+    "prompt": "Deskripsi prompt dalam bahasa Inggris yang detail dan jelas untuk AI image generator (contoh: 'Detailed scientific diagram of plant cell anatomy with chloroplasts and nucleus, educational modern style, high resolution')",
+    "caption": "Keterangan gambar dalam bahasa Indonesia (contoh: 'Diagram Anatomi Sel Tumbuhan')",
+    "aspectRatio": "16:9" | "1:1" | "4:3"
+  }
+- Jika pengguna tidak meminta membuat catatan, to-do, dokumen, presentasi slide, atau gambar, jangan sertakan field-field tersebut (kosongkan/abaikan).`;
 
         const provider = aiConfig?.provider || process.env.AI_PROVIDER?.toLowerCase() || "gemini";
         let responseText = "";
@@ -386,7 +513,7 @@ Fitur Otomatisasi Terintegrasi (Actions):
                     role: "system",
                     content:
                         systemInstruction +
-                        '\n\nKEMBALIKAN OUTPUT HARUS HANYA DALAM BENTUK JSON OBJECT YANG VALID SESUAI SKEMA BERIKUT:\n{\n  "reply": "Jawaban Markdown",\n  "suggestedPrompts": ["Pertanyaan 1", "Pertanyaan 2"],\n  "createdNote": { "title": "Judul Singkat", "content": "Isi Markdown tanpa baris tag di akhir", "subject": "Nama Mata Kuliah", "tags": ["Mekanika", "UAS"] },\n  "createdTodo": { "title": "Judul Rencana", "description": "Deskripsi", "priority": "medium", "category": "Materi", "subtasks": [{ "title": "Langkah 1" }, { "title": "Langkah 2" }] }\n}',
+                        '\n\nKEMBALIKAN OUTPUT HARUS HANYA DALAM BENTUK JSON OBJECT YANG VALID SESUAI SKEMA BERIKUT:\n{\n  "reply": "Jawaban Markdown",\n  "suggestedPrompts": ["Pertanyaan 1", "Pertanyaan 2"],\n  "createdNote": { "title": "Judul Singkat", "content": "Isi Markdown", "subject": "Nama Mata Kuliah", "tags": ["Label"] },\n  "createdTodo": { "title": "Judul Rencana", "description": "Deskripsi", "priority": "medium", "category": "Materi", "subtasks": [{ "title": "Langkah 1" }] },\n  "createdDocument": { "type": "docx" | "pdf", "title": "Judul Dokumen", "content": "Isi Markdown", "fileName": "dokumen.docx" },\n  "createdSlides": { "title": "Judul Presentasi", "theme": "indigo", "slides": [{ "title": "Slide 1", "bullets": ["Poin 1"], "notes": "Catatan" }], "fileName": "presentasi.pptx" },\n  "createdImage": { "prompt": "English detailed prompt", "caption": "Keterangan Indonesia", "aspectRatio": "16:9" }\n}',
                 },
                 ...messages.map((m: any) => {
                     if (m.attachments && Array.isArray(m.attachments) && m.attachments.length > 0) {
@@ -545,6 +672,49 @@ Fitur Otomatisasi Terintegrasi (Actions):
                                     },
                                 },
                             },
+                            createdDocument: {
+                                type: Type.OBJECT,
+                                description: "Dokumen Word (.docx) atau PDF (.pdf) jika pengguna meminta dokumen/makalah/file.",
+                                properties: {
+                                    type: { type: Type.STRING, description: "Format: docx atau pdf" },
+                                    title: { type: Type.STRING, description: "Judul dokumen" },
+                                    content: { type: Type.STRING, description: "Isi dokumen Markdown lengkap terstruktur" },
+                                    fileName: { type: Type.STRING, description: "Nama file dengan ekstensi .docx atau .pdf" },
+                                    description: { type: Type.STRING, description: "Keterangan singkat" },
+                                    subject: { type: Type.STRING, description: "Mata kuliah atau topik" },
+                                },
+                            },
+                            createdSlides: {
+                                type: Type.OBJECT,
+                                description: "Slide presentasi (.pptx) jika pengguna meminta presentasi/slide/ppt.",
+                                properties: {
+                                    title: { type: Type.STRING, description: "Judul utama presentasi" },
+                                    theme: { type: Type.STRING, description: "Tema warna: indigo, dark, emerald, amber, atau slate" },
+                                    fileName: { type: Type.STRING, description: "Nama file dengan ekstensi .pptx" },
+                                    subject: { type: Type.STRING, description: "Mata kuliah atau topik" },
+                                    slides: {
+                                        type: Type.ARRAY,
+                                        description: "Daftar slide materi",
+                                        items: {
+                                            type: Type.OBJECT,
+                                            properties: {
+                                                title: { type: Type.STRING, description: "Judul slide" },
+                                                bullets: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Poin-poin bullet materi" },
+                                                notes: { type: Type.STRING, description: "Catatan presenter" },
+                                            },
+                                        },
+                                    },
+                                },
+                            },
+                            createdImage: {
+                                type: Type.OBJECT,
+                                description: "Prompt pembuatan gambar visual/diagram jika pengguna meminta gambar/ilustrasi.",
+                                properties: {
+                                    prompt: { type: Type.STRING, description: "Prompt berbahasa Inggris yang jelas dan deskriptif untuk generator gambar" },
+                                    caption: { type: Type.STRING, description: "Keterangan gambar dalam bahasa Indonesia" },
+                                    aspectRatio: { type: Type.STRING, description: "Rasio aspek: 16:9, 1:1, atau 4:3" },
+                                },
+                            },
                         },
                         required: ["reply", "suggestedPrompts"],
                     },
@@ -579,6 +749,16 @@ Fitur Otomatisasi Terintegrasi (Actions):
         const finalTodo = resultData.createdTodo || (resultData.createdTodos && resultData.createdTodos.length > 0 ? undefined : fallback.createdTodo) || undefined;
         const finalTodos = resultData.createdTodos || undefined;
 
+        const finalDocument = resultData.createdDocument || fallback.createdDocument || undefined;
+        const finalSlides = resultData.createdSlides || fallback.createdSlides || undefined;
+        const finalImage = resultData.createdImage || fallback.createdImage || undefined;
+
+        if (finalImage && !finalImage.url && finalImage.prompt) {
+            const width = finalImage.aspectRatio === "1:1" ? 1024 : finalImage.aspectRatio === "4:3" ? 1024 : 1280;
+            const height = finalImage.aspectRatio === "1:1" ? 1024 : finalImage.aspectRatio === "4:3" ? 768 : 720;
+            finalImage.url = `https://image.pollinations.ai/prompt/${encodeURIComponent(finalImage.prompt)}?width=${width}&height=${height}&model=flux&nologo=true`;
+        }
+
         return NextResponse.json({
             reply:
                 resultData.reply ||
@@ -587,6 +767,9 @@ Fitur Otomatisasi Terintegrasi (Actions):
             createdNote: finalNote,
             createdTodo: finalTodo,
             createdTodos: finalTodos,
+            createdDocument: finalDocument,
+            createdSlides: finalSlides,
+            createdImage: finalImage,
             timestamp: Date.now(),
         });
     } catch (error: any) {

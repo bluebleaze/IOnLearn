@@ -164,6 +164,40 @@ export interface ChatMessage {
       isCompleted?: boolean;
     }[];
   }[];
+  createdDocument?: CreatedDocument;
+  createdSlides?: CreatedSlides;
+  createdImage?: CreatedImage;
+}
+
+export interface CreatedDocument {
+  id?: string;
+  type: 'pdf' | 'docx';
+  title: string;
+  content: string;
+  fileName?: string;
+  description?: string;
+  subject?: string;
+}
+
+export interface CreatedSlides {
+  id?: string;
+  title: string;
+  theme?: 'indigo' | 'dark' | 'emerald' | 'amber' | 'slate';
+  slides: {
+    title: string;
+    bullets: string[];
+    notes?: string;
+  }[];
+  fileName?: string;
+  subject?: string;
+}
+
+export interface CreatedImage {
+  id?: string;
+  url: string;
+  prompt: string;
+  caption?: string;
+  aspectRatio?: '1:1' | '16:9' | '4:3' | '9:16';
 }
 
 export type ToastPosition =

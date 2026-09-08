@@ -41,6 +41,13 @@ import {
   MicOff,
   Volume2,
   VolumeX,
+  Presentation,
+  FileSpreadsheet,
+  Layers,
+  ChevronLeft,
+  Maximize2,
+  Link2,
+  FileDown,
 } from "lucide-react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -49,12 +56,28 @@ import {
   AIConfig,
   ChatAttachment,
   ChatMessage,
+  CreatedDocument,
+  CreatedImage,
+  CreatedSlides,
   TodoTask,
   UserPreferences,
   StudyNote,
   PersonalTodo,
 } from "../types";
 import { sendChatMessageToAI } from "../services/aiService";
+import {
+  downloadCreatedDocument,
+  downloadCreatedSlides,
+  generatePdfDocument,
+  generateWordDocument,
+  generatePptxPresentation,
+  triggerFileDownload,
+} from "@/lib/exportUtils";
+import {
+  isGoogleWorkspaceUrl,
+  parseGoogleWorkspaceUrl,
+  getWorkspaceBadge,
+} from "@/lib/workspaceUtils";
 import {
   addNote,
   addTodo,
@@ -417,6 +440,17 @@ export const AIChat: React.FC<AIChatProps> = ({
     extractedText?: string;
   } | null>(null);
   const [previewPdfBlobUrl, setPreviewPdfBlobUrl] = useState<string | null>(null);
+
+  // Slides Carousel index tracking per message
+  const [activeSlideIndices, setActiveSlideIndices] = useState<Record<string, number>>({});
+  // Lightbox for generated image
+  const [lightboxImage, setLightboxImage] = useState<{ url: string; caption?: string; prompt?: string } | null>(null);
+  // Google Workspace link modal
+  const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false);
+  const [workspaceUrlInput, setWorkspaceUrlInput] = useState("");
+  // Message export menu state
+  const [activeExportMenuMsgId, setActiveExportMenuMsgId] = useState<string | null>(null);
+  const [exportingFormat, setExportingFormat] = useState<string | null>(null);
 
   // Stop speech recognition and synthesis on unmount
   useEffect(() => {
@@ -873,6 +907,170 @@ export const AIChat: React.FC<AIChatProps> = ({
     });
   };
 
+  // Quick Action: Export AI message to Word (.docx) or PDF (.pdf)
+  const handleExportDocument = async (msg: ChatMessage, format: "pdf" | "docx") => {
+    try {
+      setExportingFormat(`${msg.id}-${format}`);
+      const cleanContent = msg.content.replace(/```json[\s\S]*?```/g, "").trim();
+      const lines = cleanContent.split("\n").map((l) => l.trim()).filter(Boolean);
+      const heading = lines.find((l) => l.startsWith("#"));
+      const title =
+        msg.createdDocument?.title ||
+        (heading ? heading.replace(/^[#\s*]+/, "").trim().slice(0, 80) : activeTask?.title || "Dokumen Materi AI");
+      const fileName = `${title.toLowerCase().replace(/[^a-z0-9]+/g, "_")}.${format}`;
+
+      if (format === "pdf") {
+        const blob = await generatePdfDocument({
+          title,
+          content: msg.createdDocument?.content || cleanContent,
+          subject: msg.createdDocument?.subject || activeTask?.courseName,
+          fileName,
+        });
+        triggerFileDownload(blob, fileName);
+        toast.success("📄 File PDF Berhasil Dibuat!", {
+          description: `Tersimpan sebagai ${fileName}`,
+        });
+      } else {
+        const blob = await generateWordDocument({
+          title,
+          content: msg.createdDocument?.content || cleanContent,
+          subject: msg.createdDocument?.subject || activeTask?.courseName,
+          fileName,
+        });
+        triggerFileDownload(blob, fileName);
+        toast.success("📝 File Word (.docx) Berhasil Dibuat!", {
+          description: `Tersimpan sebagai ${fileName}`,
+        });
+      }
+    } catch (err: any) {
+      console.error("Export error:", err);
+      toast.error(`Gagal membuat file ${format.toUpperCase()}`, {
+        description: err.message || "Terjadi kesalahan pembuatan dokumen.",
+      });
+    } finally {
+      setExportingFormat(null);
+      setActiveExportMenuMsgId(null);
+    }
+  };
+
+  // Quick Action: Export AI message to PowerPoint presentation (.pptx)
+  const handleExportSlides = async (msg: ChatMessage) => {
+    try {
+      setExportingFormat(`${msg.id}-pptx`);
+      if (msg.createdSlides) {
+        await downloadCreatedSlides(msg.createdSlides);
+        toast.success("📊 Presentasi PowerPoint (.pptx) Berhasil Diunduh!");
+        return;
+      }
+
+      const cleanContent = msg.content.replace(/```json[\s\S]*?```/g, "").trim();
+      const lines = cleanContent.split("\n").map((l) => l.trim()).filter(Boolean);
+      const title =
+        activeTask?.title ||
+        lines.find((l) => l.startsWith("#"))?.replace(/^[#\s*]+/, "").trim() ||
+        "Materi Presentasi AI";
+
+      const sections = cleanContent.split(/(?:^|\n)(?=#+\s*)/);
+      const slides: { title: string; bullets: string[] }[] = [];
+
+      for (const sec of sections) {
+        const secLines = sec.trim().split("\n").map((l) => l.trim()).filter(Boolean);
+        if (secLines.length === 0) continue;
+        const slideTitle = secLines[0].replace(/^[#\s*]+/, "").slice(0, 70);
+        const bullets: string[] = [];
+        for (let i = 1; i < secLines.length; i++) {
+          const l = secLines[i];
+          if (/^[-*•\d\.]\s+/.test(l)) {
+            bullets.push(l.replace(/^[-*•\d\.]\s+/, ""));
+          } else if (bullets.length < 5 && l.length > 5 && !l.startsWith("#")) {
+            bullets.push(l);
+          }
+        }
+        if (slideTitle && bullets.length > 0) {
+          slides.push({ title: slideTitle, bullets: bullets.slice(0, 5) });
+        }
+      }
+
+      if (slides.length === 0) {
+        slides.push({
+          title: "Ringkasan Materi",
+          bullets: lines.filter((l) => l.length > 10).slice(0, 5),
+        });
+      }
+
+      const fileName = `${title.toLowerCase().replace(/[^a-z0-9]+/g, "_")}.pptx`;
+      const blob = await generatePptxPresentation({
+        title,
+        theme: "indigo",
+        slides,
+        fileName,
+        subject: activeTask?.courseName,
+      });
+      triggerFileDownload(blob, fileName);
+      toast.success("📊 File Presentasi (.pptx) Berhasil Dibuat!", {
+        description: `Tersimpan sebagai ${fileName}`,
+      });
+    } catch (err: any) {
+      console.error("Export slides error:", err);
+      toast.error("Gagal membuat slide PowerPoint", {
+        description: err.message || "Terjadi kesalahan.",
+      });
+    } finally {
+      setExportingFormat(null);
+      setActiveExportMenuMsgId(null);
+    }
+  };
+
+  const handleGenerateImageForMessage = (msg: ChatMessage) => {
+    setActiveExportMenuMsgId(null);
+    const cleanContent = msg.content.replace(/```json[\s\S]*?```/g, "").trim();
+    const firstLine = cleanContent.split("\n")[0]?.replace(/^[#*-\s]+/, "").slice(0, 60) || "materi ini";
+    handleSendMessage(`Tolong buatkan gambar ilustrasi visual diagram untuk: ${firstLine}`);
+  };
+
+  const handleInsertWorkspaceLink = (autoSend: boolean = false) => {
+    const trimmed = workspaceUrlInput.trim();
+    if (!trimmed) {
+      toast.error("Masukkan link Google Workspace terlebih dahulu.");
+      return;
+    }
+
+    const parsed = parseGoogleWorkspaceUrl(trimmed);
+    const badge = getWorkspaceBadge(parsed?.type || "drive");
+
+    setIsWorkspaceModalOpen(false);
+    setWorkspaceUrlInput("");
+
+    if (autoSend) {
+      handleSendMessage(`Tolong baca dan analisa materi dari link ${badge.label} ini:\n${trimmed}`);
+    } else {
+      setInputPrompt((prev) => {
+        const prefix = prev.trim() ? `${prev.trim()}\n` : "";
+        return `${prefix}${trimmed} `;
+      });
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+      }
+      toast.success(`Link ${badge.label} berhasil disisipkan ke pesan!`, {
+        description: "AI akan otomatis mengunduh & membaca isi dokumen ini saat dikirim.",
+      });
+    }
+  };
+
+  const handlePrevSlide = (msgId: string, totalSlides: number) => {
+    setActiveSlideIndices((prev) => {
+      const current = prev[msgId] || 0;
+      return { ...prev, [msgId]: (current - 1 + totalSlides) % totalSlides };
+    });
+  };
+
+  const handleNextSlide = (msgId: string, totalSlides: number) => {
+    setActiveSlideIndices((prev) => {
+      const current = prev[msgId] || 0;
+      return { ...prev, [msgId]: (current + 1) % totalSlides };
+    });
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -1214,12 +1412,36 @@ export const AIChat: React.FC<AIChatProps> = ({
         };
       }
 
+      if (res.createdDocument) {
+        toast.success(
+          res.createdDocument.type === "pdf"
+            ? "📄 File PDF Telah Dibuat!"
+            : "📝 File Word Telah Dibuat!",
+          {
+            description: `"${res.createdDocument.title}" siap diunduh di dalam percakapan.`,
+          }
+        );
+      }
+      if (res.createdSlides) {
+        toast.success("📊 Slide Presentasi Telah Dibuat!", {
+          description: `"${res.createdSlides.title}" dengan ${res.createdSlides.slides.length} slide siap diunduh.`,
+        });
+      }
+      if (res.createdImage) {
+        toast.success("🎨 Ilustrasi Gambar Berhasil Dibuat!", {
+          description: "Gambar telah dimuat di dalam percakapan.",
+        });
+      }
+
       const assistantMessage: ChatMessage = {
         id: `msg-${Date.now() + 1}`,
         role: "assistant",
         content: res.reply,
         createdNote: res.createdNote ? { ...res.createdNote, id: noteCreatedId } : undefined,
         createdTodo: createdTodoObj || undefined,
+        createdDocument: res.createdDocument || undefined,
+        createdSlides: res.createdSlides || undefined,
+        createdImage: res.createdImage || undefined,
         timestamp: res.timestamp || Date.now(),
       };
 
@@ -1418,6 +1640,9 @@ export const AIChat: React.FC<AIChatProps> = ({
         content: res.reply,
         createdNote: res.createdNote ? { ...res.createdNote, id: noteCreatedId } : undefined,
         createdTodo: createdTodoObj || undefined,
+        createdDocument: res.createdDocument || undefined,
+        createdSlides: res.createdSlides || undefined,
+        createdImage: res.createdImage || undefined,
         timestamp: res.timestamp || Date.now(),
       };
 
@@ -1724,10 +1949,40 @@ export const AIChat: React.FC<AIChatProps> = ({
                           <div className="text-xs text-slate-500 dark:text-[#888]">Catatan Teks, CSV, JSON</div>
                         </div>
                       </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsFormatMenuOpen(false);
+                          setIsWorkspaceModalOpen(true);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium text-slate-700 dark:text-[#ddd] hover:bg-slate-100 dark:hover:bg-[#252525] transition cursor-pointer text-left"
+                      >
+                        <div className="w-6 h-6 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                          <Link2 className="w-3.5 h-3.5" />
+                        </div>
+                        <div>
+                          <div className="font-semibold">Google Workspace Link</div>
+                          <div className="text-xs text-slate-500 dark:text-[#888]">Docs, Sheets, Slides, Drive</div>
+                        </div>
+                      </button>
                     </div>
                   </div>
                 )}
               </div>
+
+              {/* Google Workspace Link Quick Button */}
+              <button
+                type="button"
+                onClick={() => setIsWorkspaceModalOpen(true)}
+                className="p-1.5 rounded-lg text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-slate-100 dark:hover:bg-[#202020] transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
+                title="Tautkan Dokumen / Spreadsheet Google Workspace"
+              >
+                <Link2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <span className="text-xs font-semibold text-slate-700 dark:text-[#ccc] hidden sm:inline">
+                  Google Link
+                </span>
+              </button>
 
               <input
                 type="file"
@@ -2382,6 +2637,242 @@ export const AIChat: React.FC<AIChatProps> = ({
                           );
                         })()}
 
+                        {/* Interactive Created Document Card (PDF / DOCX) */}
+                        {m.createdDocument && (
+                          <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-50/90 dark:bg-[#161616] border border-slate-200/80 dark:border-[#262626] shadow-2xs space-y-3">
+                            <div className="flex items-center justify-between flex-wrap gap-2">
+                              <div className="flex items-center gap-2.5">
+                                <div
+                                  className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold text-white shadow-2xs shrink-0 ${m.createdDocument.type === "pdf"
+                                    ? "bg-rose-600 dark:bg-rose-500"
+                                    : "bg-blue-600 dark:bg-blue-500"
+                                    }`}
+                                >
+                                  {m.createdDocument.type === "pdf" ? "PDF" : "DOCX"}
+                                </div>
+                                <div className="min-w-0">
+                                  <span className="text-xs font-bold text-slate-900 dark:text-[#f3f3f3] block truncate">
+                                    {m.createdDocument.type === "pdf" ? "Dokumen PDF Siap Unduh" : "Dokumen Word (.docx) Siap Unduh"}
+                                  </span>
+                                  <span className="text-[11px] text-slate-500 dark:text-[#888] truncate block">
+                                    {m.createdDocument.fileName || (m.createdDocument.type === "pdf" ? "dokumen.pdf" : "dokumen.docx")}
+                                  </span>
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => downloadCreatedDocument(m.createdDocument!)}
+                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white shadow-xs transition-all cursor-pointer shrink-0 ${m.createdDocument.type === "pdf"
+                                  ? "bg-rose-600 hover:bg-rose-700 active:scale-95"
+                                  : "bg-blue-600 hover:bg-blue-700 active:scale-95"
+                                  }`}
+                                title="Klik untuk mengunduh file dokumen"
+                              >
+                                <Download className="w-3.5 h-3.5" />
+                                <span>Unduh {m.createdDocument.type === "pdf" ? "PDF" : "Word"}</span>
+                              </button>
+                            </div>
+
+                            <div className="bg-white dark:bg-[#1a1a1a] p-3 rounded-xl border border-slate-200/70 dark:border-[#2b2b2b] space-y-1.5">
+                              <div className="flex items-start justify-between gap-2">
+                                <p className="text-xs font-bold text-slate-900 dark:text-[#eee]">
+                                  {m.createdDocument.title}
+                                </p>
+                                {m.createdDocument.subject && (
+                                  <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 dark:bg-[#252525] text-slate-700 dark:text-slate-300 shrink-0">
+                                    {m.createdDocument.subject}
+                                  </span>
+                                )}
+                              </div>
+                              {m.createdDocument.description && (
+                                <p className="text-xs text-slate-500 dark:text-[#888] leading-relaxed">
+                                  {m.createdDocument.description}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Interactive Created Slides Carousel (.PPTX) */}
+                        {m.createdSlides && m.createdSlides.slides && m.createdSlides.slides.length > 0 && (() => {
+                          const slides = m.createdSlides.slides;
+                          const currentIdx = (activeSlideIndices[m.id] || 0) % slides.length;
+                          const activeSlide = slides[currentIdx] || slides[0];
+
+                          return (
+                            <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-50/90 dark:bg-[#161616] border border-slate-200/80 dark:border-[#262626] shadow-2xs space-y-3">
+                              <div className="flex items-center justify-between flex-wrap gap-2">
+                                <div className="flex items-center gap-2.5">
+                                  <div className="w-8 h-8 rounded-xl bg-amber-500 dark:bg-amber-600 text-white flex items-center justify-center font-bold text-xs shadow-2xs shrink-0">
+                                    <Presentation className="w-4 h-4" />
+                                  </div>
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-xs font-bold text-slate-900 dark:text-[#f3f3f3]">
+                                        Slide Presentasi ({slides.length} Slide)
+                                      </span>
+                                      <span className="px-1.5 py-0.2 rounded text-[10px] font-bold uppercase bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300">
+                                        PPTX
+                                      </span>
+                                    </div>
+                                    <p className="text-[11px] text-slate-500 dark:text-[#888] truncate max-w-[200px] sm:max-w-xs">
+                                      {m.createdSlides.title}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={() => downloadCreatedSlides(m.createdSlides!)}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700 active:scale-95 shadow-xs transition-all cursor-pointer shrink-0"
+                                  title="Unduh file presentasi PowerPoint (.pptx)"
+                                >
+                                  <Download className="w-3.5 h-3.5" />
+                                  <span>Unduh PPTX</span>
+                                </button>
+                              </div>
+
+                              {/* Slide Preview Viewer Box */}
+                              <div className="relative rounded-xl border border-slate-200/80 dark:border-[#2d2d2d] bg-white dark:bg-[#181818] p-4 sm:p-5 shadow-xs min-h-[160px] flex flex-col justify-between overflow-hidden">
+                                <div className="space-y-2">
+                                  <div className="flex items-center justify-between border-b border-slate-100 dark:border-[#242424] pb-2">
+                                    <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white leading-snug">
+                                      {activeSlide.title}
+                                    </h4>
+                                    <span className="text-[11px] font-bold text-slate-400 dark:text-[#777] shrink-0 ml-2">
+                                      Slide {currentIdx + 1} / {slides.length}
+                                    </span>
+                                  </div>
+
+                                  <ul className="space-y-1.5 pt-1">
+                                    {activeSlide.bullets.map((bullet, bIdx) => (
+                                      <li key={bIdx} className="flex items-start gap-2 text-xs text-slate-700 dark:text-[#ccc]">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0" />
+                                        <span className="leading-relaxed">{bullet}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+
+                                  {activeSlide.notes && (
+                                    <div className="mt-3 p-2 rounded-lg bg-slate-50 dark:bg-[#202020] border border-slate-100 dark:border-[#282828] text-[11px] text-slate-500 dark:text-[#888] italic">
+                                      💡 Catatan Presenter: {activeSlide.notes}
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className="flex items-center justify-between pt-3 mt-3 border-t border-slate-100 dark:border-[#242424]">
+                                  <div className="flex items-center gap-1">
+                                    {slides.map((_, dotIdx) => (
+                                      <button
+                                        key={dotIdx}
+                                        type="button"
+                                        onClick={() => setActiveSlideIndices((prev) => ({ ...prev, [m.id]: dotIdx }))}
+                                        className={`h-1.5 rounded-full transition-all cursor-pointer ${dotIdx === currentIdx
+                                          ? "w-5 bg-amber-500"
+                                          : "w-1.5 bg-slate-300 dark:bg-[#333] hover:bg-slate-400"
+                                          }`}
+                                        title={`Lihat Slide ${dotIdx + 1}`}
+                                      />
+                                    ))}
+                                  </div>
+
+                                  <div className="flex items-center gap-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => handlePrevSlide(m.id, slides.length)}
+                                      className="p-1 rounded-lg text-slate-500 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#252525] transition cursor-pointer"
+                                      title="Slide Sebelumnya"
+                                    >
+                                      <ChevronLeft className="w-4 h-4" />
+                                    </button>
+                                    <span className="text-[11px] font-semibold text-slate-500 dark:text-[#888]">
+                                      {currentIdx + 1}/{slides.length}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleNextSlide(m.id, slides.length)}
+                                      className="p-1 rounded-lg text-slate-500 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#252525] transition cursor-pointer"
+                                      title="Slide Berikutnya"
+                                    >
+                                      <ChevronRight className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })()}
+
+                        {/* Interactive Created Image Card */}
+                        {m.createdImage && m.createdImage.url && (
+                          <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-50/90 dark:bg-[#161616] border border-slate-200/80 dark:border-[#262626] shadow-2xs space-y-3">
+                            <div className="flex items-center justify-between flex-wrap gap-2">
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-8 h-8 rounded-xl bg-purple-600 dark:bg-purple-500 text-white flex items-center justify-center font-bold text-xs shadow-2xs shrink-0">
+                                  <ImageIcon className="w-4 h-4" />
+                                </div>
+                                <div className="min-w-0">
+                                  <span className="text-xs font-bold text-slate-900 dark:text-[#f3f3f3] block truncate">
+                                    Gambar / Diagram AI Dihasilkan
+                                  </span>
+                                  <span className="text-[11px] text-slate-500 dark:text-[#888] truncate block">
+                                    {m.createdImage.caption || "Ilustrasi Visual"}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => setLightboxImage({ url: m.createdImage!.url!, caption: m.createdImage?.caption, prompt: m.createdImage?.prompt })}
+                                  className="p-1.5 rounded-xl text-slate-600 dark:text-[#aaa] hover:bg-slate-200/70 dark:hover:bg-[#252525] transition cursor-pointer"
+                                  title="Perbesar Tampilan (Lightbox)"
+                                >
+                                  <Maximize2 className="w-3.5 h-3.5" />
+                                </button>
+                                <a
+                                  href={m.createdImage.url}
+                                  download={`ai_image_${Date.now()}.png`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white bg-purple-600 hover:bg-purple-700 active:scale-95 shadow-xs transition-all cursor-pointer"
+                                  title="Unduh Gambar PNG"
+                                >
+                                  <Download className="w-3.5 h-3.5" />
+                                  <span>Unduh Gambar</span>
+                                </a>
+                              </div>
+                            </div>
+
+                            <div
+                              onClick={() => setLightboxImage({ url: m.createdImage!.url!, caption: m.createdImage?.caption, prompt: m.createdImage?.prompt })}
+                              className="group relative w-full overflow-hidden rounded-xl border border-slate-200/80 dark:border-[#2a2a2a] bg-slate-900 cursor-pointer shadow-xs max-h-[380px]"
+                              style={{
+                                aspectRatio: m.createdImage.aspectRatio === "1:1" ? "1 / 1" : m.createdImage.aspectRatio === "4:3" ? "4 / 3" : "16 / 9",
+                              }}
+                            >
+                              <img
+                                src={m.createdImage.url}
+                                alt={m.createdImage.caption || m.createdImage.prompt}
+                                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-102"
+                                loading="lazy"
+                              />
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
+                                <p className="text-xs text-white font-medium drop-shadow-md">
+                                  🔍 Klik untuk melihat ukuran penuh
+                                </p>
+                              </div>
+                            </div>
+
+                            {m.createdImage.prompt && (
+                              <div className="text-[11px] text-slate-500 dark:text-[#777] bg-white dark:bg-[#181818] p-2 rounded-lg border border-slate-200/60 dark:border-[#252525]">
+                                <span className="font-semibold text-slate-700 dark:text-slate-300">Prompt: </span>
+                                {m.createdImage.prompt}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
                         {/* Message Quick Action Rail */}
                         <div className="flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-slate-100 dark:border-[#222]">
                           <button
@@ -2397,6 +2888,78 @@ export const AIChat: React.FC<AIChatProps> = ({
                             )}
                             <span>{copiedId === m.id ? "Tersalin" : "Salin"}</span>
                           </button>
+
+                          {/* Ekspor Dropdown Menu */}
+                          <div className="relative">
+                            <button
+                              type="button"
+                              onClick={() => setActiveExportMenuMsgId(activeExportMenuMsgId === m.id ? null : m.id)}
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-[#202020] transition cursor-pointer"
+                              title="Ekspor pesan ke PDF, Word, atau Slide"
+                            >
+                              <FileDown className="w-3 h-3" />
+                              <span>Ekspor</span>
+                              <ChevronDown className="w-2.5 h-2.5" />
+                            </button>
+
+                            {activeExportMenuMsgId === m.id && (
+                              <div className="absolute left-0 bottom-full mb-1.5 w-52 bg-white dark:bg-[#1a1a1a] rounded-xl shadow-xl border border-slate-200/80 dark:border-[#2a2a2a] p-1.5 z-40 animate-in fade-in slide-in-from-bottom-2">
+                                <div className="px-2 py-1 text-[10px] font-bold text-slate-400 dark:text-[#777] border-b border-slate-100 dark:border-[#252525] mb-1">
+                                  PILIH FORMAT EKSPOR:
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleExportDocument(m, "pdf")}
+                                  disabled={exportingFormat === `${m.id}-pdf`}
+                                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs font-medium text-slate-700 dark:text-[#ddd] hover:bg-slate-100 dark:hover:bg-[#252525] transition cursor-pointer text-left"
+                                >
+                                  <div className="w-5 h-5 rounded bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 flex items-center justify-center font-bold text-[10px]">
+                                    PDF
+                                  </div>
+                                  <span className="flex-1">Dokumen PDF (.pdf)</span>
+                                  {exportingFormat === `${m.id}-pdf` && <Loader2 className="w-3 h-3 animate-spin text-rose-600" />}
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleExportDocument(m, "docx")}
+                                  disabled={exportingFormat === `${m.id}-docx`}
+                                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs font-medium text-slate-700 dark:text-[#ddd] hover:bg-slate-100 dark:hover:bg-[#252525] transition cursor-pointer text-left"
+                                >
+                                  <div className="w-5 h-5 rounded bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-[10px]">
+                                    DOC
+                                  </div>
+                                  <span className="flex-1">Dokumen Word (.docx)</span>
+                                  {exportingFormat === `${m.id}-docx` && <Loader2 className="w-3 h-3 animate-spin text-blue-600" />}
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleExportSlides(m)}
+                                  disabled={exportingFormat === `${m.id}-pptx`}
+                                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs font-medium text-slate-700 dark:text-[#ddd] hover:bg-slate-100 dark:hover:bg-[#252525] transition cursor-pointer text-left"
+                                >
+                                  <div className="w-5 h-5 rounded bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold text-[10px]">
+                                    PPT
+                                  </div>
+                                  <span className="flex-1">Slide Presentasi (.pptx)</span>
+                                  {exportingFormat === `${m.id}-pptx` && <Loader2 className="w-3 h-3 animate-spin text-amber-600" />}
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleGenerateImageForMessage(m)}
+                                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs font-medium text-slate-700 dark:text-[#ddd] hover:bg-slate-100 dark:hover:bg-[#252525] transition cursor-pointer text-left"
+                                >
+                                  <div className="w-5 h-5 rounded bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 flex items-center justify-center">
+                                    <ImageIcon className="w-3 h-3" />
+                                  </div>
+                                  <span className="flex-1">Bikin Gambar AI</span>
+                                </button>
+                              </div>
+                            )}
+                          </div>
 
                           {/* Text-to-Speech Read Aloud Button */}
                           <button
@@ -2693,6 +3256,168 @@ export const AIChat: React.FC<AIChatProps> = ({
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 6. Google Workspace Link Input Modal ── */}
+      {isWorkspaceModalOpen && (() => {
+        const parsed = workspaceUrlInput.trim() ? parseGoogleWorkspaceUrl(workspaceUrlInput.trim()) : null;
+        const badge = parsed ? getWorkspaceBadge(parsed.type) : null;
+
+        return (
+          <div
+            className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200"
+            onClick={() => setIsWorkspaceModalOpen(false)}
+          >
+            <div
+              className="w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl bg-white dark:bg-[#151515] border border-slate-200/80 dark:border-[#2a2a2a] flex flex-col animate-in zoom-in-95 duration-200"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-[#242424]">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                    <Link2 className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                      Tautkan Google Workspace
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-[#888]">
+                      Akses Google Docs, Sheets, Slides, & Drive
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsWorkspaceModalOpen(false)}
+                  className="w-7 h-7 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-[#eee] hover:bg-slate-100 dark:hover:bg-[#202020] flex items-center justify-center transition cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="p-5 space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-[#ccc]">
+                    URL / Tautan Google Workspace
+                  </label>
+                  <input
+                    type="url"
+                    value={workspaceUrlInput}
+                    onChange={(e) => setWorkspaceUrlInput(e.target.value)}
+                    placeholder="https://docs.google.com/spreadsheets/d/... atau document/d/..."
+                    className="w-full px-3.5 py-2.5 rounded-xl text-xs bg-slate-50 dark:bg-[#1e1e1e] border border-slate-200 dark:border-[#333] text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-emerald-500 transition"
+                    autoFocus
+                  />
+                </div>
+
+                {/* Detected Type Badge */}
+                {badge && (
+                  <div className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-100/80 dark:bg-[#1e1e1e] border border-slate-200/60 dark:border-[#2c2c2c] animate-in fade-in">
+                    <span className="text-xs font-bold text-slate-600 dark:text-[#aaa]">Terdeteksi:</span>
+                    <span className={`px-2 py-0.5 rounded-md text-xs font-bold border ${badge.badgeClass}`}>
+                      {badge.label}
+                    </span>
+                    {parsed?.gid && (
+                      <span className="text-xs text-slate-400">Sheet Tab #{parsed.gid}</span>
+                    )}
+                  </div>
+                )}
+
+                {/* Helpful Instruction Box */}
+                <div className="p-3 rounded-xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/40 text-xs text-amber-900 dark:text-amber-300 space-y-1">
+                  <p className="font-semibold">💡 Tips Akses Dokumen:</p>
+                  <p className="leading-relaxed text-[11px] text-amber-800 dark:text-amber-400">
+                    Pastikan pengaturan tautan di Google Drive / Docs / Sheets disetel ke <strong>&quot;Siapa saja yang memiliki link&quot;</strong> (Anyone with the link can view) agar AI dapat mengunduh dan membaca isinya secara instan tanpa kendala autentikasi.
+                  </p>
+                </div>
+              </div>
+
+              {/* Footer Actions */}
+              <div className="flex items-center justify-end gap-2 px-5 py-3.5 bg-slate-50/80 dark:bg-[#181818] border-t border-slate-100 dark:border-[#242424]">
+                <button
+                  type="button"
+                  onClick={() => setIsWorkspaceModalOpen(false)}
+                  className="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-[#aaa] hover:bg-slate-200/70 dark:hover:bg-[#252525] transition cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleInsertWorkspaceLink(false)}
+                  disabled={!workspaceUrlInput.trim()}
+                  className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-200 dark:bg-[#282828] text-slate-800 dark:text-white hover:bg-slate-300 dark:hover:bg-[#333] transition cursor-pointer disabled:opacity-40"
+                >
+                  Sisipkan ke Chat
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleInsertWorkspaceLink(true)}
+                  disabled={!workspaceUrlInput.trim()}
+                  className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition cursor-pointer disabled:opacity-40 flex items-center gap-1.5"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Analisis Langsung</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── 7. Image Lightbox Modal ── */}
+      {lightboxImage && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setLightboxImage(null)}
+        >
+          <div
+            className="relative max-w-4xl max-h-[90vh] w-full flex flex-col items-center gap-3 animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Action Bar */}
+            <div className="w-full flex items-center justify-between text-white px-2">
+              <span className="text-xs font-semibold text-slate-300 truncate max-w-md">
+                {lightboxImage.caption || "Preview Gambar AI"}
+              </span>
+              <div className="flex items-center gap-2">
+                <a
+                  href={lightboxImage.url}
+                  download={`ai_image_${Date.now()}.png`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition flex items-center gap-1.5 text-xs font-semibold cursor-pointer"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Unduh Resolusi Penuh</span>
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setLightboxImage(null)}
+                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Image display */}
+            <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-white/10 bg-black max-h-[75vh] flex items-center justify-center">
+              <img
+                src={lightboxImage.url}
+                alt={lightboxImage.caption || "Preview"}
+                className="max-h-[75vh] w-auto object-contain rounded-2xl"
+              />
+            </div>
+
+            {lightboxImage.prompt && (
+              <p className="text-xs text-slate-400 text-center max-w-xl px-4 line-clamp-2">
+                Prompt: {lightboxImage.prompt}
+              </p>
+            )}
           </div>
         </div>
       )}

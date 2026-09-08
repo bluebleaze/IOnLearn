@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import path from 'path';
 import url from 'url';
+import { parseGoogleWorkspaceUrl, formatCsvToMarkdownTable, formatSlidesText } from '@/lib/workspaceUtils';
 
 async function parsePdfBuffer(buffer: Buffer): Promise<string> {
   try {
@@ -69,9 +70,14 @@ export async function POST(req: Request) {
     const { token, fileId, url: rawUrl } = body;
 
     let effectiveFileId = fileId;
-    if (!effectiveFileId && rawUrl) {
-      const match = String(rawUrl).match(/\/(?:d|file\/d|document\/d|spreadsheets\/d|presentation\/d)\/([a-zA-Z0-9_-]+)/);
-      if (match && match[1]) effectiveFileId = match[1];
+    let detectedType = 'generic';
+    let gidParam = '';
+
+    if (rawUrl) {
+      const parsed = parseGoogleWorkspaceUrl(rawUrl);
+      if (parsed.fileId) effectiveFileId = parsed.fileId;
+      detectedType = parsed.type;
+      if (parsed.gid) gidParam = parsed.gid;
     }
 
     const headers: Record<string, string> = {};
@@ -89,26 +95,41 @@ export async function POST(req: Request) {
         if (metaRes.ok) {
           const meta = await metaRes.json();
           let textContent = '';
+          const name = meta.name || 'Dokumen Google Workspace';
 
-          if (meta.mimeType === 'application/vnd.google-apps.document' || meta.mimeType === 'application/vnd.google-apps.presentation') {
+          if (meta.mimeType === 'application/vnd.google-apps.document') {
             const exportRes = await fetch(`https://www.googleapis.com/drive/v3/files/${effectiveFileId}/export?mimeType=text/plain`, { headers });
             if (exportRes.ok) textContent = await exportRes.text();
+            detectedType = 'docs';
+          } else if (meta.mimeType === 'application/vnd.google-apps.presentation') {
+            const exportRes = await fetch(`https://www.googleapis.com/drive/v3/files/${effectiveFileId}/export?mimeType=text/plain`, { headers });
+            if (exportRes.ok) {
+              const rawSlidesText = await exportRes.text();
+              textContent = formatSlidesText(rawSlidesText);
+            }
+            detectedType = 'slides';
           } else if (meta.mimeType === 'application/vnd.google-apps.spreadsheet') {
             const exportRes = await fetch(`https://www.googleapis.com/drive/v3/files/${effectiveFileId}/export?mimeType=text/csv`, { headers });
-            if (exportRes.ok) textContent = await exportRes.text();
+            if (exportRes.ok) {
+              const rawCsv = await exportRes.text();
+              textContent = formatCsvToMarkdownTable(rawCsv);
+            }
+            detectedType = 'sheets';
           } else if (meta.mimeType === 'application/pdf') {
             const mediaRes = await fetch(`https://www.googleapis.com/drive/v3/files/${effectiveFileId}?alt=media`, { headers });
             if (mediaRes.ok) {
               const arrayBuffer = await mediaRes.arrayBuffer();
               textContent = await parsePdfBuffer(Buffer.from(arrayBuffer));
             }
+            detectedType = 'drive';
           } else if (meta.mimeType === 'text/plain' || meta.mimeType === 'text/markdown' || meta.mimeType === 'text/csv') {
             const mediaRes = await fetch(`https://www.googleapis.com/drive/v3/files/${effectiveFileId}?alt=media`, { headers });
             if (mediaRes.ok) textContent = await mediaRes.text();
+            detectedType = 'drive';
           }
 
           if (textContent && textContent.trim()) {
-            return NextResponse.json({ content: textContent, name: meta.name });
+            return NextResponse.json({ content: textContent, name, type: detectedType });
           }
         }
       } catch (e) {
@@ -116,22 +137,55 @@ export async function POST(req: Request) {
       }
     }
 
-    // 2. Fallback direct Google export endpoints (works with or without token)
+    // 2. Fallback direct Google export endpoints (works with or without token for shared links)
     if (effectiveFileId) {
       try {
-        const sheetRes = await fetch(`https://docs.google.com/spreadsheets/d/${effectiveFileId}/export?format=csv`, { headers });
-        if (sheetRes.ok) {
-          const text = await sheetRes.text();
-          if (text && !text.includes('<!DOCTYPE html>') && !text.includes('<html')) {
-            return NextResponse.json({ content: text, name: 'Google Spreadsheet' });
+        // 2a. Google Sheets Export Fallback
+        if (detectedType === 'sheets' || detectedType === 'generic') {
+          const sheetExportUrl = gidParam
+            ? `https://docs.google.com/spreadsheets/d/${effectiveFileId}/export?format=csv&gid=${gidParam}`
+            : `https://docs.google.com/spreadsheets/d/${effectiveFileId}/export?format=csv`;
+
+          const sheetRes = await fetch(sheetExportUrl, { headers });
+          if (sheetRes.ok) {
+            const text = await sheetRes.text();
+            if (text && !text.includes('<!DOCTYPE html>') && !text.includes('<html')) {
+              return NextResponse.json({
+                content: formatCsvToMarkdownTable(text),
+                name: 'Google Spreadsheet',
+                type: 'sheets'
+              });
+            }
           }
         }
 
-        const docRes = await fetch(`https://docs.google.com/document/d/${effectiveFileId}/export?format=txt`, { headers });
-        if (docRes.ok) {
-          const text = await docRes.text();
-          if (text && !text.includes('<!DOCTYPE html>') && !text.includes('<html')) {
-            return NextResponse.json({ content: text, name: 'Google Document' });
+        // 2b. Google Docs Export Fallback
+        if (detectedType === 'docs' || detectedType === 'generic') {
+          const docRes = await fetch(`https://docs.google.com/document/d/${effectiveFileId}/export?format=txt`, { headers });
+          if (docRes.ok) {
+            const text = await docRes.text();
+            if (text && !text.includes('<!DOCTYPE html>') && !text.includes('<html')) {
+              return NextResponse.json({
+                content: text,
+                name: 'Google Document',
+                type: 'docs'
+              });
+            }
+          }
+        }
+
+        // 2c. Google Slides Export Fallback
+        if (detectedType === 'slides' || detectedType === 'generic') {
+          const slideRes = await fetch(`https://docs.google.com/presentation/d/${effectiveFileId}/export/txt`, { headers });
+          if (slideRes.ok) {
+            const text = await slideRes.text();
+            if (text && !text.includes('<!DOCTYPE html>') && !text.includes('<html')) {
+              return NextResponse.json({
+                content: formatSlidesText(text),
+                name: 'Google Slides',
+                type: 'slides'
+              });
+            }
           }
         }
       } catch (e) {

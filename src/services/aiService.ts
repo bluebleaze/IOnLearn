@@ -3,10 +3,14 @@ import {
     AIConfig,
     ChatAttachment,
     ChatMessage,
+    CreatedDocument,
+    CreatedImage,
+    CreatedSlides,
     TodoTask,
     UserPreferences,
 } from "../types";
 import { ClassroomService } from "./classroomService";
+import { isGoogleWorkspaceUrl, parseGoogleWorkspaceUrl } from "../lib/workspaceUtils";
 
 export async function readDriveFileContent(
     token: string | null,
@@ -144,22 +148,29 @@ export async function sendChatMessageToAI(
             title: string;
         }[];
     }[];
+    createdDocument?: CreatedDocument;
+    createdSlides?: CreatedSlides;
+    createdImage?: CreatedImage;
 }> {
     const extractedMaterialText = await extractMaterialsText(taskContext?.materials);
 
-    // Check if user's chat message contains URLs (e.g. Google Docs, Sheets, Drive, or Web links)
+    // Check if user's chat message contains URLs (e.g. Google Docs, Sheets, Slides, Drive, or Web links)
     const lastUserMessage = [...messages].reverse().find((m) => m.role === "user");
     let extractedMessageLinkText = "";
     if (lastUserMessage?.content) {
         const urlMatches = lastUserMessage.content.match(/(https?:\/\/[^\s<>"'{}|\\^`]+)/gi);
         if (urlMatches && urlMatches.length > 0) {
             const token = ClassroomService.getStoredToken();
-            const uniqueUrls = Array.from(new Set(urlMatches)).slice(0, 2);
+            const uniqueUrls = Array.from(new Set(urlMatches)).slice(0, 3);
             for (const urlStr of uniqueUrls) {
-                const fileId = extractDriveFileId(urlStr);
+                const parsedWorkspace = parseGoogleWorkspaceUrl(urlStr);
+                const fileId = parsedWorkspace?.fileId || extractDriveFileId(urlStr);
                 const text = await readDriveFileContent(token, fileId, urlStr);
                 if (text && text.trim()) {
-                    extractedMessageLinkText += `\n\n[Isi Dokumen/Spreadsheet dari Link ${urlStr}]:\n${text.substring(0, 8000)}`;
+                    const typeLabel = parsedWorkspace
+                        ? `Google ${parsedWorkspace.type.charAt(0).toUpperCase() + parsedWorkspace.type.slice(1)}`
+                        : "Dokumen Link";
+                    extractedMessageLinkText += `\n\n[Isi ${typeLabel} dari ${urlStr}]:\n${text.substring(0, 10000)}`;
                 }
             }
         }
