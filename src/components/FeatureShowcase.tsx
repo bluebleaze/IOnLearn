@@ -24,15 +24,11 @@ import {
 
 type FeatureTab = "Demo" | "AI Chatbot" | "Tasks Menu" | "To-Do" | "Auto-Notes";
 
-const tabs: FeatureTab[] = [
-  "Demo",
-  "AI Chatbot",
-  "Tasks Menu",
-  "To-Do",
-  "Auto-Notes",
-];
+interface FeatureShowcaseProps {
+  language?: "ENG" | "IND";
+}
 
-export function FeatureShowcase() {
+export function FeatureShowcase({ language = "ENG" }: FeatureShowcaseProps) {
   const [activeTab, setActiveTab] = useState<FeatureTab>("Demo");
   const [chatStatus, setChatStatus] = useState<"open" | "closing" | "closed">("closed");
   const closeTimerRef = React.useRef<NodeJS.Timeout | null>(null);
@@ -117,8 +113,22 @@ export function FeatureShowcase() {
   const isExiting = chatStatus === "closing";
   const isShown = chatStatus !== "closed";
 
+  const tabLabels =
+    language === "IND"
+      ? { Demo: "Demo", "AI Chatbot": "Chatbot AI", "Tasks Menu": "Menu Tugas", "To-Do": "To-Do", "Auto-Notes": "Catatan Otomatis" }
+      : { Demo: "Demo", "AI Chatbot": "AI Chatbot", "Tasks Menu": "Tasks Menu", "To-Do": "To-Do", "Auto-Notes": "Auto-Notes" };
+
+  const localizedCopy = {
+    eyebrow: language === "IND" ? "fitur kami" : "our features",
+    bubble1: language === "IND" ? "Semua yang Anda butuhkan untuk belajar" : "Everything you need for studying and learning",
+    bubble2: language === "IND" ? "ada di satu platform" : "is here in one platform",
+    bubble3: language === "IND" ? "dan ringankan beban Anda" : "and lighten your burden",
+    bubble4: language === "IND" ? "Jadikan hidup lebih mudah dari sebelumnya" : "Make your life easier than before",
+    live: language === "IND" ? "Pratinjau Langsung" : "Live Preview",
+  };
+
   return (
-    <section className="w-full mt-24 sm:mt-28 flex flex-col items-center relative z-10 px-2 sm:px-4 scroll-mt-16">
+    <section id="features" className="w-full mt-24 sm:mt-28 flex flex-col items-center relative z-10 px-2 sm:px-4 scroll-mt-24">
       {/* Invisible Trigger Sentinel at 680px */}
       <div
         ref={triggerRef}
@@ -129,7 +139,7 @@ export function FeatureShowcase() {
 
       {/* Section Eyebrow matching reference image */}
       <span className="font-montserrat text-xs sm:text-sm font-bold text-[#4f46e5] dark:text-[#818cf8] tracking-wider lowercase mb-6 sm:mb-8">
-        our features
+        {localizedCopy.eyebrow}
       </span>
 
       {/* Main Display Container */}
@@ -145,7 +155,7 @@ export function FeatureShowcase() {
                   isExiting ? "animate-bubble-close-1" : "animate-bubble-pop-4"
                 } bg-[#4238c9] dark:bg-[#4f46e5] text-white px-5 sm:px-6 py-2.5 sm:py-3.5 rounded-full shadow-lg text-xs sm:text-sm font-inter font-normal leading-snug w-fit hover:scale-[1.02] transition-transform`}
               >
-                Everything you need for studying and learning
+                {localizedCopy.bubble1}
               </div>
 
               {/* Bubble 2 (Pops 3rd / Closes 2nd) */}
@@ -154,7 +164,7 @@ export function FeatureShowcase() {
                   isExiting ? "animate-bubble-close-2" : "animate-bubble-pop-3"
                 } bg-[#4238c9] dark:bg-[#4f46e5] text-white px-5 sm:px-6 py-2.5 sm:py-3.5 rounded-full shadow-lg text-xs sm:text-sm font-inter font-normal leading-snug w-fit hover:scale-[1.02] transition-transform`}
               >
-                is here in one platform
+                {localizedCopy.bubble2}
               </div>
 
               {/* Bubble 3 (Pops 2nd / Closes 3rd) */}
@@ -163,7 +173,7 @@ export function FeatureShowcase() {
                   isExiting ? "animate-bubble-close-3" : "animate-bubble-pop-2"
                 } bg-[#4238c9] dark:bg-[#4f46e5] text-white px-5 sm:px-6 py-2.5 sm:py-3.5 rounded-full shadow-lg text-xs sm:text-sm font-inter font-normal leading-snug w-fit hover:scale-[1.02] transition-transform`}
               >
-                and lighten your burden
+                {localizedCopy.bubble3}
               </div>
 
               {/* Bubble 4 (Pops 1st / Closes 4th - Nearest to bottom ...) */}
@@ -172,7 +182,7 @@ export function FeatureShowcase() {
                   isExiting ? "animate-bubble-close-4" : "animate-bubble-pop-1"
                 } bg-[#4238c9] dark:bg-[#4f46e5] text-white px-5 sm:px-6 py-2.5 sm:py-3.5 rounded-full shadow-lg text-xs sm:text-sm font-inter font-normal leading-snug w-fit hover:scale-[1.02] transition-transform`}
               >
-                Make your life easier than before
+                {localizedCopy.bubble4}
               </div>
             </div>
           )}
@@ -208,7 +218,7 @@ export function FeatureShowcase() {
               <div className="flex items-center gap-2">
                 <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium text-[9px] sm:text-[10px]">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Live Preview
+                  {localizedCopy.live}
                 </span>
                 <button
                   type="button"
@@ -474,7 +484,9 @@ export function FeatureShowcase() {
 
       {/* Bottom Feature Tabs Selector (Single Selection Only) */}
       <div className="mt-8 sm:mt-10 flex flex-wrap items-center justify-center gap-2 sm:gap-3 w-full max-w-2xl mx-auto">
-        {tabs.map((tab) => {
+        {(
+          ["Demo", "AI Chatbot", "Tasks Menu", "To-Do", "Auto-Notes"] as FeatureTab[]
+        ).map((tab) => {
           const isActive = activeTab === tab;
           return (
             <button
@@ -487,7 +499,7 @@ export function FeatureShowcase() {
                   : "bg-transparent hover:bg-slate-100 dark:hover:bg-zinc-800/80 text-slate-700 dark:text-zinc-300 px-3.5 sm:px-4 py-2 rounded-full"
               }`}
             >
-              {tab}
+              {tabLabels[tab]}
             </button>
           );
         })}

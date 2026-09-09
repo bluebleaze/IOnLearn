@@ -13,11 +13,26 @@ import {
 
 interface DemoInviteSectionProps {
   onDemoMode: () => void;
+  language?: "ENG" | "IND";
 }
 
-export function DemoInviteSection({ onDemoMode }: DemoInviteSectionProps) {
+export function DemoInviteSection({ onDemoMode, language = "ENG" }: DemoInviteSectionProps) {
+  const copy =
+    language === "IND"
+      ? {
+          eyebrow: "halaman demo",
+          headline: ["Masih Ragu", "Apakah", "Harus", "Coba", "atau", "Tidak?"],
+          button: "Coba Dashboard Demo",
+          note: "Tenang — Anda bisa merasakan fasilitas kami tanpa perlu masuk atau menyinkronkan akun terlebih dahulu! Kami menjamin Anda akan mendapatkan apa yang Anda butuhkan ;)",
+        }
+      : {
+          eyebrow: "demo page",
+          headline: ["Still Not", "Sure", "Whether", "to Try", "It or", "Not?"],
+          button: "Try The Demo Dashboard",
+          note: "Don't worry — you can experience our facilities without needing to log in or sync your account in the first place! We promise, you'll get what you need ;)",
+        };
   return (
-    <section className="w-full max-w-5xl mx-auto px-4 sm:px-6 pt-20 sm:pt-28 pb-10">
+    <section id="demo" className="w-full max-w-5xl mx-auto px-4 sm:px-6 pt-20 sm:pt-28 pb-10 scroll-mt-24">
       <div className="grid grid-cols-1 lg:grid-cols-[auto_1fr] gap-10 lg:gap-14 items-center">
 
         {/* LEFT COLUMN: Ultra-Bold "OH!" + Headline */}
@@ -45,12 +60,9 @@ export function DemoInviteSection({ onDemoMode }: DemoInviteSectionProps) {
 
             {/* Stacked multi-line headline spanning exact height */}
             <h2 className="font-montserrat font-bold text-2xl sm:text-[28px] md:text-[32px] text-slate-900 dark:text-white leading-[1.18] tracking-tight flex flex-col justify-between py-1 select-none">
-              <span>Still Not</span>
-              <span>Sure</span>
-              <span>Whether</span>
-              <span>to Try</span>
-              <span>It or</span>
-              <span>Not?</span>
+              {copy.headline.map((line) => (
+                <span key={line}>{line}</span>
+              ))}
             </h2>
           </div>
 
@@ -64,7 +76,7 @@ export function DemoInviteSection({ onDemoMode }: DemoInviteSectionProps) {
           {/* Eyebrow Tag */}
           <div>
             <span className="font-montserrat font-bold text-xs sm:text-sm text-[#493fe4] dark:text-[#818cf8] tracking-wide lowercase">
-              demo page
+              {copy.eyebrow}
             </span>
           </div>
 
@@ -180,13 +192,13 @@ export function DemoInviteSection({ onDemoMode }: DemoInviteSectionProps) {
             onClick={onDemoMode}
             className="w-full bg-[#493fe4] hover:bg-[#3d32d4] text-white font-montserrat font-bold py-3.5 px-6 rounded-2xl sm:rounded-full flex items-center justify-center gap-2 shadow-md hover:shadow-indigo-500/25 transition-all duration-200 cursor-pointer active:scale-[0.99] text-sm sm:text-base group mt-1"
           >
-            <span>Try The Demo Dashboard</span>
+            <span>{copy.button}</span>
             <ArrowUpRight className="w-4 h-4 sm:w-5 sm:h-5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
           </button>
 
           {/* Supportive Copy */}
           <p className="font-inter text-xs sm:text-[13px] text-slate-700 dark:text-zinc-300 leading-relaxed max-w-lg mt-1">
-            Don&apos;t worry — you can experience our facilities without needing to log in or sync your account in the first place! We promise, you&apos;ll get what you need ;)
+            {copy.note}
           </p>
 
         </div>

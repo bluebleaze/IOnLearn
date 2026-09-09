@@ -5,9 +5,42 @@ import Link from "next/link";
 
 interface LandingFooterProps {
   onConnectGoogle: () => void;
+  language?: "ENG" | "IND";
 }
 
-export function LandingFooter({ onConnectGoogle }: LandingFooterProps) {
+export function LandingFooter({ onConnectGoogle, language = "ENG" }: LandingFooterProps) {
+  const copy =
+    language === "IND"
+      ? {
+          quote: '"Belajar Lebih Cerdas, kuasai materi dengan mudah"',
+          copyright: "© 2026 IonLearn. Semua hak dilindungi.",
+          quickNavigation: "Navigasi Cepat",
+          connection: "Koneksi",
+          legals: "Legal",
+          home: "Beranda",
+          features: "Fitur",
+          demo: "Demo Interaktif",
+          faq: "FAQ",
+          startNow: "Mulai Sekarang",
+          github: "Kode Sumber - GitHub",
+          terms: "Syarat",
+          privacy: "Kebijakan Privasi",
+        }
+      : {
+          quote: '"Study Smarter, master any subject effortlessly"',
+          copyright: "© 2026 IonLearn. All rights reserved.",
+          quickNavigation: "Quick Navigation",
+          connection: "Connection",
+          legals: "Legals",
+          home: "Home",
+          features: "Features",
+          demo: "Interactive Demo",
+          faq: "FAQ",
+          startNow: "Start Now",
+          github: "Source Code - GitHub",
+          terms: "Terms",
+          privacy: "Privacy Policy",
+        };
   return (
     <footer className="w-full max-w-5xl mx-auto px-4 sm:px-6 pt-12 sm:pt-16 pb-14 border-t border-slate-200/80 dark:border-white/10">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-8 lg:gap-10">
@@ -24,38 +57,38 @@ export function LandingFooter({ onConnectGoogle }: LandingFooterProps) {
           </div>
 
           <p className="font-inter text-xs sm:text-sm text-slate-600 dark:text-zinc-400 mb-4 leading-relaxed">
-            &ldquo;Study Smarter, master any subject effortlessly&rdquo;
+            {copy.quote}
           </p>
 
           <span className="font-inter text-xs text-slate-400 dark:text-zinc-500">
-            &copy; 2026 IonLearn. All rights reserved.
+            {copy.copyright}
           </span>
         </div>
 
         {/* COLUMN 2: Quick Navigation (lg:col-span-3) */}
         <div className="lg:col-span-3 flex flex-col">
           <h4 className="font-montserrat font-bold text-xs sm:text-sm text-slate-900 dark:text-white mb-3">
-            Quick Navigation
+            {copy.quickNavigation}
           </h4>
           <ul className="flex flex-col gap-2 font-inter text-xs sm:text-sm text-slate-600 dark:text-zinc-400">
             <li>
               <a href="#" className="hover:text-[#4838cc] dark:hover:text-indigo-400 transition-colors">
-                Home
+                {copy.home}
               </a>
             </li>
             <li>
               <a href="#about-platform" className="hover:text-[#4838cc] dark:hover:text-indigo-400 transition-colors">
-                Features
+                {copy.features}
               </a>
             </li>
             <li>
               <a href="#about-platform" className="hover:text-[#4838cc] dark:hover:text-indigo-400 transition-colors">
-                Interactive Demo
+                {copy.demo}
               </a>
             </li>
             <li>
               <a href="#faq" className="hover:text-[#4838cc] dark:hover:text-indigo-400 transition-colors">
-                FAQ
+                {copy.faq}
               </a>
             </li>
             <li>
@@ -72,7 +105,7 @@ export function LandingFooter({ onConnectGoogle }: LandingFooterProps) {
         {/* COLUMN 3: Connection (lg:col-span-2) */}
         <div className="lg:col-span-2 flex flex-col">
           <h4 className="font-montserrat font-bold text-xs sm:text-sm text-slate-900 dark:text-white mb-3">
-            Connection
+            {copy.connection}
           </h4>
           <ul className="flex flex-col gap-2 font-inter text-xs sm:text-sm text-slate-600 dark:text-zinc-400">
             <li>
@@ -82,7 +115,7 @@ export function LandingFooter({ onConnectGoogle }: LandingFooterProps) {
                 rel="noopener noreferrer"
                 className="hover:text-[#4838cc] dark:hover:text-indigo-400 transition-colors"
               >
-                Source Code - GitHub
+                {copy.github}
               </a>
             </li>
             <li>
@@ -90,7 +123,7 @@ export function LandingFooter({ onConnectGoogle }: LandingFooterProps) {
                 onClick={onConnectGoogle}
                 className="hover:text-[#4838cc] dark:hover:text-indigo-400 transition-colors cursor-pointer text-left"
               >
-                Start Now
+                {copy.startNow}
               </button>
             </li>
           </ul>
@@ -99,17 +132,17 @@ export function LandingFooter({ onConnectGoogle }: LandingFooterProps) {
         {/* COLUMN 4: Legals (lg:col-span-2) */}
         <div className="lg:col-span-2 flex flex-col">
           <h4 className="font-montserrat font-bold text-xs sm:text-sm text-slate-900 dark:text-white mb-3">
-            Legals
+            {copy.legals}
           </h4>
           <ul className="flex flex-col gap-2 font-inter text-xs sm:text-sm text-slate-600 dark:text-zinc-400">
             <li>
               <Link href="/terms" className="hover:text-[#4838cc] dark:hover:text-indigo-400 transition-colors">
-                Terms
+                {copy.terms}
               </Link>
             </li>
             <li>
               <Link href="/privacy" className="hover:text-[#4838cc] dark:hover:text-indigo-400 transition-colors">
-                Privacy Policy
+                {copy.privacy}
               </Link>
             </li>
           </ul>

@@ -5,9 +5,22 @@ import { ArrowRight } from "lucide-react";
 
 interface CTABannerProps {
   onConnectGoogle: () => void;
+  language?: "ENG" | "IND";
 }
 
-export function CTABanner({ onConnectGoogle }: CTABannerProps) {
+export function CTABanner({ onConnectGoogle, language = "ENG" }: CTABannerProps) {
+  const copy =
+    language === "IND"
+      ? {
+          title: "Siap Memulai Pengalaman Baru?",
+          description: "Mulai perjalanan belajar Anda dengan pengalaman yang lebih ringkas, lebih cepat, dan lebih terarah.",
+          button: "Mulai Sekarang",
+        }
+      : {
+          title: "Ready to Start Your New Experience?",
+          description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ut a mollis turpis. Mauris hendrerit laoreet arcu, in hendrerit enim vestibulum ut.",
+          button: "Start Now",
+        };
   return (
     <section className="w-full max-w-5xl mx-auto px-4 sm:px-6 my-16 sm:my-20">
       <div className="relative overflow-hidden bg-[#4838cc] dark:bg-[#4335c0] text-white rounded-3xl p-7 sm:p-10 md:p-12 shadow-xl shadow-indigo-600/20 flex flex-col md:flex-row items-center justify-between gap-6 sm:gap-8">
@@ -19,10 +32,10 @@ export function CTABanner({ onConnectGoogle }: CTABannerProps) {
         {/* Content */}
         <div className="flex flex-col relative z-10 text-center md:text-left">
           <h2 className="font-cal text-2xl sm:text-3xl md:text-[32px] font-bold tracking-tight text-white">
-            Ready to Start Your New Experience?
+            {copy.title}
           </h2>
           <p className="font-inter text-xs sm:text-sm text-white/85 leading-relaxed max-w-xl mt-2.5">
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ut a mollis turpis. Mauris hendrerit laoreet arcu, in hendrerit enim vestibulum ut.
+            {copy.description}
           </p>
         </div>
 
@@ -32,7 +45,7 @@ export function CTABanner({ onConnectGoogle }: CTABannerProps) {
             onClick={onConnectGoogle}
             className="w-full md:w-auto bg-white hover:bg-slate-50 text-[#4838cc] font-montserrat font-bold px-8 py-3.5 rounded-full shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer text-sm sm:text-base flex items-center justify-center gap-2 active:scale-[0.98] group"
           >
-            <span>Start Now</span>
+            <span>{copy.button}</span>
             <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
           </button>
         </div>
