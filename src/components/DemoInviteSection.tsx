@@ -20,17 +20,17 @@ export function DemoInviteSection({ onDemoMode, language = "ENG" }: DemoInviteSe
   const copy =
     language === "IND"
       ? {
-          eyebrow: "halaman demo",
-          headline: ["Masih Ragu", "Apakah", "Harus", "Coba", "atau", "Tidak?"],
-          button: "Coba Dashboard Demo",
-          note: "Tenang — Anda bisa merasakan fasilitas kami tanpa perlu masuk atau menyinkronkan akun terlebih dahulu! Kami menjamin Anda akan mendapatkan apa yang Anda butuhkan ;)",
-        }
+        eyebrow: "halaman demo",
+        headline: ["Masih Ragu", "Apakah", "Harus", "Coba", "atau", "Tidak?"],
+        button: "Coba Dashboard Demo",
+        note: "Tenang — Anda bisa merasakan fasilitas kami tanpa perlu masuk atau menyinkronkan akun terlebih dahulu! Kami menjamin Anda akan mendapatkan apa yang Anda butuhkan ;)",
+      }
       : {
-          eyebrow: "demo page",
-          headline: ["Still Not", "Sure", "Whether", "to Try", "It or", "Not?"],
-          button: "Try The Demo Dashboard",
-          note: "Don't worry — you can experience our facilities without needing to log in or sync your account in the first place! We promise, you'll get what you need ;)",
-        };
+        eyebrow: "demo page",
+        headline: ["Still Not", "Sure", "Whether", "to Try", "It or", "Not?"],
+        button: "Try The Demo Dashboard",
+        note: "Don't worry — you can experience our facilities without needing to log in or sync your account in the first place! We promise, you'll get what you need ;)",
+      };
   return (
     <section id="demo" className="w-full max-w-5xl mx-auto px-4 sm:px-6 pt-20 sm:pt-28 pb-10 scroll-mt-24">
       <div className="grid grid-cols-1 lg:grid-cols-[auto_1fr] gap-10 lg:gap-14 items-center">
@@ -71,7 +71,7 @@ export function DemoInviteSection({ onDemoMode, language = "ENG" }: DemoInviteSe
         </div>
 
         {/* RIGHT COLUMN: Demo Page Preview + Full-Width CTA */}
-        <div className="w-full flex flex-col gap-3">
+        <div className="w-full flex flex-col gap-3 group">
 
           {/* Eyebrow Tag */}
           <div>
@@ -81,7 +81,7 @@ export function DemoInviteSection({ onDemoMode, language = "ENG" }: DemoInviteSe
           </div>
 
           {/* Mock Dashboard Window Preview with Left Vertical Sidebar */}
-          <div className="w-full rounded-2xl border border-slate-300/80 dark:border-white/10 bg-white dark:bg-[#121216] shadow-sm flex overflow-hidden select-none transition-all duration-300 hover:shadow-md">
+          <div className="w-full rounded-2xl border border-slate-300/80 dark:border-white/10 bg-white dark:bg-[#121216] shadow-sm flex overflow-hidden select-none transition-all duration-300 hover:shadow-md translate-y-9 scale-95 group-hover:translate-y-0 -z-1">
 
             {/* Left Vertical Sidebar (Authentic Mockup Detail) */}
             <div className="w-9 sm:w-10 bg-slate-50/70 dark:bg-[#16161c] border-r border-slate-200/80 dark:border-white/10 flex flex-col items-center py-4 gap-3 text-slate-400 dark:text-zinc-500 flex-shrink-0">
@@ -188,18 +188,20 @@ export function DemoInviteSection({ onDemoMode, language = "ENG" }: DemoInviteSe
           </div>
 
           {/* Action Button: Exact width as the card */}
-          <button
-            onClick={onDemoMode}
-            className="w-full bg-[#493fe4] hover:bg-[#3d32d4] text-white font-montserrat font-bold py-3.5 px-6 rounded-2xl sm:rounded-full flex items-center justify-center gap-2 shadow-md hover:shadow-indigo-500/25 transition-all duration-200 cursor-pointer active:scale-[0.99] text-sm sm:text-base group mt-1"
-          >
-            <span>{copy.button}</span>
-            <ArrowUpRight className="w-4 h-4 sm:w-5 sm:h-5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-          </button>
+          <div className="flex flex-col gap-3 ">
+            <button
+              onClick={onDemoMode}
+              className="w-full bg-[#493fe4] hover:bg-[#3d32d4] text-white font-montserrat font-bold py-3.5 px-6 rounded-2xl sm:rounded-full flex items-center justify-center gap-2 shadow-md hover:shadow-indigo-500/25 transition-all duration-200 cursor-pointer active:scale-[0.99] text-sm sm:text-base group mt-1"
+            >
+              <span>{copy.button}</span>
+              <ArrowUpRight className="w-4 h-4 sm:w-5 sm:h-5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+            </button>
 
-          {/* Supportive Copy */}
-          <p className="font-inter text-xs sm:text-[13px] text-slate-700 dark:text-zinc-300 leading-relaxed max-w-lg mt-1">
-            {copy.note}
-          </p>
+            {/* Supportive Copy */}
+            <p className="font-inter text-xs sm:text-[13px] text-slate-700 dark:text-zinc-300 leading-relaxed max-w-lg mt-1">
+              {copy.note}
+            </p>
+          </div>
 
         </div>
 

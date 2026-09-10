@@ -1,5 +1,6 @@
 "use client";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import Lenis from "lenis";
 import {
   AlertCircle,
   Sun,
@@ -43,6 +44,7 @@ export function LandingPage({
   const languageMenuRef = useRef<HTMLDivElement | null>(null);
   const heroSectionRef = useRef<HTMLElement | null>(null);
   const aboutSectionRef = useRef<HTMLElement | null>(null);
+  const lenisRef = useRef<Lenis | null>(null);
 
   const uiText = {
     nav: {
@@ -95,6 +97,93 @@ export function LandingPage({
     },
   };
 
+  const updateHeroParallax = useCallback(() => {
+    const heroElement = heroSectionRef.current;
+    if (heroElement) {
+      const rect = heroElement.getBoundingClientRect();
+      const viewportCenter = window.innerHeight / 2;
+      const sectionCenter = rect.top + rect.height / 2;
+      const relativeOffset = viewportCenter - sectionCenter;
+      const normalized = Math.max(-1, Math.min(1, relativeOffset / (window.innerHeight * 0.9)));
+      const cinematicLift = normalized * 140;
+      const cinematicScale = 1 + Math.abs(normalized) * 0.06;
+
+      setHeroParallax(cinematicLift);
+      setHeroScale(cinematicScale);
+    }
+
+    const aboutElement = aboutSectionRef.current;
+    if (aboutElement) {
+      const aboutRect = aboutElement.getBoundingClientRect();
+      const aboutDistance = window.innerHeight * 0.68 - aboutRect.top;
+      const aboutProgress = Math.max(0, Math.min(1, aboutDistance / (window.innerHeight * 0.95)));
+      setAboutDrift(aboutProgress);
+    }
+  }, []);
+
+  // Initialize Lenis Smooth Scrolling
+  useEffect(() => {
+    const lenis = new Lenis({
+      duration: 1.2,
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+      orientation: "vertical",
+      gestureOrientation: "vertical",
+      smoothWheel: true,
+      wheelMultiplier: 1,
+      touchMultiplier: 1.8,
+      infinite: false,
+    });
+
+    lenisRef.current = lenis;
+
+    let rafId: number;
+    function raf(time: number) {
+      lenis.raf(time);
+      rafId = requestAnimationFrame(raf);
+    }
+    rafId = requestAnimationFrame(raf);
+
+    // Sync scroll event with navbar and parallax calculations
+    const onLenisScroll = (e: { scroll: number }) => {
+      setIsScrolled(e.scroll > 12);
+      updateHeroParallax();
+    };
+
+    lenis.on("scroll", onLenisScroll);
+    document.documentElement.classList.add("lenis");
+
+    // Intercept smooth anchor navigation across the landing page
+    const handleAnchorClick = (e: MouseEvent) => {
+      const target = (e.target as HTMLElement).closest("a");
+      if (!target) return;
+      const href = target.getAttribute("href");
+      if (href && href.startsWith("#") && href.length > 1) {
+        const targetElement = document.querySelector(href);
+        if (targetElement) {
+          e.preventDefault();
+          lenis.scrollTo(href, {
+            offset: -70,
+            duration: 1.2,
+          });
+        }
+      }
+    };
+
+    document.addEventListener("click", handleAnchorClick);
+
+    // Run initial scroll update
+    updateHeroParallax();
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      document.removeEventListener("click", handleAnchorClick);
+      lenis.off("scroll", onLenisScroll);
+      lenis.destroy();
+      lenisRef.current = null;
+      document.documentElement.classList.remove("lenis");
+    };
+  }, [updateHeroParallax]);
+
   useEffect(() => {
     if (typeof window !== "undefined") {
       setIsDark(document.documentElement.classList.contains("dark"));
@@ -133,39 +222,11 @@ export function LandingPage({
   }, []);
 
   useEffect(() => {
-    const updateHeroParallax = () => {
-      const heroElement = heroSectionRef.current;
-      if (!heroElement) return;
-
-      const rect = heroElement.getBoundingClientRect();
-      const viewportCenter = window.innerHeight / 2;
-      const sectionCenter = rect.top + rect.height / 2;
-      const relativeOffset = viewportCenter - sectionCenter;
-      const normalized = Math.max(-1, Math.min(1, relativeOffset / (window.innerHeight * 0.9)));
-      const cinematicLift = normalized * 140;
-      const cinematicScale = 1 + Math.abs(normalized) * 0.06;
-
-      setHeroParallax(cinematicLift);
-      setHeroScale(cinematicScale);
-
-      const aboutElement = aboutSectionRef.current;
-      if (!aboutElement) return;
-
-      const aboutRect = aboutElement.getBoundingClientRect();
-      const aboutDistance = window.innerHeight * 0.68 - aboutRect.top;
-      const aboutProgress = Math.max(0, Math.min(1, aboutDistance / (window.innerHeight * 0.95)));
-      setAboutDrift(aboutProgress);
-    };
-
-    updateHeroParallax();
-    window.addEventListener("scroll", updateHeroParallax, { passive: true });
     window.addEventListener("resize", updateHeroParallax);
-
     return () => {
-      window.removeEventListener("scroll", updateHeroParallax);
       window.removeEventListener("resize", updateHeroParallax);
     };
-  }, []);
+  }, [updateHeroParallax]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -174,17 +235,10 @@ export function LandingPage({
       }
     };
 
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 12);
-    };
-
     window.addEventListener("mousedown", handleClickOutside);
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    handleScroll();
 
     return () => {
       window.removeEventListener("mousedown", handleClickOutside);
-      window.removeEventListener("scroll", handleScroll);
     };
   }, []);
 
@@ -251,11 +305,10 @@ export function LandingPage({
 
       {/* Navbar */}
       <header
-        className={`fixed left-1/2 top-0 z-30 w-[calc(100%-2rem)] -translate-x-1/2 transition-all duration-300 ease-out ${
-          isScrolled
-            ? "mt-3 max-w-6xl rounded-[30px] border border-white/60 bg-white/50 shadow-[0_10px_30px_rgba(15,23,42,0.08)] backdrop-blur-[50px] dark:border-white/10 dark:bg-[#0c0c0c]/50"
-            : "mt-0 max-w-none rounded-none border-b border-slate-200/70 bg-white/50 dark:border-[#2b2b2b] dark:bg-[#0c0c0c]/50 backdrop-blur-[50px]"
-        }`}
+        className={`fixed left-1/2 top-0 z-30 w-[calc(100%-2rem)] -translate-x-1/2 transition-all duration-300 ease-out ${isScrolled
+          ? "mt-3 max-w-6xl rounded-[30px] border border-white/60 bg-white/50 shadow-[0_10px_30px_rgba(15,23,42,0.08)] backdrop-blur-[50px] dark:border-white/10 dark:bg-[#0c0c0c]/50"
+          : "mt-0 max-w-none rounded-none border-b border-slate-200/70 bg-white/50 dark:border-[#2b2b2b] dark:bg-[#0c0c0c]/50 backdrop-blur-[50px]"
+          }`}
       >
         <div className={`mx-auto flex items-center gap-4 px-5 sm:px-8 transition-all duration-300 ease-out ${isScrolled ? "max-w-6xl py-2.5" : "max-w-6xl py-3.5"}`}>
           <div className="flex items-center gap-3 shrink-0">
@@ -300,11 +353,10 @@ export function LandingPage({
                         setSelectedLanguage(language.code as "ENG" | "IND");
                         setIsLanguageMenuOpen(false);
                       }}
-                      className={`flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-xs font-medium transition ${
-                        selectedLanguage === language.code
-                          ? "bg-slate-100 text-slate-900 dark:bg-[#1d1d1d] dark:text-white"
-                          : "text-slate-600 hover:bg-slate-50 dark:text-[#c8c8c8] dark:hover:bg-[#1b1b1b]"
-                      }`}
+                      className={`flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-xs font-medium transition ${selectedLanguage === language.code
+                        ? "bg-slate-100 text-slate-900 dark:bg-[#1d1d1d] dark:text-white"
+                        : "text-slate-600 hover:bg-slate-50 dark:text-[#c8c8c8] dark:hover:bg-[#1b1b1b]"
+                        }`}
                     >
                       <span className="flex items-center gap-2">
                         <span>{language.flag}</span>
@@ -517,7 +569,7 @@ export function LandingPage({
         <main
           className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 text-center max-w-4xl mx-auto w-full relative z-10 font-inter py-12 sm:py-16"
           style={{
-            transform: `translate3d(0, ${heroParallax * 0.18}px, 0) scale(${heroScale})`,
+            transform: `translate3d(0, ${heroParallax * -0.8}px, 0)`,
             transformOrigin: "center center",
             transition: "transform 260ms cubic-bezier(0.22, 1, 0.36, 1)",
             willChange: "transform",

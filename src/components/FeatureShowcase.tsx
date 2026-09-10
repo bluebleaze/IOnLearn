@@ -35,7 +35,7 @@ export function FeatureShowcase({ language = "ENG" }: FeatureShowcaseProps) {
   const [isPlaying, setIsPlaying] = useState(true);
   const [demoStep, setDemoStep] = useState(0);
   // Ketinggian trigger ditetapkan tetap di 680px
-  const triggerOffset = 680;
+  const triggerOffset = 350;
   const triggerRef = React.useRef<HTMLDivElement | null>(null);
 
   // Observer yang memantau elemen penanda di ketinggian 680px
@@ -151,36 +151,32 @@ export function FeatureShowcase({ language = "ENG" }: FeatureShowcaseProps) {
             <div className="flex flex-col items-start gap-2.5 sm:gap-3 origin-bottom">
               {/* Bubble 1 (Pops 4th / Closes 1st - Topmost) */}
               <div
-                className={`${
-                  isExiting ? "animate-bubble-close-1" : "animate-bubble-pop-4"
-                } bg-[#4238c9] dark:bg-[#4f46e5] text-white px-5 sm:px-6 py-2.5 sm:py-3.5 rounded-full shadow-lg text-xs sm:text-sm font-inter font-normal leading-snug w-fit hover:scale-[1.02] transition-transform`}
+                className={`${isExiting ? "animate-bubble-close-1" : "animate-bubble-pop-4"
+                  } bg-[#4238c9] dark:bg-[#4f46e5] text-white px-5 sm:px-6 py-2.5 sm:py-3.5 rounded-full shadow-lg text-xs sm:text-sm font-inter font-normal leading-snug w-fit hover:scale-[1.02] transition-transform`}
               >
                 {localizedCopy.bubble1}
               </div>
 
               {/* Bubble 2 (Pops 3rd / Closes 2nd) */}
               <div
-                className={`${
-                  isExiting ? "animate-bubble-close-2" : "animate-bubble-pop-3"
-                } bg-[#4238c9] dark:bg-[#4f46e5] text-white px-5 sm:px-6 py-2.5 sm:py-3.5 rounded-full shadow-lg text-xs sm:text-sm font-inter font-normal leading-snug w-fit hover:scale-[1.02] transition-transform`}
+                className={`${isExiting ? "animate-bubble-close-2" : "animate-bubble-pop-3"
+                  } bg-[#4238c9] dark:bg-[#4f46e5] text-white px-5 sm:px-6 py-2.5 sm:py-3.5 rounded-full shadow-lg text-xs sm:text-sm font-inter font-normal leading-snug w-fit hover:scale-[1.02] transition-transform`}
               >
                 {localizedCopy.bubble2}
               </div>
 
               {/* Bubble 3 (Pops 2nd / Closes 3rd) */}
               <div
-                className={`${
-                  isExiting ? "animate-bubble-close-3" : "animate-bubble-pop-2"
-                } bg-[#4238c9] dark:bg-[#4f46e5] text-white px-5 sm:px-6 py-2.5 sm:py-3.5 rounded-full shadow-lg text-xs sm:text-sm font-inter font-normal leading-snug w-fit hover:scale-[1.02] transition-transform`}
+                className={`${isExiting ? "animate-bubble-close-3" : "animate-bubble-pop-2"
+                  } bg-[#4238c9] dark:bg-[#4f46e5] text-white px-5 sm:px-6 py-2.5 sm:py-3.5 rounded-full shadow-lg text-xs sm:text-sm font-inter font-normal leading-snug w-fit hover:scale-[1.02] transition-transform`}
               >
                 {localizedCopy.bubble3}
               </div>
 
               {/* Bubble 4 (Pops 1st / Closes 4th - Nearest to bottom ...) */}
               <div
-                className={`${
-                  isExiting ? "animate-bubble-close-4" : "animate-bubble-pop-1"
-                } bg-[#4238c9] dark:bg-[#4f46e5] text-white px-5 sm:px-6 py-2.5 sm:py-3.5 rounded-full shadow-lg text-xs sm:text-sm font-inter font-normal leading-snug w-fit hover:scale-[1.02] transition-transform`}
+                className={`${isExiting ? "animate-bubble-close-4" : "animate-bubble-pop-1"
+                  } bg-[#4238c9] dark:bg-[#4f46e5] text-white px-5 sm:px-6 py-2.5 sm:py-3.5 rounded-full shadow-lg text-xs sm:text-sm font-inter font-normal leading-snug w-fit hover:scale-[1.02] transition-transform`}
               >
                 {localizedCopy.bubble4}
               </div>
@@ -254,31 +250,28 @@ export function FeatureShowcase({ language = "ENG" }: FeatureShowcaseProps) {
                   </h4>
 
                   <div className="grid grid-cols-3 gap-2 sm:gap-2.5 w-full mt-1">
-                    <div className={`p-2 sm:p-2.5 rounded-xl border text-left transition-all duration-300 ${
-                      demoStep === 0
+                    <div className={`p-2 sm:p-2.5 rounded-xl border text-left transition-all duration-300 ${demoStep === 0
                         ? "bg-indigo-50/90 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-700 shadow-xs"
                         : "bg-white/80 dark:bg-white/5 border-slate-200/80 dark:border-white/10"
-                    }`}>
+                      }`}>
                       <Calendar className="w-3.5 h-3.5 text-sky-500 mb-1" />
                       <div className="text-[10px] sm:text-[11px] font-semibold text-slate-800 dark:text-white">Classroom Sync</div>
                       <div className="text-[8px] sm:text-[9px] text-slate-500 dark:text-slate-400 truncate">Otomatis Sinkron</div>
                     </div>
 
-                    <div className={`p-2 sm:p-2.5 rounded-xl border text-left transition-all duration-300 ${
-                      demoStep === 1
+                    <div className={`p-2 sm:p-2.5 rounded-xl border text-left transition-all duration-300 ${demoStep === 1
                         ? "bg-indigo-50/90 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-700 shadow-xs"
                         : "bg-white/80 dark:bg-white/5 border-slate-200/80 dark:border-white/10"
-                    }`}>
+                      }`}>
                       <Bot className="w-3.5 h-3.5 text-indigo-500 mb-1" />
                       <div className="text-[10px] sm:text-[11px] font-semibold text-slate-800 dark:text-white">Socratic AI</div>
                       <div className="text-[8px] sm:text-[9px] text-slate-500 dark:text-slate-400 truncate">Tutor Interaktif</div>
                     </div>
 
-                    <div className={`p-2 sm:p-2.5 rounded-xl border text-left transition-all duration-300 ${
-                      demoStep === 2
+                    <div className={`p-2 sm:p-2.5 rounded-xl border text-left transition-all duration-300 ${demoStep === 2
                         ? "bg-indigo-50/90 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-700 shadow-xs"
                         : "bg-white/80 dark:bg-white/5 border-slate-200/80 dark:border-white/10"
-                    }`}>
+                      }`}>
                       <Zap className="w-3.5 h-3.5 text-amber-500 mb-1" />
                       <div className="text-[10px] sm:text-[11px] font-semibold text-slate-800 dark:text-white">Low-Data Notes</div>
                       <div className="text-[8px] sm:text-[9px] text-slate-500 dark:text-slate-400 truncate">Hemat 85% Kuota</div>
@@ -392,11 +385,10 @@ export function FeatureShowcase({ language = "ENG" }: FeatureShowcaseProps) {
                       <div
                         key={item.id}
                         onClick={() => toggleTodo(item.id)}
-                        className={`flex items-center gap-2 p-1.5 rounded-lg border transition-all cursor-pointer select-none ${
-                          item.done
+                        className={`flex items-center gap-2 p-1.5 rounded-lg border transition-all cursor-pointer select-none ${item.done
                             ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/40 text-slate-400 dark:text-slate-400 line-through"
                             : "bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-800 dark:text-white hover:border-[#4b43c6]"
-                        }`}
+                          }`}
                       >
                         {item.done ? (
                           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
@@ -493,11 +485,10 @@ export function FeatureShowcase({ language = "ENG" }: FeatureShowcaseProps) {
               key={tab}
               type="button"
               onClick={() => setActiveTab(tab)}
-              className={`font-montserrat text-xs sm:text-sm font-semibold transition-all duration-200 cursor-pointer ${
-                isActive
+              className={`font-montserrat text-xs sm:text-sm font-semibold transition-all duration-200 cursor-pointer ${isActive
                   ? "bg-[#4b43c6] text-white px-5 sm:px-6 py-2 sm:py-2.5 rounded-full shadow-md scale-105"
                   : "bg-transparent hover:bg-slate-100 dark:hover:bg-zinc-800/80 text-slate-700 dark:text-zinc-300 px-3.5 sm:px-4 py-2 rounded-full"
-              }`}
+                }`}
             >
               {tabLabels[tab]}
             </button>

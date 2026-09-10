@@ -72,17 +72,17 @@ export function LandingFooter({ onConnectGoogle, language = "ENG" }: LandingFoot
           </h4>
           <ul className="flex flex-col gap-2 font-inter text-xs sm:text-sm text-slate-600 dark:text-zinc-400">
             <li>
-              <a href="#" className="hover:text-[#4838cc] dark:hover:text-indigo-400 transition-colors">
+              <a href="#home" className="hover:text-[#4838cc] dark:hover:text-indigo-400 transition-colors">
                 {copy.home}
               </a>
             </li>
             <li>
-              <a href="#about-platform" className="hover:text-[#4838cc] dark:hover:text-indigo-400 transition-colors">
+              <a href="#features" className="hover:text-[#4838cc] dark:hover:text-indigo-400 transition-colors">
                 {copy.features}
               </a>
             </li>
             <li>
-              <a href="#about-platform" className="hover:text-[#4838cc] dark:hover:text-indigo-400 transition-colors">
+              <a href="#demo" className="hover:text-[#4838cc] dark:hover:text-indigo-400 transition-colors">
                 {copy.demo}
               </a>
             </li>
