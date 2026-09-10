@@ -989,8 +989,10 @@ export const AIChat: React.FC<AIChatProps> = ({
         );
         if (prevRich) {
           finalContent = prevRich.content.replace(/```json[\s\S]*?```/g, "").trim();
-        } else if (activeTask) {
-          finalContent = `# ${activeTask.title || "Tugas"}\n\n## Informasi Tugas & Topik\n- **Topik / Mata Pelajaran:** ${activeTask.courseName || "-"}\n- **Judul Tugas:** ${activeTask.title || "-"}\n${activeTask.dueDateStr ? `- **Batas Waktu:** ${activeTask.dueDateStr}\n` : ""}\n## Deskripsi & Rincian Praktikum\n${activeTask.description || cleanContent}`;
+        } else if (msg.createdDocument?.content && msg.createdDocument.content.trim().length > 30) {
+          finalContent = msg.createdDocument.content;
+        } else if (activeTask && activeTask.description && activeTask.description.trim().length > 30) {
+          finalContent = `# ${activeTask.title || "Tugas"}\n\n## Informasi Tugas & Topik\n- **Topik / Mata Pelajaran:** ${activeTask.courseName || "-"}\n- **Judul Tugas:** ${activeTask.title || "-"}\n${activeTask.dueDateStr ? `- **Batas Waktu:** ${activeTask.dueDateStr}\n` : ""}\n## Deskripsi & Rincian Praktikum\n${activeTask.description}`;
         }
       }
 

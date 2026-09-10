@@ -320,8 +320,10 @@ function extractFallbackActions(
             );
             if (prevAssistantMsgs.length > 0) {
                 docContent = prevAssistantMsgs[prevAssistantMsgs.length - 1].content;
-            } else if (taskContext) {
-                docContent = `# ${docTitle}\n\n## Informasi Tugas & Topik\n- **Topik / Mata Pelajaran:** ${taskContext.courseName || "-"}\n- **Judul Tugas:** ${taskContext.title || "-"}\n${taskContext.dueDateStr ? `- **Batas Waktu:** ${taskContext.dueDateStr}\n` : ""}\n## Deskripsi & Rincian Praktikum\n${taskContext.description || "Berikut adalah naskah dokumen resmi untuk tugas ini."}\n\n${taskContext.customNotes ? `### Catatan Tambahan\n${taskContext.customNotes}\n` : ""}`;
+            } else if (replyText && replyText.trim().length > 30) {
+                docContent = `# ${docTitle}\n\n${replyText}${taskContext?.description && taskContext.description.trim().length > 30 ? `\n\n## Deskripsi Tugas\n${taskContext.description}` : ""}`;
+            } else if (taskContext && taskContext.description && taskContext.description.trim().length > 30) {
+                docContent = `# ${docTitle}\n\n## Informasi Tugas & Topik\n- **Topik / Mata Pelajaran:** ${taskContext.courseName || "-"}\n- **Judul Tugas:** ${taskContext.title || "-"}\n${taskContext.dueDateStr ? `- **Batas Waktu:** ${taskContext.dueDateStr}\n` : ""}\n## Deskripsi & Rincian Praktikum\n${taskContext.description}\n\n${taskContext.customNotes ? `### Catatan Tambahan\n${taskContext.customNotes}\n` : ""}`;
             }
         }
 
@@ -444,7 +446,8 @@ ${taskContext.customNotes ? `Catatan Tambahan: ${taskContext.customNotes}` : ""}
         let modeInstruction = "";
         if (studyMode === "socratic") {
             modeInstruction = `\n--- MODE BELAJAR: TUTOR SOKRATIK ---
-Bimbing siswa untuk menemukan jawaban sendiri secara kritis. Ajukan pertanyaan reflektif yang membangun logika, berikan petunjuk bertahap (hints), dan hindari memberikan jawaban akhir secara instan sebelum siswa mencoba berpikir.
+Bimbing siswa untuk menemukan jawaban sendiri secara kritis dengan petunjuk bertahap (hints).
+PENGECUALIAN PENTING: Jika siswa secara spesifik meminta dokumen (Word, PDF, Excel, Slides) atau meminta format dokumen ("jawab dalam bentuk word/pdf"), Anda WAJIB MENGERJAKAN, MENGANALISIS, DAN MENULISKAN JAWABAN TUGAS TERSEBUT SECARA LENGKAP DAN TUNTAS DARI AWAL HINGGA AKHIR ke dalam dokumen dan chat, bukan hanya memberi petunjuk atau basa-basi!
 ------------------------------------`;
         } else if (studyMode === "direct") {
             modeInstruction = `\n--- MODE BELAJAR: PENJELASAN RINGKAS & CEPAT ---
@@ -663,7 +666,13 @@ ${personalizationInstruction}
                         const lower = userText.toLowerCase();
                         const isDocRequest = lower.includes("pdf") || lower.includes("word") || lower.includes("docx") || lower.includes("xlsx") || lower.includes("excel") || lower.includes("spreadsheet") || lower.includes("makalah") || lower.includes("dokumen") || lower.includes("slide") || lower.includes("ppt");
                         if (isDocRequest) {
-                            userText += `\n\n[INSTRUKSI SISTEM: Pengguna meminta Anda membuat file dokumen untuk tugas '${taskContext?.title || "ini"}'. Anda WAJIB MENGERJAKAN DAN MENULISKAN SELURUH JAWABAN/LAPORAN/MATERI LENGKAP SECARA MENDALAM DARI AWAL HINGGA AKHIR (minimal 500-1500 kata untuk docx/pdf, atau tabel data lengkap untuk excel) ke dalam field 'content' pada 'createdDocument' (atau 'slides' pada 'createdSlides') dan intisarinya di 'reply'. DILARANG KERAS hanya menulis kalimat pengantar/template basa-basi!]`;
+                            userText += `\n\n[INSTRUKSI WAJIB UNTUK AI: Pengguna meminta jawaban/laporan dalam format dokumen resmi${taskContext?.title ? ` untuk topik tugas: "${taskContext.title}" (${taskContext.courseName || "Umum"})` : ""}.
+TUGAS ANDA:
+1. Anda WAJIB MENGERJAKAN, MENGHITUNG/MENJELASKAN, DAN MENYELESAIKAN TUGAS INI SECARA SUBSTANTIF DARI AWAL HINGGA TUNTAS. Berikan naskah lengkap: landasan teori, rumus/prosedur teknis, langkah perhitungan step-by-step nyata, contoh data konkret, tabel analisis, dan kesimpulan menyeluruh.
+2. TULISKAN SELURUH NASKAH JAWABAN/DOKUMEN LENGKAP INI (minimal 500 - 1500 kata) KE DALAM DUA TEMPAT:
+   - Ke dalam field 'createdDocument.content' (agar file Word/PDF yang diunduh berisi seluruh naskah lengkap).
+   - Ke dalam field 'reply' (tuliskan naskah jawaban lengkap ini dalam format Markdown agar bisa dibaca langsung oleh siswa di chat).
+3. DILARANG KERAS hanya menuliskan satu kalimat pengantar atau mengulang deskripsi tugas!]`;
                         }
                     }
                     const parts: any[] = [{ text: userText }];
@@ -756,6 +765,7 @@ ${personalizationInstruction}
                                 description: { type: Type.STRING, description: "Keterangan singkat" },
                                 subject: { type: Type.STRING, description: "Mata kuliah atau topik" },
                             },
+                            required: ["type", "title", "content", "fileName"],
                         },
                         createdSlides: {
                             type: Type.OBJECT,
@@ -869,21 +879,29 @@ ${personalizationInstruction}
         // Validate Gemini response objects before preferring them over fallback
         // If geminiDoc is just conversational filler (e.g. "Tentu saja saya telah membuat..."), rescue the real content!
         const geminiDoc = resultData.createdDocument;
-        let isGeminiDocValid = geminiDoc && geminiDoc.title && geminiDoc.content && !isConversationalFiller(geminiDoc.content);
+        let isGeminiDocValid = Boolean(geminiDoc && geminiDoc.title && geminiDoc.content && !isConversationalFiller(geminiDoc.content));
 
-        if (geminiDoc && geminiDoc.title && (!geminiDoc.content || isConversationalFiller(geminiDoc.content))) {
-            const prevAssistantMsgs = messages.filter(
-                (m: any) => m.role === "assistant" && m.content && !isConversationalFiller(m.content) && m.content.length > 250
-            );
-            if (!isConversationalFiller(resultData.reply) && resultData.reply.length > 300) {
-                geminiDoc.content = resultData.reply;
-                isGeminiDocValid = true;
-            } else if (prevAssistantMsgs.length > 0) {
-                geminiDoc.content = prevAssistantMsgs[prevAssistantMsgs.length - 1].content;
-                isGeminiDocValid = true;
-            } else if (fallback.createdDocument && !isConversationalFiller(fallback.createdDocument.content)) {
-                geminiDoc.content = fallback.createdDocument.content;
-                isGeminiDocValid = true;
+        if (geminiDoc && geminiDoc.title) {
+            if (!geminiDoc.content || isConversationalFiller(geminiDoc.content)) {
+                const prevAssistantMsgs = messages.filter(
+                    (m: any) => m.role === "assistant" && m.content && !isConversationalFiller(m.content) && m.content.length > 200
+                );
+                if (resultData.reply && !isConversationalFiller(resultData.reply) && resultData.reply.length > 150) {
+                    geminiDoc.content = resultData.reply;
+                    isGeminiDocValid = true;
+                } else if (prevAssistantMsgs.length > 0) {
+                    geminiDoc.content = prevAssistantMsgs[prevAssistantMsgs.length - 1].content;
+                    isGeminiDocValid = true;
+                } else if (fallback.createdDocument && !isConversationalFiller(fallback.createdDocument.content)) {
+                    geminiDoc.content = fallback.createdDocument.content;
+                    isGeminiDocValid = true;
+                } else if (resultData.reply && resultData.reply.trim().length > 30) {
+                    geminiDoc.content = `# ${geminiDoc.title}\n\n${resultData.reply}`;
+                    isGeminiDocValid = true;
+                }
+            } else if (isGeminiDocValid && isConversationalFiller(resultData.reply)) {
+                // If the document content is complete and rich, display it in chat as well
+                resultData.reply = geminiDoc.content;
             }
         }
 
