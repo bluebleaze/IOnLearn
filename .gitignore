@@ -1,0 +1,12 @@
+node_modules/
+build/
+
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+firebase-applet-config.json
+.next/
+.user_cache.json
+tsconfig.tsbuildinfo

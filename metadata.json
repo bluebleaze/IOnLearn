@@ -1,0 +1,6 @@
+{
+  "name": "Classroom Sync & AI Task Assistant",
+  "description": "Sistem pencatatan otomatis yang tersinkronisasi dengan Google Classroom untuk membuat to-do list tugas baru, merekomendasikan sumber belajar & link YouTube relevan via AI, serta dilengkapi chatbot asisten belajar cerdas.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
