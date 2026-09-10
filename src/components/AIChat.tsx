@@ -50,10 +50,13 @@ import {
   FileDown,
   Globe,
   Square,
+  Sliders,
+  MoreHorizontal,
 } from "lucide-react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import confetti from "canvas-confetti";
+import { DocumentCustomizerModal } from "./DocumentCustomizerModal";
 import {
   AIConfig,
   ChatAttachment,
@@ -545,6 +548,12 @@ export const AIChat: React.FC<AIChatProps> = ({
   // Message export menu state
   const [activeExportMenuMsgId, setActiveExportMenuMsgId] = useState<string | null>(null);
   const [exportingFormat, setExportingFormat] = useState<string | null>(null);
+  // Document and presentation visual style customizer
+  const [customizingDoc, setCustomizingDoc] = useState<{
+    doc: CreatedDocument;
+    fallbackText?: string;
+  } | null>(null);
+  const [customizingSlides, setCustomizingSlides] = useState<CreatedSlides | null>(null);
 
   // Stop speech recognition and synthesis on unmount
   useEffect(() => {
@@ -714,6 +723,22 @@ export const AIChat: React.FC<AIChatProps> = ({
     };
   }, [previewFile]);
 
+  // AI Tools & Attachment Menu State
+  const [isToolsMenuOpen, setIsToolsMenuOpen] = useState(false);
+  const [activeSubmenu, setActiveSubmenu] = useState<"none" | "uploads" | "tools">("none");
+  const [isGroundingEnabled, setIsGroundingEnabled] = useState(true);
+  const [isGroundingAvailable, setIsGroundingAvailable] = useState(true);
+  const [isCheckingGrounding, setIsCheckingGrounding] = useState(false);
+  const [isDeepResearchEnabled, setIsDeepResearchEnabled] = useState(false);
+  const [isPersonalizationActive, setIsPersonalizationActive] = useState(true);
+
+  // Quick Image Generation Dialog State
+  const [isImageGenModalOpen, setIsImageGenModalOpen] = useState(false);
+  const [imagePromptInput, setImagePromptInput] = useState("");
+  const [imageAspectRatio, setImageAspectRatio] = useState<"1:1" | "16:9" | "4:3" | "9:16">("16:9");
+  const [imageStyle, setImageStyle] = useState<"scientific" | "photorealistic" | "digital_art" | "isometric">("scientific");
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+
   // Format Selector Popover State
   const [isFormatMenuOpen, setIsFormatMenuOpen] = useState(false);
   const [activeAcceptFilter, setActiveAcceptFilter] = useState<string>(
@@ -725,7 +750,86 @@ export const AIChat: React.FC<AIChatProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const contextRef = useRef<HTMLDivElement>(null);
   const formatMenuRef = useRef<HTMLDivElement>(null);
+  const toolsMenuRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Load saved Grounding preferences
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedG = localStorage.getItem("ionlearn_grounding_enabled");
+      if (savedG !== null) setIsGroundingEnabled(savedG !== "false");
+      const savedGA = localStorage.getItem("ionlearn_grounding_available");
+      if (savedGA !== null) setIsGroundingAvailable(savedGA !== "false");
+    }
+  }, []);
+
+  const handleCheckGrounding = async (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setIsCheckingGrounding(true);
+    try {
+      const res = await fetch("/api/ai/chat?check=grounding");
+      const data = await res.json();
+      if (data.available) {
+        setIsGroundingAvailable(true);
+        setIsGroundingEnabled(true);
+        localStorage.setItem("ionlearn_grounding_available", "true");
+        localStorage.setItem("ionlearn_grounding_enabled", "true");
+      } else {
+        setIsGroundingAvailable(false);
+        localStorage.setItem("ionlearn_grounding_available", "false");
+      }
+    } catch {
+      // Retain current state
+    } finally {
+      setIsCheckingGrounding(false);
+    }
+  };
+
+  const handleGenerateImageSubmit = async () => {
+    if (!imagePromptInput.trim()) return;
+    setIsGeneratingImage(true);
+    try {
+      const res = await fetch("/api/ai/image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: imagePromptInput.trim(),
+          aspectRatio: imageAspectRatio,
+          style: imageStyle,
+          aiConfig,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Gagal membuat gambar.");
+      }
+      const data = await res.json();
+      if (data.url) {
+        const targetId = currentId || sessions[0]?.id || SESSIONS_KEY;
+        const imgMsg: ChatMessage = {
+          id: `img-${Date.now()}`,
+          role: "assistant",
+          content: `Visualisasi gambar AI untuk: **"${imagePromptInput.trim()}"**`,
+          timestamp: Date.now(),
+          createdImage: {
+            url: data.url,
+            prompt: imagePromptInput.trim(),
+            caption: data.caption || imagePromptInput.trim(),
+            aspectRatio: imageAspectRatio,
+          },
+        };
+        setSessions((prev) =>
+          prev.map((s) => (s.id === targetId ? { ...s, messages: [...s.messages, imgMsg] } : s))
+        );
+        setIsImageGenModalOpen(false);
+        setImagePromptInput("");
+      }
+    } catch (e: any) {
+      alert("Gagal membuat gambar: " + (e.message || String(e)));
+    } finally {
+      setIsGeneratingImage(false);
+    }
+  };
 
   const handleStopGeneration = () => {
     if (abortControllerRef.current) {
@@ -750,6 +854,8 @@ export const AIChat: React.FC<AIChatProps> = ({
   const handleSelectFormat = (acceptString: string) => {
     setActiveAcceptFilter(acceptString);
     setIsFormatMenuOpen(false);
+    setIsToolsMenuOpen(false);
+    setActiveSubmenu("none");
     setTimeout(() => {
       fileInputRef.current?.click();
     }, 50);
@@ -761,7 +867,7 @@ export const AIChat: React.FC<AIChatProps> = ({
     setNotes(loadNotes());
   }, [propTasks, propNotes]);
 
-  // Close context dropdown & format menu on outside click
+  // Close context dropdown & tools menu on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (contextRef.current && !contextRef.current.contains(e.target as Node)) {
@@ -769,6 +875,10 @@ export const AIChat: React.FC<AIChatProps> = ({
       }
       if (formatMenuRef.current && !formatMenuRef.current.contains(e.target as Node)) {
         setIsFormatMenuOpen(false);
+      }
+      if (toolsMenuRef.current && !toolsMenuRef.current.contains(e.target as Node)) {
+        setIsToolsMenuOpen(false);
+        setActiveSubmenu("none");
       }
     };
     document.addEventListener("mousedown", handler);
@@ -1533,7 +1643,11 @@ export const AIChat: React.FC<AIChatProps> = ({
       const chatHistory = nextMessages.map((m, idx) => ({
         role: m.role === "user" ? ("user" as const) : ("assistant" as const),
         content:
-          idx === nextMessages.length - 1 ? aiPromptPayload : m.content,
+          idx === nextMessages.length - 1
+            ? (isDeepResearchEnabled
+                ? `[MODE DEEP RESEARCH AKTIF]: Berikan riset mendalam, tinjau berbagai dimensi materi secara komprehensif, dan sertakan fakta pendukung terstruktur.\n\n${aiPromptPayload}`
+                : aiPromptPayload)
+            : m.content,
         attachments:
           idx === nextMessages.length - 1 ? currentAttachments : undefined,
       }));
@@ -1623,12 +1737,19 @@ export const AIChat: React.FC<AIChatProps> = ({
               )
             );
           },
+          onGroundingStatus: (available) => {
+            if (!available) {
+              setIsGroundingAvailable(false);
+              localStorage.setItem("ionlearn_grounding_available", "false");
+            }
+          },
           signal: abortControllerRef.current?.signal,
         },
         contextualTask,
-        userPreferences,
+        isPersonalizationActive ? userPreferences : null,
         aiConfig,
-        currentMode
+        currentMode,
+        isGroundingEnabled && isGroundingAvailable
       );
 
       // Automatically handle Note creation if AI produced createdNote
@@ -1980,12 +2101,19 @@ export const AIChat: React.FC<AIChatProps> = ({
               )
             );
           },
+          onGroundingStatus: (available) => {
+            if (!available) {
+              setIsGroundingAvailable(false);
+              localStorage.setItem("ionlearn_grounding_available", "false");
+            }
+          },
           signal: abortControllerRef.current?.signal,
         },
         contextualTask,
-        userPreferences,
+        isPersonalizationActive ? userPreferences : null,
         aiConfig,
-        currentMode
+        currentMode,
+        isGroundingEnabled && isGroundingAvailable
       );
 
       let noteCreatedId: string | undefined = undefined;
@@ -2343,98 +2471,381 @@ export const AIChat: React.FC<AIChatProps> = ({
           {/* Action Row inside Textarea */}
           <div className="flex items-center justify-between px-3 pb-2.5 pt-1">
             <div className="flex items-center gap-1 text-slate-400">
-              {/* Attachment Format Selector Popover */}
-              <div className="relative" ref={formatMenuRef}>
+              {/* AI Tools & Attachments Floating Menu */}
+              <div className="relative" ref={toolsMenuRef}>
                 <button
                   type="button"
-                  onClick={() => setIsFormatMenuOpen(!isFormatMenuOpen)}
-                  className={`p-1.5 transition-colors cursor-pointer rounded-lg ${isFormatMenuOpen
-                    ? "bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400"
-                    : "text-slate-500 dark:text-[#888] hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-[#222]"
-                    }`}
-                  title="Pilih Format Lampiran"
+                  onClick={() => {
+                    setIsToolsMenuOpen(!isToolsMenuOpen);
+                    setActiveSubmenu("none");
+                  }}
+                  className={`p-1.5 transition-all cursor-pointer rounded-xl flex items-center justify-center ${
+                    isToolsMenuOpen
+                      ? "bg-indigo-600 text-white shadow-sm shadow-indigo-500/30"
+                      : "text-slate-500 dark:text-[#888] hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-[#222]"
+                  }`}
+                  title="Menu Alat AI, Pencarian Web & Lampiran"
                 >
-                  <Paperclip className="w-4 h-4" />
+                  <Plus className={`w-4 h-4 transition-transform duration-200 ${isToolsMenuOpen ? "rotate-45" : ""}`} />
                 </button>
 
-                {isFormatMenuOpen && (
-                  <div className="absolute left-0 bottom-full mb-2 w-64 bg-white dark:bg-[#1a1a1a] rounded-2xl shadow-xl border border-slate-200/80 dark:border-[#2a2a2a] p-2 z-50 animate-in fade-in slide-in-from-bottom-2">
-                    <div className="px-2.5 py-1 text-xs font-bold text-slate-500 dark:text-[#888] border-b border-slate-100 dark:border-[#262626] mb-1">
-                      Pilih Jenis Format:
-                    </div>
-                    <div className="space-y-0.5">
-                      <button
-                        type="button"
-                        onClick={() => handleSelectFormat(".pdf,.doc,.docx,.txt,.md,application/pdf")}
-                        className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium text-slate-700 dark:text-[#ddd] hover:bg-slate-100 dark:hover:bg-[#252525] transition cursor-pointer text-left"
-                      >
-                        <div className="w-6 h-6 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
-                          <FileText className="w-3.5 h-3.5" />
-                        </div>
-                        <div>
-                          <div className="font-semibold">Dokumen / PDF</div>
-                          <div className="text-xs text-slate-500 dark:text-[#888]">PDF, Word, Markdown, Teks</div>
-                        </div>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleSelectFormat("image/*,.png,.jpg,.jpeg,.webp")}
-                        className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium text-slate-700 dark:text-[#ddd] hover:bg-slate-100 dark:hover:bg-[#252525] transition cursor-pointer text-left"
-                      >
-                        <div className="w-6 h-6 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                          <ImageIcon className="w-3.5 h-3.5" />
-                        </div>
-                        <div>
-                          <div className="font-semibold">Foto / Gambar Soal</div>
-                          <div className="text-xs text-slate-500 dark:text-[#888]">PNG, JPG, Screenshot</div>
-                        </div>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleSelectFormat(".js,.ts,.tsx,.py,.java,.c,.cpp,.html,.css,.json,.sql")}
-                        className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium text-slate-700 dark:text-[#ddd] hover:bg-slate-100 dark:hover:bg-[#252525] transition cursor-pointer text-left"
-                      >
-                        <div className="w-6 h-6 rounded-lg bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
-                          <Code2 className="w-3.5 h-3.5" />
-                        </div>
-                        <div>
-                          <div className="font-semibold">Kode Pemrograman</div>
-                          <div className="text-xs text-slate-500 dark:text-[#888]">JS, Python, TS, Java, C++</div>
-                        </div>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleSelectFormat(".txt,.md,.json,.csv,text/*")}
-                        className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium text-slate-700 dark:text-[#ddd] hover:bg-slate-100 dark:hover:bg-[#252525] transition cursor-pointer text-left"
-                      >
-                        <div className="w-6 h-6 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-                          <NotebookPen className="w-3.5 h-3.5" />
-                        </div>
-                        <div>
-                          <div className="font-semibold">Catatan Teks / Data</div>
-                          <div className="text-xs text-slate-500 dark:text-[#888]">Catatan Teks, CSV, JSON</div>
-                        </div>
-                      </button>
-
+                {isToolsMenuOpen && (
+                  <div className="absolute left-0 bottom-full mb-2.5 z-50 flex items-end animate-in fade-in slide-in-from-bottom-2 duration-150 select-none">
+                    {/* Main Tools Menu Card */}
+                    <div className="w-64 sm:w-72 bg-[#181818] dark:bg-[#181818] text-[#ececec] rounded-2xl shadow-2xl border border-[#2e2e2e] p-1.5 space-y-0.5">
+                      {/* 1. Upload files */}
                       <button
                         type="button"
                         onClick={() => {
-                          setIsFormatMenuOpen(false);
+                          handleSelectFormat(".pdf,.doc,.docx,.txt,.md,.png,.jpg,.jpeg,.webp,.json,.csv,application/pdf,image/*,text/*");
+                        }}
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-[#ededed] hover:bg-[#262626] transition cursor-pointer text-left"
+                      >
+                        <Paperclip className="w-4 h-4 text-[#aaa]" />
+                        <span>Upload files</span>
+                      </button>
+
+                      {/* 2. Add from Drive */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsToolsMenuOpen(false);
+                          setActiveSubmenu("none");
                           setIsWorkspaceModalOpen(true);
                         }}
-                        className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium text-slate-700 dark:text-[#ddd] hover:bg-slate-100 dark:hover:bg-[#252525] transition cursor-pointer text-left"
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-[#ededed] hover:bg-[#262626] transition cursor-pointer text-left"
                       >
-                        <div className="w-6 h-6 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                          <Link2 className="w-3.5 h-3.5" />
-                        </div>
-                        <div>
-                          <div className="font-semibold">Google Workspace Link</div>
-                          <div className="text-xs text-slate-500 dark:text-[#888]">Docs, Sheets, Slides, Drive</div>
-                        </div>
+                        <svg className="w-4 h-4 shrink-0" viewBox="0 0 87.3 78" fill="none">
+                          <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8H0c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
+                          <path d="M43.65 25 29.9 1.2C28.55 2 27.4 3.1 26.6 4.5L1.2 48.5C.4 49.9 0 51.45 0 53h27.5z" fill="#00ac47"/>
+                          <path d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5H59.8l5.85 10.15z" fill="#ea4335"/>
+                          <path d="M43.65 25 57.4 1.2C56.05.4 54.5 0 52.95 0H34.35c-1.55 0-3.1.4-4.45 1.2z" fill="#00832d"/>
+                          <path d="m59.8 53-16.15-28H16.15L29.9 48.8l13.75 23.8h27.5c1.55 0 3.1-.4 4.45-1.2z" fill="#2684fc"/>
+                          <path d="m73.55 76.8-13.75-23.8-5.85 10.15 13.75 23.8c1.55 0 3.1-.4 4.45-1.2.5-.3.95-.65 1.4-1.05l-73.55-73.55" fill="#ffba00"/>
+                        </svg>
+                        <span>Add from Drive</span>
                       </button>
+
+                      {/* 3. More uploads > */}
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => setActiveSubmenu(activeSubmenu === "uploads" ? "none" : "uploads")}
+                          onMouseEnter={() => setActiveSubmenu("uploads")}
+                          className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition cursor-pointer text-left ${
+                            activeSubmenu === "uploads" ? "bg-[#262626] text-white" : "text-[#ededed] hover:bg-[#262626]"
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <MoreHorizontal className="w-4 h-4 text-[#aaa]" />
+                            <span>More uploads</span>
+                          </div>
+                          <ChevronRight className="w-3.5 h-3.5 text-[#888]" />
+                        </button>
+
+                        {/* Submenu for More uploads */}
+                        {activeSubmenu === "uploads" && (
+                          <div className="absolute left-full bottom-0 ml-1.5 w-60 bg-[#181818] rounded-2xl shadow-2xl border border-[#2e2e2e] p-1.5 space-y-0.5 z-50 animate-in fade-in slide-in-from-left-2 duration-150">
+                            <button
+                              type="button"
+                              onClick={() => handleSelectFormat(".pdf,.doc,.docx,.txt,.md,application/pdf")}
+                              className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium text-[#ededed] hover:bg-[#262626] transition cursor-pointer text-left"
+                            >
+                              <FileText className="w-4 h-4 text-indigo-400" />
+                              <div>
+                                <div className="font-semibold">Dokumen & PDF</div>
+                                <div className="text-[10px] text-[#888]">PDF, Word, Markdown</div>
+                              </div>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleSelectFormat("image/*,.png,.jpg,.jpeg,.webp")}
+                              className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium text-[#ededed] hover:bg-[#262626] transition cursor-pointer text-left"
+                            >
+                              <ImageIcon className="w-4 h-4 text-emerald-400" />
+                              <div>
+                                <div className="font-semibold">Foto & Gambar Soal</div>
+                                <div className="text-[10px] text-[#888]">PNG, JPG, Screenshot</div>
+                              </div>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleSelectFormat(".js,.ts,.tsx,.py,.java,.c,.cpp,.html,.css,.json,.sql")}
+                              className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium text-[#ededed] hover:bg-[#262626] transition cursor-pointer text-left"
+                            >
+                              <Code2 className="w-4 h-4 text-purple-400" />
+                              <div>
+                                <div className="font-semibold">Kode Pemrograman</div>
+                                <div className="text-[10px] text-[#888]">Python, JS, Java, C++</div>
+                              </div>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleSelectFormat(".txt,.md,.json,.csv,text/*")}
+                              className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium text-[#ededed] hover:bg-[#262626] transition cursor-pointer text-left"
+                            >
+                              <NotebookPen className="w-4 h-4 text-amber-400" />
+                              <div>
+                                <div className="font-semibold">Catatan Teks / CSV</div>
+                                <div className="text-[10px] text-[#888]">Teks, Markdown, Spreadsheet</div>
+                              </div>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Divider */}
+                      <div className="my-1 border-t border-[#2a2a2a]" />
+
+                      {/* 4. Buat Gambar AI */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsToolsMenuOpen(false);
+                          setActiveSubmenu("none");
+                          setIsImageGenModalOpen(true);
+                        }}
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-[#ededed] hover:bg-[#262626] transition cursor-pointer text-left"
+                      >
+                        <Sparkles className="w-4 h-4 text-pink-400 shrink-0" />
+                        <span>Buat Gambar AI</span>
+                      </button>
+
+                      {/* 5. Dokumen Word / PDF */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsToolsMenuOpen(false);
+                          setActiveSubmenu("none");
+                          setInputPrompt((prev) =>
+                            prev.trim()
+                              ? `${prev} - tolong buatkan naskah laporan lengkap dalam format Dokumen Word/PDF resmi`
+                              : "Tolong buatkan dokumen laporan lengkap terstruktur mengenai: "
+                          );
+                          textareaRef.current?.focus();
+                        }}
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-[#ededed] hover:bg-[#262626] transition cursor-pointer text-left"
+                      >
+                        <FileText className="w-4 h-4 text-blue-400 shrink-0" />
+                        <span>Dokumen (Word / PDF)</span>
+                      </button>
+
+                      {/* 6. Presentasi Slide PPTX */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsToolsMenuOpen(false);
+                          setActiveSubmenu("none");
+                          setInputPrompt((prev) =>
+                            prev.trim()
+                              ? `${prev} - tolong buatkan naskah slide presentasi PowerPoint (PPTX) lengkap`
+                              : "Tolong buatkan materi slide presentasi PowerPoint (PPTX) mengenai: "
+                          );
+                          textareaRef.current?.focus();
+                        }}
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-[#ededed] hover:bg-[#262626] transition cursor-pointer text-left"
+                      >
+                        <Presentation className="w-4 h-4 text-amber-400 shrink-0" />
+                        <span>Presentasi (PPTX)</span>
+                      </button>
+
+                      {/* 7. Spreadsheet Excel */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsToolsMenuOpen(false);
+                          setActiveSubmenu("none");
+                          setInputPrompt((prev) =>
+                            prev.trim()
+                              ? `${prev} - tolong buatkan tabel data komparasi dalam format Spreadsheet Excel (XLSX)`
+                              : "Tolong buatkan tabel data terstruktur / spreadsheet Excel untuk: "
+                          );
+                          textareaRef.current?.focus();
+                        }}
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-[#ededed] hover:bg-[#262626] transition cursor-pointer text-left"
+                      >
+                        <FileSpreadsheet className="w-4 h-4 text-emerald-400 shrink-0" />
+                        <span>Spreadsheet (Excel)</span>
+                      </button>
+
+                      {/* 8. Grounding Web (Google Search) with Toggle & Disabled Quota State */}
+                      <div
+                        onClick={() => {
+                          if (isGroundingAvailable) {
+                            const nextVal = !isGroundingEnabled;
+                            setIsGroundingEnabled(nextVal);
+                            localStorage.setItem("ionlearn_grounding_enabled", String(nextVal));
+                          }
+                        }}
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition ${
+                          isGroundingAvailable
+                            ? "text-[#ededed] hover:bg-[#262626] cursor-pointer"
+                            : "text-[#777] bg-[#141414] opacity-50 cursor-not-allowed"
+                        }`}
+                        title={
+                          isGroundingAvailable
+                            ? (isGroundingEnabled ? "Grounding Web Aktif: AI memvalidasi fakta via Google Search" : "Grounding Web Nonaktif")
+                            : "Kuota pencarian web Google Search saat ini sedang habis. AI akan menggunakan pengetahuan internal."
+                        }
+                      >
+                        <div className="flex items-center gap-3 min-w-0 pr-2">
+                          <Globe className={`w-4 h-4 shrink-0 ${!isGroundingAvailable ? 'text-[#555]' : isGroundingEnabled ? 'text-blue-400' : 'text-[#888]'}`} />
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className={!isGroundingAvailable ? "line-through text-[#888]" : ""}>
+                                Grounding Web
+                              </span>
+                              {!isGroundingAvailable && (
+                                <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-rose-950/80 text-rose-400 border border-rose-800/80 font-bold shrink-0">
+                                  Kuota Habis
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[10px] text-[#777] truncate">
+                              {!isGroundingAvailable
+                                ? "Pencarian web nonaktif (kuota habis)"
+                                : isGroundingEnabled
+                                ? "Google Search real-time aktif"
+                                : "Pencarian web dinonaktifkan"}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Toggle Switch */}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {!isGroundingAvailable && (
+                            <button
+                              type="button"
+                              onClick={handleCheckGrounding}
+                              disabled={isCheckingGrounding}
+                              className="p-1 text-[10px] text-blue-400 hover:text-blue-300 hover:underline cursor-pointer"
+                              title="Cek ulang kuota Google Search"
+                            >
+                              {isCheckingGrounding ? <Loader2 className="w-3 h-3 animate-spin" /> : "Cek"}
+                            </button>
+                          )}
+                          <div
+                            className={`w-9 h-5 rounded-full transition-colors relative flex items-center ${
+                              isGroundingAvailable && isGroundingEnabled
+                                ? "bg-blue-600"
+                                : "bg-[#333]"
+                            }`}
+                          >
+                            <div
+                              className={`w-4 h-4 rounded-full bg-white transition-transform flex items-center justify-center ${
+                                isGroundingAvailable && isGroundingEnabled
+                                  ? "translate-x-4.5"
+                                  : "translate-x-0.5"
+                              }`}
+                            >
+                              {isGroundingAvailable && isGroundingEnabled && (
+                                <Check className="w-2.5 h-2.5 text-blue-600 stroke-[3]" />
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 9. Mode Belajar > */}
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => setActiveSubmenu(activeSubmenu === "tools" ? "none" : "tools")}
+                          onMouseEnter={() => setActiveSubmenu("tools")}
+                          className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition cursor-pointer text-left ${
+                            activeSubmenu === "tools" ? "bg-[#262626] text-white" : "text-[#ededed] hover:bg-[#262626]"
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <GraduationCap className="w-4 h-4 text-[#aaa]" />
+                            <span>Mode Belajar</span>
+                          </div>
+                          <ChevronRight className="w-3.5 h-3.5 text-[#888]" />
+                        </button>
+
+                        {/* Submenu for Mode Belajar */}
+                        {activeSubmenu === "tools" && (
+                          <div className="absolute left-full bottom-0 ml-1.5 w-60 bg-[#181818] rounded-2xl shadow-2xl border border-[#2e2e2e] p-1.5 space-y-0.5 z-50 animate-in fade-in slide-in-from-left-2 duration-150">
+                            {/* Tutor Sokratik */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsToolsMenuOpen(false);
+                                setActiveSubmenu("none");
+                                handleSetStudyMode("socratic");
+                              }}
+                              className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium text-[#ededed] hover:bg-[#262626] transition cursor-pointer text-left"
+                            >
+                              <BookOpen className="w-4 h-4 text-emerald-400 shrink-0" />
+                              <div>
+                                <div className="font-semibold">Tutor Sokratik</div>
+                                <div className="text-[10px] text-[#888]">Tanya-jawab terbimbing</div>
+                              </div>
+                            </button>
+
+                            {/* Kuis & Evaluasi */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsToolsMenuOpen(false);
+                                setActiveSubmenu("none");
+                                handleSetStudyMode("quizzer");
+                              }}
+                              className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium text-[#ededed] hover:bg-[#262626] transition cursor-pointer text-left"
+                            >
+                              <HelpCircle className="w-4 h-4 text-sky-400 shrink-0" />
+                              <div>
+                                <div className="font-semibold">Kuis & Latihan</div>
+                                <div className="text-[10px] text-[#888]">Soal uji pemahaman</div>
+                              </div>
+                            </button>
+
+                            {/* Ringkasan Catatan */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsToolsMenuOpen(false);
+                                setActiveSubmenu("none");
+                                setInputPrompt((prev) =>
+                                  prev.trim()
+                                    ? `${prev} - tolong buatkan ringkasan intisari materi dan simpan ke catatan belajar`
+                                    : "Tolong buatkan ringkasan komprehensif materi ini dan simpan sebagai catatan belajar: "
+                                );
+                                textareaRef.current?.focus();
+                              }}
+                              className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium text-[#ededed] hover:bg-[#262626] transition cursor-pointer text-left"
+                            >
+                              <NotebookPen className="w-4 h-4 text-violet-400 shrink-0" />
+                              <div>
+                                <div className="font-semibold">Ringkasan Catatan</div>
+                                <div className="text-[10px] text-[#888]">Poin inti materi</div>
+                              </div>
+                            </button>
+
+                            {/* Breakdown Tugas */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsToolsMenuOpen(false);
+                                setActiveSubmenu("none");
+                                setInputPrompt((prev) =>
+                                  prev.trim()
+                                    ? `${prev} - tolong buatkan rencana breakdown to-do langkah kerja terukur`
+                                    : "Tolong pecah tugas ini menjadi to-do list langkah kerja yang terukur:"
+                                );
+                                textareaRef.current?.focus();
+                              }}
+                              className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium text-[#ededed] hover:bg-[#262626] transition cursor-pointer text-left"
+                            >
+                              <ListTodo className="w-4 h-4 text-amber-400 shrink-0" />
+                              <div>
+                                <div className="font-semibold">Breakdown Tugas</div>
+                                <div className="text-[10px] text-[#888]">To-do list terukur</div>
+                              </div>
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}
@@ -3218,28 +3629,47 @@ export const AIChat: React.FC<AIChatProps> = ({
                                   </span>
                                 </div>
                               </div>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const currentIdx = messages.findIndex((msgItem: ChatMessage) => msgItem.id === m.id);
-                                  const searchRange = currentIdx >= 0 ? messages.slice(0, currentIdx) : messages;
-                                  const prevRich = [...searchRange].reverse().find(
-                                    (msgItem: ChatMessage) => msgItem.role === "assistant" && msgItem.content && msgItem.content.length > 250
-                                  );
-                                  const fallbackText = (m.content && m.content.length > 250 ? m.content : prevRich?.content) || "";
-                                  downloadCreatedDocument(m.createdDocument!, fallbackText);
-                                }}
-                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white shadow-xs transition-all cursor-pointer shrink-0 ${m.createdDocument.type === "pdf"
-                                  ? "bg-rose-600 hover:bg-rose-700 active:scale-95"
-                                  : m.createdDocument.type === "xlsx"
-                                  ? "bg-emerald-600 hover:bg-emerald-700 active:scale-95"
-                                  : "bg-blue-600 hover:bg-blue-700 active:scale-95"
-                                  }`}
-                                title="Klik untuk mengunduh file dokumen"
-                              >
-                                <Download className="w-3.5 h-3.5" />
-                                <span>Unduh {m.createdDocument.type === "pdf" ? "PDF" : m.createdDocument.type === "xlsx" ? "Excel" : "Word"}</span>
-                              </button>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const currentIdx = messages.findIndex((msgItem: ChatMessage) => msgItem.id === m.id);
+                                    const searchRange = currentIdx >= 0 ? messages.slice(0, currentIdx) : messages;
+                                    const prevRich = [...searchRange].reverse().find(
+                                      (msgItem: ChatMessage) => msgItem.role === "assistant" && msgItem.content && msgItem.content.length > 250
+                                    );
+                                    const fallbackText = (m.content && m.content.length > 250 ? m.content : prevRich?.content) || "";
+                                    setCustomizingDoc({ doc: m.createdDocument!, fallbackText });
+                                  }}
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-[#202020] border border-slate-200 dark:border-[#333] hover:bg-slate-100 dark:hover:bg-[#2a2a2a] active:scale-95 shadow-2xs transition-all cursor-pointer"
+                                  title="Kustomisasi nama siswa, pilihan font, ukuran teks, dan watermark IOnLearn"
+                                >
+                                  <Sliders className="w-3.5 h-3.5 text-indigo-500" />
+                                  <span>Kustomisasi</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const currentIdx = messages.findIndex((msgItem: ChatMessage) => msgItem.id === m.id);
+                                    const searchRange = currentIdx >= 0 ? messages.slice(0, currentIdx) : messages;
+                                    const prevRich = [...searchRange].reverse().find(
+                                      (msgItem: ChatMessage) => msgItem.role === "assistant" && msgItem.content && msgItem.content.length > 250
+                                    );
+                                    const fallbackText = (m.content && m.content.length > 250 ? m.content : prevRich?.content) || "";
+                                    downloadCreatedDocument(m.createdDocument!, fallbackText);
+                                  }}
+                                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white shadow-xs transition-all cursor-pointer shrink-0 ${m.createdDocument.type === "pdf"
+                                    ? "bg-rose-600 hover:bg-rose-700 active:scale-95"
+                                    : m.createdDocument.type === "xlsx"
+                                    ? "bg-emerald-600 hover:bg-emerald-700 active:scale-95"
+                                    : "bg-blue-600 hover:bg-blue-700 active:scale-95"
+                                    }`}
+                                  title="Klik untuk mengunduh file dokumen langsung"
+                                >
+                                  <Download className="w-3.5 h-3.5" />
+                                  <span>Unduh {m.createdDocument.type === "pdf" ? "PDF" : m.createdDocument.type === "xlsx" ? "Excel" : "Word"}</span>
+                                </button>
+                              </div>
                             </div>
 
                             <div className="bg-white dark:bg-[#1a1a1a] p-3 rounded-xl border border-slate-200/70 dark:border-[#2b2b2b] space-y-1.5">
@@ -3290,15 +3720,26 @@ export const AIChat: React.FC<AIChatProps> = ({
                                   </div>
                                 </div>
 
-                                <button
-                                  type="button"
-                                  onClick={() => downloadCreatedSlides(m.createdSlides!)}
-                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700 active:scale-95 shadow-xs transition-all cursor-pointer shrink-0"
-                                  title="Unduh file presentasi PowerPoint (.pptx)"
-                                >
-                                  <Download className="w-3.5 h-3.5" />
-                                  <span>Unduh PPTX</span>
-                                </button>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => setCustomizingSlides(m.createdSlides!)}
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-[#202020] border border-slate-200 dark:border-[#333] hover:bg-slate-100 dark:hover:bg-[#2a2a2a] active:scale-95 shadow-2xs transition-all cursor-pointer"
+                                    title="Kustomisasi identitas presenter, instansi, dan watermark slide presentasi"
+                                  >
+                                    <Sliders className="w-3.5 h-3.5 text-amber-500" />
+                                    <span>Kustomisasi</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => downloadCreatedSlides(m.createdSlides!)}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700 active:scale-95 shadow-xs transition-all cursor-pointer shrink-0"
+                                    title="Unduh file presentasi PowerPoint (.pptx)"
+                                  >
+                                    <Download className="w-3.5 h-3.5" />
+                                    <span>Unduh PPTX</span>
+                                  </button>
+                                </div>
                               </div>
 
                               {/* Slide Preview Viewer Box */}
@@ -4041,6 +4482,175 @@ export const AIChat: React.FC<AIChatProps> = ({
           </div>
         </div>
       )}
+
+      {/* ── 7.5 Quick Image Generation Modal ── */}
+      {isImageGenModalOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => !isGeneratingImage && setIsImageGenModalOpen(false)}
+        >
+          <div
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-lg shadow-2xl p-6 relative overflow-hidden animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 flex items-center justify-center">
+                  <ImageIcon className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-slate-800 dark:text-slate-100 text-base">
+                    Buat Gambar AI
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Hasilkan gambar visual kualitas tinggi dengan Imagen / Gemini
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsImageGenModalOpen(false)}
+                disabled={isGeneratingImage}
+                className="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 flex items-center justify-center transition cursor-pointer disabled:opacity-50"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="py-4 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Deskripsi Gambar (Prompt)
+                </label>
+                <textarea
+                  value={imagePromptInput}
+                  onChange={(e) => setImagePromptInput(e.target.value)}
+                  placeholder="Contoh: Ilustrasi sel biologi 3D dengan label nukleus dan mitokondria, gaya futuristik edukasi..."
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 transition resize-none min-h-[90px]"
+                  disabled={isGeneratingImage}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                      e.preventDefault();
+                      handleGenerateImageSubmit();
+                    }
+                  }}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                  Gaya Visual & Kualitas HD
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {(
+                    [
+                      { id: "scientific", label: "Sains & 3D", desc: "Infografis & Anatomi" },
+                      { id: "photorealistic", label: "Fotorealistik", desc: "Sinematik 8K Riil" },
+                      { id: "digital_art", label: "Seni Digital", desc: "Ilustrasi Estetik" },
+                      { id: "isometric", label: "Isometrik 3D", desc: "Teknik Presisi" },
+                    ] as const
+                  ).map((st) => (
+                    <button
+                      key={st.id}
+                      type="button"
+                      onClick={() => setImageStyle(st.id)}
+                      disabled={isGeneratingImage}
+                      className={`px-2.5 py-2 rounded-xl text-xs font-medium border transition cursor-pointer flex flex-col items-start text-left gap-0.5 ${
+                        imageStyle === st.id
+                          ? "border-violet-500 bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-300 font-semibold shadow-xs"
+                          : "border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300"
+                      }`}
+                    >
+                      <span className="font-semibold text-xs">{st.label}</span>
+                      <span className="text-[10px] opacity-70 leading-tight">{st.desc}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                  Rasio Aspek
+                </label>
+                <div className="grid grid-cols-4 gap-2">
+                  {(
+                    [
+                      { id: "16:9", label: "16:9 Landscape" },
+                      { id: "1:1", label: "1:1 Persegi" },
+                      { id: "4:3", label: "4:3 Standar" },
+                      { id: "9:16", label: "9:16 Portrait" },
+                    ] as const
+                  ).map((aspect) => (
+                    <button
+                      key={aspect.id}
+                      type="button"
+                      onClick={() => setImageAspectRatio(aspect.id)}
+                      disabled={isGeneratingImage}
+                      className={`px-3 py-2 rounded-xl text-xs font-medium border transition cursor-pointer flex flex-col items-center gap-1 ${
+                        imageAspectRatio === aspect.id
+                          ? "border-violet-500 bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-300 font-semibold shadow-xs"
+                          : "border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300"
+                      }`}
+                    >
+                      <span>{aspect.id}</span>
+                      <span className="text-[10px] opacity-70 truncate max-w-full">
+                        {aspect.label.split(" ")[1]}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setIsImageGenModalOpen(false)}
+                disabled={isGeneratingImage}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleGenerateImageSubmit}
+                disabled={!imagePromptInput.trim() || isGeneratingImage}
+                className="px-4 py-2 rounded-xl text-xs font-semibold bg-violet-600 hover:bg-violet-700 text-white shadow-md shadow-violet-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-1.5 cursor-pointer"
+              >
+                {isGeneratingImage ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Merender Gambar AI HD...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Buat Gambar HD</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 8. Document & Presentation Style Customizer Modal ── */}
+      <DocumentCustomizerModal
+        isOpen={!!customizingDoc || !!customizingSlides}
+        onClose={() => {
+          setCustomizingDoc(null);
+          setCustomizingSlides(null);
+        }}
+        document={customizingDoc?.doc}
+        slides={customizingSlides}
+        fallbackContent={customizingDoc?.fallbackText}
+        onSuccess={(msg) => {
+          toast.success(msg);
+        }}
+      />
     </div>
   );
 };

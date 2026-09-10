@@ -125,12 +125,14 @@ export async function sendChatMessageToAIStream(
             searchQueries?: string[]
         ) => void;
         onGrounding?: (sources: { title: string; url: string }[]) => void;
+        onGroundingStatus?: (available: boolean, reason?: string) => void;
         signal?: AbortSignal;
     },
     taskContext?: Partial<TodoTask>,
     userPreferences?: UserPreferences | null,
     aiConfig?: AIConfig | null,
     studyMode?: "socratic" | "direct" | "quizzer",
+    enableGrounding?: boolean,
 ): Promise<{
     reply: string;
     thoughtProcess?: string;
@@ -212,6 +214,7 @@ export async function sendChatMessageToAIStream(
             userPreferences,
             aiConfig,
             studyMode,
+            enableGrounding,
             taskContext: taskContext
                 ? {
                       title: taskContext.title,
@@ -271,6 +274,8 @@ export async function sendChatMessageToAIStream(
                         callbacks.onStatus?.(event.stage, event.detail || "", event.queries);
                     } else if (event.type === "grounding" && event.sources) {
                         callbacks.onGrounding?.(event.sources);
+                    } else if (event.type === "grounding_status") {
+                        callbacks.onGroundingStatus?.(event.available, event.reason);
                     } else if (event.type === "done") {
                         finalResult = event;
                     } else if (event.type === "error") {

@@ -1,14 +1,121 @@
 "use client";
 
-import { Document, Paragraph, TextRun, HeadingLevel, Table, TableRow, TableCell, Packer, BorderStyle, WidthType, AlignmentType } from "docx";
+import {
+  Document,
+  Paragraph,
+  TextRun,
+  HeadingLevel,
+  Table,
+  TableRow,
+  TableCell,
+  Packer,
+  BorderStyle,
+  WidthType,
+  AlignmentType,
+  Header,
+  Footer,
+  PageNumber,
+  PageBreak,
+  ImageRun,
+  convertMillimetersToTwip,
+} from "docx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import pptxgen from "pptxgenjs";
 import * as XLSX from "xlsx";
-import { CreatedDocument, CreatedSlides } from "@/types";
+import { CreatedDocument, CreatedSlides, DocumentStyleOptions } from "@/types";
 import { cleanLatexMath } from "./mathUtils";
 
 export { cleanLatexMath };
+
+export const ACCENT_PALETTES = {
+  indigo: {
+    primary: "4F46E5",
+    primaryDark: "3730A3",
+    lightBg: "EEF2FF",
+    borderColor: "C7D2FE",
+    textMuted: "6366F1",
+    subtleFill: "F8FAFC",
+    pdfRgb: [79, 70, 229] as [number, number, number],
+  },
+  navy: {
+    primary: "1E3A8A",
+    primaryDark: "172554",
+    lightBg: "EFF6FF",
+    borderColor: "BFDBFE",
+    textMuted: "2563EB",
+    subtleFill: "F8FAFC",
+    pdfRgb: [30, 58, 138] as [number, number, number],
+  },
+  emerald: {
+    primary: "059669",
+    primaryDark: "064E3B",
+    lightBg: "ECFDF5",
+    borderColor: "A7F3D0",
+    textMuted: "047857",
+    subtleFill: "F0FDF4",
+    pdfRgb: [5, 150, 105] as [number, number, number],
+  },
+  maroon: {
+    primary: "991B1B",
+    primaryDark: "7F1D1D",
+    lightBg: "FEF2F2",
+    borderColor: "FECACA",
+    textMuted: "B91C1C",
+    subtleFill: "FFF5F5",
+    pdfRgb: [153, 27, 27] as [number, number, number],
+  },
+  slate: {
+    primary: "1E293B",
+    primaryDark: "0F172A",
+    lightBg: "F1F5F9",
+    borderColor: "CBD5E1",
+    textMuted: "475569",
+    subtleFill: "F8FAFC",
+    pdfRgb: [30, 41, 59] as [number, number, number],
+  },
+};
+
+export const DEFAULT_DOCUMENT_STYLE: DocumentStyleOptions = {
+  author: "IOnLearn",
+  fontFamily: "Calibri",
+  fontSize: "normal",
+  lineSpacing: "normal",
+  pageSize: "A4",
+  pageMargin: "normal",
+  headerStyle: "modern",
+  includeCoverPage: false,
+  accentColor: "indigo",
+  textAlign: "justify",
+  firstLineIndent: false,
+  includePageNumbers: true,
+  includeToc: false,
+  watermark: true,
+  watermarkText: "IOnLearn Study Copilot",
+  logoBase64: undefined,
+  customHeaderText: "",
+  logoPosition: "left",
+};
+
+export const DOC_STYLE_STORAGE_KEY = "ionlearn_doc_style_prefs";
+
+export function loadSavedDocStyle(): DocumentStyleOptions {
+  if (typeof window === "undefined") return DEFAULT_DOCUMENT_STYLE;
+  try {
+    const raw = localStorage.getItem(DOC_STYLE_STORAGE_KEY);
+    if (raw) {
+      return { ...DEFAULT_DOCUMENT_STYLE, ...JSON.parse(raw) };
+    }
+  } catch {}
+  return DEFAULT_DOCUMENT_STYLE;
+}
+
+export function saveDocStyle(options: DocumentStyleOptions) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(DOC_STYLE_STORAGE_KEY, JSON.stringify(options));
+  } catch {}
+}
 
 /**
  * Trigger file download on client side
@@ -28,9 +135,29 @@ export function triggerFileDownload(blob: Blob, filename: string) {
 }
 
 /**
- * Clean markdown symbols for text runs
+ * Convert base64 data URL to Uint8Array for docx ImageRun
  */
-function parseInlineFormatting(text: string): TextRun[] {
+export function base64ToUint8Array(base64: string): Uint8Array | null {
+  try {
+    const cleanBase64 = base64.replace(/^data:image\/[a-zA-Z0-9+]+;base64,/, "").trim();
+    if (!cleanBase64) return null;
+    const binaryString = atob(cleanBase64);
+    const len = binaryString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes;
+  } catch (e) {
+    console.error("Failed to parse base64 image:", e);
+    return null;
+  }
+}
+
+/**
+ * Clean markdown symbols for text runs with configurable font and size
+ */
+function parseInlineFormatting(text: string, font?: string, baseSize?: number): TextRun[] {
   // Parse bold **text** or *italic*
   const runs: TextRun[] = [];
   const regex = /(\*\*([^*]+)\*\*|\*([^*]+)\*|`([^`]+)`|([^*`]+))/g;
@@ -39,20 +166,20 @@ function parseInlineFormatting(text: string): TextRun[] {
   while ((match = regex.exec(text)) !== null) {
     if (match[2]) {
       // Bold
-      runs.push(new TextRun({ text: match[2], bold: true }));
+      runs.push(new TextRun({ text: match[2], bold: true, font, size: baseSize }));
     } else if (match[3]) {
       // Italic
-      runs.push(new TextRun({ text: match[3], italics: true }));
+      runs.push(new TextRun({ text: match[3], italics: true, font, size: baseSize }));
     } else if (match[4]) {
       // Code
-      runs.push(new TextRun({ text: match[4], font: "Courier New", shading: { fill: "F1F5F9" } }));
+      runs.push(new TextRun({ text: match[4], font: "Courier New", size: baseSize ? baseSize - 2 : undefined, shading: { fill: "F1F5F9" } }));
     } else if (match[5]) {
-      runs.push(new TextRun({ text: match[5] }));
+      runs.push(new TextRun({ text: match[5], font, size: baseSize }));
     }
   }
 
   if (runs.length === 0) {
-    runs.push(new TextRun({ text }));
+    runs.push(new TextRun({ text, font, size: baseSize }));
   }
 
   return runs;
@@ -61,53 +188,708 @@ function parseInlineFormatting(text: string): TextRun[] {
 /**
  * Generate Microsoft Word (.docx) file from title and markdown content
  */
-export async function generateWordDocument(doc: {
-  title: string;
-  content: string;
-  subject?: string;
-  fileName?: string;
-}): Promise<Blob> {
-  const paragraphs: (Paragraph | Table)[] = [];
+export async function generateWordDocument(
+  doc: {
+    title: string;
+    content: string;
+    subject?: string;
+    fileName?: string;
+  },
+  options?: DocumentStyleOptions
+): Promise<Blob> {
   const cleanTitle = cleanLatexMath(doc.title);
   const cleanSubject = doc.subject ? cleanLatexMath(doc.subject) : undefined;
   const cleanContent = cleanLatexMath(doc.content);
 
-  // 1. Document Header / Title
-  paragraphs.push(
-    new Paragraph({
-      heading: HeadingLevel.TITLE,
-      spacing: { after: 120 },
-      children: [
-        new TextRun({
-          text: cleanTitle,
-          bold: true,
-          size: 36, // 18pt
-          color: "2B3A67",
-        }),
-      ],
-    })
-  );
+  const targetFont = options?.fontFamily || "Calibri";
+  const authorName = options?.author?.trim() || "IOnLearn";
+  const isCompact = options?.fontSize === "compact";
+  const isLarge = options?.fontSize === "large";
 
-  if (cleanSubject) {
+  const accentKey = options?.accentColor || "indigo";
+  const accent = ACCENT_PALETTES[accentKey] || ACCENT_PALETTES.indigo;
+
+  // Sizes in half-points (24 = 12pt, 28 = 14pt, 36 = 18pt)
+  const titleSize = isCompact ? 30 : isLarge ? 42 : 36;
+  const subjectSize = isCompact ? 18 : isLarge ? 22 : 20;
+  const h1Size = isCompact ? 24 : isLarge ? 32 : 28;
+  const h2Size = isCompact ? 20 : isLarge ? 28 : 24;
+  const h3Size = isCompact ? 18 : isLarge ? 24 : 20;
+  const bodySize = isCompact ? 18 : isLarge ? 24 : 22;
+  const tableSize = isCompact ? 16 : isLarge ? 20 : 18;
+
+  // Line spacing in 240ths of a line (240 = single, 276 = 1.15, 360 = 1.5)
+  const lineSpacingTwips =
+    options?.lineSpacing === "single" ? 240 : options?.lineSpacing === "relaxed" ? 360 : 276;
+
+  // Text alignment
+  const paragraphAlignment =
+    options?.textAlign === "left" ? AlignmentType.LEFT : AlignmentType.JUSTIFIED;
+
+  // First line indent: 1 cm (567 twips)
+  const firstLineIndentTwips = options?.firstLineIndent
+    ? convertMillimetersToTwip(10)
+    : undefined;
+
+  const logoBytes = options?.logoBase64 ? base64ToUint8Array(options.logoBase64) : null;
+  const logoImageType: "png" | "jpg" | "gif" | "bmp" =
+    options?.logoBase64?.includes("image/jpeg") || options?.logoBase64?.includes("image/jpg")
+      ? "jpg"
+      : "png";
+  const paragraphs: (Paragraph | Table)[] = [];
+
+  // ==========================================
+  // 1. Optional Academic Cover Page
+  // ==========================================
+  if (options?.includeCoverPage) {
+    paragraphs.push(new Paragraph({ spacing: { before: 800 } }));
+
+    if (options.institution) {
+      paragraphs.push(
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 160 },
+          children: [
+            new TextRun({
+              text: options.institution.toUpperCase(),
+              bold: true,
+              font: targetFont,
+              size: isCompact ? 22 : 26,
+              color: accent.primaryDark,
+            }),
+          ],
+        })
+      );
+    }
+
+    if (options.facultyOrClass) {
+      paragraphs.push(
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 220 },
+          children: [
+            new TextRun({
+              text: options.facultyOrClass.toUpperCase(),
+              font: targetFont,
+              size: isCompact ? 18 : 20,
+              color: "475569",
+            }),
+          ],
+        })
+      );
+    }
+
+    // Cover Page Logo (Centered between Institution & Title)
+    if (logoBytes) {
+      paragraphs.push(
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 180, after: 260 },
+          children: [
+            new ImageRun({
+              type: logoImageType,
+              data: logoBytes,
+              transformation: {
+                width: isCompact ? 72 : 88,
+                height: isCompact ? 72 : 88,
+              },
+            }),
+          ],
+        })
+      );
+    }
+
+    // Cover Title
     paragraphs.push(
       new Paragraph({
-        spacing: { after: 240 },
+        alignment: AlignmentType.CENTER,
+        spacing: { before: 600, after: 240 },
         children: [
           new TextRun({
-            text: `Topik / Mata Pelajaran: ${cleanSubject}`,
+            text: cleanTitle.toUpperCase(),
+            bold: true,
+            font: targetFont,
+            size: isCompact ? 36 : isLarge ? 48 : 42,
+            color: accent.primary,
+          }),
+        ],
+      })
+    );
+
+    const coverSub =
+      options.coverSubtitle ||
+      (cleanSubject ? `Topik / Mata Pelajaran: ${cleanSubject}` : "Kajian & Laporan Akademik");
+    paragraphs.push(
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { after: 600 },
+        children: [
+          new TextRun({
+            text: coverSub,
             italics: true,
-            size: 20, // 10pt
+            font: targetFont,
+            size: isCompact ? 20 : 24,
             color: "64748B",
           }),
         ],
       })
     );
+
+    paragraphs.push(
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { before: 200, after: 800 },
+        children: [
+          new TextRun({
+            text: "— MAKALAH / TUGAS PEMBELAJARAN —",
+            bold: true,
+            font: targetFont,
+            size: 18,
+            color: accent.textMuted,
+          }),
+        ],
+      })
+    );
+
+    // Disusun Oleh section
+    paragraphs.push(
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { after: 120 },
+        children: [
+          new TextRun({
+            text: "Disusun Oleh:",
+            font: targetFont,
+            size: 20,
+            color: "64748B",
+          }),
+        ],
+      })
+    );
+
+    paragraphs.push(
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { after: 80 },
+        children: [
+          new TextRun({
+            text: options.userName || "Mahasiswa / Siswa",
+            bold: true,
+            font: targetFont,
+            size: isCompact ? 24 : 28,
+            color: "0F172A",
+          }),
+        ],
+      })
+    );
+
+    if (options.studentId) {
+      paragraphs.push(
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 80 },
+          children: [
+            new TextRun({
+              text: `NIM / NIS: ${options.studentId}`,
+              font: targetFont,
+              size: 20,
+              color: "334155",
+            }),
+          ],
+        })
+      );
+    }
+
+    paragraphs.push(
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { before: 800, after: 200 },
+        children: [
+          new TextRun({
+            text: `${new Date().getFullYear()}`,
+            bold: true,
+            font: targetFont,
+            size: 22,
+            color: accent.primaryDark,
+          }),
+        ],
+      })
+    );
+
+    paragraphs.push(
+      new Paragraph({
+        children: [new PageBreak()],
+      })
+    );
   }
 
-  // 2. Parse Markdown Lines into Word Elements
+  // ==========================================
+  // 2. Main Document Header (Styles: modern / formal_academic / minimalist)
+  // ==========================================
+  if (options?.headerStyle === "formal_academic") {
+    // Formal Academic Kop Surat Style (Support Logo + Custom Header / Institution)
+    const headerLines: Paragraph[] = [];
+    if (options?.customHeaderText && options.customHeaderText.trim().length > 0) {
+      const lines = options.customHeaderText.trim().split("\n");
+      lines.forEach((line, lIdx) => {
+        const trimmed = line.trim();
+        if (!trimmed) return;
+        headerLines.push(
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 30 },
+            children: [
+              new TextRun({
+                text: trimmed,
+                bold: lIdx === 0 || lIdx === 1,
+                font: targetFont,
+                size: lIdx === 0 ? (isCompact ? 22 : 24) : (isCompact ? 18 : 20),
+                color: lIdx === 0 ? "0F172A" : "334155",
+              }),
+            ],
+          })
+        );
+      });
+    } else {
+      if (options?.institution) {
+        headerLines.push(
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 50 },
+            children: [
+              new TextRun({
+                text: options.institution.toUpperCase(),
+                bold: true,
+                font: targetFont,
+                size: isCompact ? 22 : 26,
+                color: "0F172A",
+              }),
+            ],
+          })
+        );
+      }
+      if (options?.facultyOrClass) {
+        headerLines.push(
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 50 },
+            children: [
+              new TextRun({
+                text: options.facultyOrClass.toUpperCase(),
+                font: targetFont,
+                size: isCompact ? 18 : 20,
+                color: "334155",
+              }),
+            ],
+          })
+        );
+      }
+      if (cleanSubject) {
+        headerLines.push(
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 70 },
+            children: [
+              new TextRun({
+                text: `Mata Pelajaran / Topik: ${cleanSubject}`,
+                italics: true,
+                font: targetFont,
+                size: isCompact ? 18 : 20,
+                color: "475569",
+              }),
+            ],
+          })
+        );
+      }
+    }
+
+    if (logoBytes) {
+      if (options?.logoPosition === "center") {
+        paragraphs.push(
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 120 },
+            children: [
+              new ImageRun({
+                type: logoImageType,
+                data: logoBytes,
+                transformation: { width: isCompact ? 55 : 65, height: isCompact ? 55 : 65 },
+              }),
+            ],
+          })
+        );
+        paragraphs.push(...headerLines);
+      } else {
+        // 2-column borderless table for Kop Surat (left or right)
+        const logoCell = new TableCell({
+          width: { size: 20, type: WidthType.PERCENTAGE },
+          borders: {
+            top: { style: BorderStyle.NONE },
+            bottom: { style: BorderStyle.NONE },
+            left: { style: BorderStyle.NONE },
+            right: { style: BorderStyle.NONE },
+          },
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [
+                new ImageRun({
+                  type: logoImageType,
+                  data: logoBytes,
+                  transformation: { width: isCompact ? 55 : 65, height: isCompact ? 55 : 65 },
+                }),
+              ],
+            }),
+          ],
+        });
+        const textCell = new TableCell({
+          width: { size: 80, type: WidthType.PERCENTAGE },
+          borders: {
+            top: { style: BorderStyle.NONE },
+            bottom: { style: BorderStyle.NONE },
+            left: { style: BorderStyle.NONE },
+            right: { style: BorderStyle.NONE },
+          },
+          children: headerLines.length > 0 ? headerLines : [new Paragraph({})],
+        });
+        paragraphs.push(
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            borders: {
+              top: { style: BorderStyle.NONE },
+              bottom: { style: BorderStyle.NONE },
+              left: { style: BorderStyle.NONE },
+              right: { style: BorderStyle.NONE },
+              insideHorizontal: { style: BorderStyle.NONE },
+              insideVertical: { style: BorderStyle.NONE },
+            },
+            rows: [
+              new TableRow({
+                children: options?.logoPosition === "right" ? [textCell, logoCell] : [logoCell, textCell],
+              }),
+            ],
+          })
+        );
+      }
+    } else {
+      paragraphs.push(...headerLines);
+    }
+
+    // Double-line border under academic kop
+    paragraphs.push(
+      new Paragraph({
+        border: { bottom: { style: BorderStyle.DOUBLE, size: 12, color: "000000" } },
+        spacing: { after: 200 },
+      })
+    );
+
+    // Document Title
+    paragraphs.push(
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        heading: HeadingLevel.TITLE,
+        spacing: { after: 120 },
+        children: [
+          new TextRun({
+            text: cleanTitle.toUpperCase(),
+            bold: true,
+            font: targetFont,
+            size: titleSize,
+            color: "0F172A",
+          }),
+        ],
+      })
+    );
+
+    // Student identity line
+    const studentMetaParts: string[] = [];
+    if (options?.userName) studentMetaParts.push(`Penyusun: ${options.userName}`);
+    if (options?.studentId) studentMetaParts.push(`NIM/NIS: ${options.studentId}`);
+    if (studentMetaParts.length > 0) {
+      paragraphs.push(
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 160 },
+          children: [
+            new TextRun({
+              text: studentMetaParts.join("   •   "),
+              italics: true,
+              font: targetFont,
+              size: bodySize - 2,
+              color: "475569",
+            }),
+          ],
+        })
+      );
+    }
+  } else if (options?.headerStyle === "minimalist") {
+    // Minimalist Clean Header
+    paragraphs.push(
+      new Paragraph({
+        heading: HeadingLevel.TITLE,
+        spacing: { after: 80 },
+        children: [
+          new TextRun({
+            text: cleanTitle,
+            bold: true,
+            font: targetFont,
+            size: titleSize,
+            color: "0F172A",
+          }),
+        ],
+      })
+    );
+
+    if (cleanSubject) {
+      paragraphs.push(
+        new Paragraph({
+          spacing: { after: 80 },
+          children: [
+            new TextRun({
+              text: cleanSubject,
+              italics: true,
+              font: targetFont,
+              size: subjectSize,
+              color: "64748B",
+            }),
+          ],
+        })
+      );
+    }
+
+    const inlineParts: string[] = [];
+    if (options?.userName) inlineParts.push(`Penyusun: ${options.userName}`);
+    if (options?.studentId) inlineParts.push(`NIM/NIS: ${options.studentId}`);
+    if (options?.institution) inlineParts.push(options.institution);
+    if (inlineParts.length > 0) {
+      paragraphs.push(
+        new Paragraph({
+          spacing: { after: 140 },
+          children: [
+            new TextRun({
+              text: inlineParts.join("   •   "),
+              font: targetFont,
+              size: bodySize - 2,
+              color: "475569",
+            }),
+          ],
+        })
+      );
+    }
+
+    paragraphs.push(
+      new Paragraph({
+        border: { bottom: { style: BorderStyle.SINGLE, size: 1, color: "E2E8F0" } },
+        spacing: { after: 180 },
+      })
+    );
+  } else {
+    // Modern (Default): Logo, Custom Header / Category Pill, Title with accent color, and sleek metadata box
+    if (logoBytes) {
+      paragraphs.push(
+        new Paragraph({
+          alignment:
+            options?.logoPosition === "center"
+              ? AlignmentType.CENTER
+              : options?.logoPosition === "right"
+              ? AlignmentType.RIGHT
+              : AlignmentType.LEFT,
+          spacing: { after: 100 },
+          children: [
+            new ImageRun({
+              type: logoImageType,
+              data: logoBytes,
+              transformation: {
+                width: isCompact ? 50 : 62,
+                height: isCompact ? 50 : 62,
+              },
+            }),
+          ],
+        })
+      );
+    }
+
+    if (options?.customHeaderText && options.customHeaderText.trim().length > 0) {
+      const cLines = options.customHeaderText.trim().split("\n");
+      cLines.forEach((cl, cIdx) => {
+        const tr = cl.trim();
+        if (!tr) return;
+        paragraphs.push(
+          new Paragraph({
+            alignment:
+              options?.logoPosition === "center"
+                ? AlignmentType.CENTER
+                : options?.logoPosition === "right"
+                ? AlignmentType.RIGHT
+                : AlignmentType.LEFT,
+            spacing: { after: 20 },
+            children: [
+              new TextRun({
+                text: tr,
+                bold: cIdx === 0,
+                font: targetFont,
+                size: cIdx === 0 ? (isCompact ? 18 : 20) : (isCompact ? 16 : 18),
+                color: cIdx === 0 ? accent.primaryDark : "475569",
+              }),
+            ],
+          })
+        );
+      });
+      paragraphs.push(
+        new Paragraph({
+          border: { bottom: { style: BorderStyle.SINGLE, size: 1, color: accent.borderColor } },
+          spacing: { after: 120 },
+        })
+      );
+    }
+
+    if (cleanSubject) {
+      paragraphs.push(
+        new Paragraph({
+          spacing: { after: 80 },
+          children: [
+            new TextRun({
+              text: `  ${cleanSubject.toUpperCase()}  `,
+              bold: true,
+              font: targetFont,
+              size: 16,
+              color: accent.primary,
+              shading: { fill: accent.lightBg },
+            }),
+          ],
+        })
+      );
+    }
+
+    paragraphs.push(
+      new Paragraph({
+        heading: HeadingLevel.TITLE,
+        spacing: { after: 140 },
+        children: [
+          new TextRun({
+            text: cleanTitle,
+            bold: true,
+            font: targetFont,
+            size: titleSize,
+            color: accent.primaryDark,
+          }),
+        ],
+      })
+    );
+
+    // Modern Student Info Card (1 Row Table)
+    const hasStudentMeta = options?.userName || options?.studentId || options?.institution || options?.facultyOrClass;
+    if (hasStudentMeta) {
+      const metaItems: Array<{ label: string; val?: string }> = [
+        { label: "Penyusun", val: options?.userName },
+        { label: "NIM / NIS", val: options?.studentId },
+        { label: "Kelas / Jurusan", val: options?.facultyOrClass },
+        { label: "Instansi", val: options?.institution },
+      ].filter((item) => item.val);
+
+      if (metaItems.length > 0) {
+        paragraphs.push(
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            rows: [
+              new TableRow({
+                children: metaItems.map(
+                  (item) =>
+                    new TableCell({
+                      width: { size: Math.floor(100 / metaItems.length), type: WidthType.PERCENTAGE },
+                      shading: { fill: accent.lightBg },
+                      margins: { top: 80, bottom: 80, left: 120, right: 120 },
+                      children: [
+                        new Paragraph({
+                          children: [
+                            new TextRun({ text: `${item.label}: `, bold: true, font: targetFont, size: bodySize - 4, color: accent.primary }),
+                            new TextRun({ text: item.val || "", font: targetFont, size: bodySize - 4, color: "0F172A" }),
+                          ],
+                        }),
+                      ],
+                    })
+                ),
+              }),
+            ],
+            borders: {
+              top: { style: BorderStyle.SINGLE, size: 1, color: accent.borderColor },
+              bottom: { style: BorderStyle.SINGLE, size: 1, color: accent.borderColor },
+              left: { style: BorderStyle.SINGLE, size: 1, color: accent.borderColor },
+              right: { style: BorderStyle.SINGLE, size: 1, color: accent.borderColor },
+              insideVertical: { style: BorderStyle.SINGLE, size: 1, color: accent.borderColor },
+            },
+          })
+        );
+        paragraphs.push(new Paragraph({ spacing: { after: 160 } }));
+      }
+    }
+  }
+
+  // ==========================================
+  // 3. Optional Table of Contents (Outline Materi)
+  // ==========================================
   const lines = cleanContent.split("\n");
+  if (options?.includeToc) {
+    const headings = lines
+      .filter((l) => /^#{1,3}\s+/.test(l.trim()))
+      .map((l) => {
+        const match = l.trim().match(/^(#{1,3})\s+(.*)$/);
+        return {
+          level: match ? match[1].length : 1,
+          text: match ? match[2].replace(/[*_`]/g, "").trim() : "",
+        };
+      });
+
+    if (headings.length > 1) {
+      paragraphs.push(
+        new Paragraph({
+          spacing: { before: 120, after: 100 },
+          children: [
+            new TextRun({
+              text: "DAFTAR ISI & STRUKTUR PEMBAHASAN",
+              bold: true,
+              font: targetFont,
+              size: h2Size,
+              color: accent.primaryDark,
+            }),
+          ],
+        })
+      );
+
+      headings.forEach((h, idx) => {
+        const indentTwips = (h.level - 1) * 360;
+        paragraphs.push(
+          new Paragraph({
+            indent: { left: indentTwips },
+            spacing: { after: 40 },
+            children: [
+              new TextRun({
+                text: `${h.level === 1 ? `${idx + 1}. ` : "• "}${h.text}`,
+                bold: h.level === 1,
+                font: targetFont,
+                size: bodySize - (h.level > 1 ? 2 : 0),
+                color: h.level === 1 ? "0F172A" : "334155",
+              }),
+            ],
+          })
+        );
+      });
+
+      paragraphs.push(
+        new Paragraph({
+          border: { bottom: { style: BorderStyle.SINGLE, size: 1, color: accent.borderColor } },
+          spacing: { after: 200 },
+        })
+      );
+    }
+  }
+
+  // ==========================================
+  // 4. Parse Markdown Lines into Word Elements
+  // ==========================================
   let tableRows: string[][] = [];
   let inTable = false;
+  let inCodeBlock = false;
 
   const flushTable = () => {
     if (tableRows.length > 0) {
@@ -116,7 +898,7 @@ export async function generateWordDocument(doc: {
 
       const wordTableRows: TableRow[] = [];
 
-      // Header row
+      // Header row with accent theme color
       wordTableRows.push(
         new TableRow({
           tableHeader: true,
@@ -124,10 +906,11 @@ export async function generateWordDocument(doc: {
             (cell) =>
               new TableCell({
                 width: { size: Math.floor(100 / headerRow.length), type: WidthType.PERCENTAGE },
-                shading: { fill: "EEF2F6" },
+                shading: { fill: accent.primary },
+                margins: { top: 100, bottom: 100, left: 120, right: 120 },
                 children: [
                   new Paragraph({
-                    children: [new TextRun({ text: cell.trim(), bold: true, size: 18 })],
+                    children: [new TextRun({ text: cell.trim(), bold: true, font: targetFont, size: tableSize, color: "FFFFFF" })],
                   }),
                 ],
               })
@@ -136,16 +919,20 @@ export async function generateWordDocument(doc: {
       );
 
       // Data rows
-      for (const row of dataRows) {
+      for (let rIdx = 0; rIdx < dataRows.length; rIdx++) {
+        const row = dataRows[rIdx];
+        const isAlternate = rIdx % 2 === 1;
         wordTableRows.push(
           new TableRow({
             children: row.map(
               (cell) =>
                 new TableCell({
                   width: { size: Math.floor(100 / headerRow.length), type: WidthType.PERCENTAGE },
+                  shading: isAlternate ? { fill: accent.subtleFill } : undefined,
+                  margins: { top: 80, bottom: 80, left: 120, right: 120 },
                   children: [
                     new Paragraph({
-                      children: parseInlineFormatting(cell.trim()),
+                      children: parseInlineFormatting(cell.trim(), targetFont, tableSize),
                     }),
                   ],
                 })
@@ -159,17 +946,16 @@ export async function generateWordDocument(doc: {
           rows: wordTableRows,
           width: { size: 100, type: WidthType.PERCENTAGE },
           borders: {
-            top: { style: BorderStyle.SINGLE, size: 1, color: "CBD5E1" },
-            bottom: { style: BorderStyle.SINGLE, size: 1, color: "CBD5E1" },
-            left: { style: BorderStyle.SINGLE, size: 1, color: "CBD5E1" },
-            right: { style: BorderStyle.SINGLE, size: 1, color: "CBD5E1" },
+            top: { style: BorderStyle.SINGLE, size: 1, color: accent.borderColor },
+            bottom: { style: BorderStyle.SINGLE, size: 1, color: accent.borderColor },
+            left: { style: BorderStyle.SINGLE, size: 1, color: accent.borderColor },
+            right: { style: BorderStyle.SINGLE, size: 1, color: accent.borderColor },
             insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "E2E8F0" },
             insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "E2E8F0" },
           },
         })
       );
 
-      // Add a spacer paragraph after table
       paragraphs.push(new Paragraph({ spacing: { after: 120 } }));
       tableRows = [];
       inTable = false;
@@ -179,6 +965,33 @@ export async function generateWordDocument(doc: {
   for (let i = 0; i < lines.length; i++) {
     const rawLine = lines[i].trimEnd();
     const line = rawLine.trim();
+
+    // Check fenced code block
+    if (line.startsWith("```")) {
+      if (inTable) flushTable();
+      inCodeBlock = !inCodeBlock;
+      continue;
+    }
+
+    if (inCodeBlock) {
+      paragraphs.push(
+        new Paragraph({
+          spacing: { after: 20 },
+          shading: { fill: "F8FAFC" },
+          border: { left: { style: BorderStyle.SINGLE, size: 12, color: accent.borderColor } },
+          indent: { left: 240 },
+          children: [
+            new TextRun({
+              text: rawLine || " ",
+              font: "Courier New",
+              size: isCompact ? 14 : 16,
+              color: "1E293B",
+            }),
+          ],
+        })
+      );
+      continue;
+    }
 
     // Markdown Table check
     if (line.startsWith("|") && line.endsWith("|")) {
@@ -202,24 +1015,48 @@ export async function generateWordDocument(doc: {
       paragraphs.push(
         new Paragraph({
           heading: HeadingLevel.HEADING_1,
-          spacing: { before: 240, after: 120 },
-          children: [new TextRun({ text: line.replace(/^#\s+/, ""), bold: true, size: 28, color: "1E293B" })],
+          spacing: { before: 260, after: 120, line: lineSpacingTwips },
+          children: [
+            new TextRun({
+              text: line.replace(/^#\s+/, ""),
+              bold: true,
+              font: targetFont,
+              size: h1Size,
+              color: accent.primaryDark,
+            }),
+          ],
         })
       );
     } else if (line.startsWith("## ")) {
       paragraphs.push(
         new Paragraph({
           heading: HeadingLevel.HEADING_2,
-          spacing: { before: 200, after: 100 },
-          children: [new TextRun({ text: line.replace(/^##\s+/, ""), bold: true, size: 24, color: "334155" })],
+          spacing: { before: 200, after: 100, line: lineSpacingTwips },
+          children: [
+            new TextRun({
+              text: line.replace(/^##\s+/, ""),
+              bold: true,
+              font: targetFont,
+              size: h2Size,
+              color: accent.primary,
+            }),
+          ],
         })
       );
     } else if (line.startsWith("### ")) {
       paragraphs.push(
         new Paragraph({
           heading: HeadingLevel.HEADING_3,
-          spacing: { before: 160, after: 80 },
-          children: [new TextRun({ text: line.replace(/^###\s+/, ""), bold: true, size: 20, color: "475569" })],
+          spacing: { before: 160, after: 80, line: lineSpacingTwips },
+          children: [
+            new TextRun({
+              text: line.replace(/^###\s+/, ""),
+              bold: true,
+              font: targetFont,
+              size: h3Size,
+              color: accent.textMuted,
+            }),
+          ],
         })
       );
     } else if (line.startsWith("- ") || line.startsWith("* ") || line.startsWith("• ")) {
@@ -227,8 +1064,9 @@ export async function generateWordDocument(doc: {
       paragraphs.push(
         new Paragraph({
           bullet: { level: 0 },
-          spacing: { after: 60 },
-          children: parseInlineFormatting(itemText),
+          spacing: { after: 60, line: lineSpacingTwips },
+          alignment: paragraphAlignment,
+          children: parseInlineFormatting(itemText, targetFont, bodySize),
         })
       );
     } else if (/^\d+[\.\)]\s+/.test(line)) {
@@ -236,24 +1074,38 @@ export async function generateWordDocument(doc: {
       paragraphs.push(
         new Paragraph({
           numbering: { reference: "default-numbering", level: 0 },
-          spacing: { after: 60 },
-          children: parseInlineFormatting(itemText),
+          spacing: { after: 60, line: lineSpacingTwips },
+          alignment: paragraphAlignment,
+          children: parseInlineFormatting(itemText, targetFont, bodySize),
         })
       );
     } else if (line.startsWith("> ")) {
       const quoteText = line.replace(/^>\s*/, "");
       paragraphs.push(
         new Paragraph({
-          indent: { left: 400 },
-          spacing: { before: 80, after: 80 },
-          children: [new TextRun({ text: quoteText, italics: true, color: "475569" })],
+          indent: { left: 360 },
+          border: { left: { style: BorderStyle.SINGLE, size: 16, color: accent.primary } },
+          shading: { fill: accent.subtleFill },
+          spacing: { before: 80, after: 80, line: lineSpacingTwips },
+          alignment: paragraphAlignment,
+          children: [
+            new TextRun({
+              text: ` "${quoteText}"`,
+              italics: true,
+              font: targetFont,
+              size: bodySize,
+              color: "475569",
+            }),
+          ],
         })
       );
     } else {
       paragraphs.push(
         new Paragraph({
-          spacing: { after: 100 },
-          children: parseInlineFormatting(rawLine),
+          spacing: { after: 100, line: lineSpacingTwips },
+          alignment: paragraphAlignment,
+          indent: firstLineIndentTwips ? { firstLine: firstLineIndentTwips } : undefined,
+          children: parseInlineFormatting(rawLine, targetFont, bodySize),
         })
       );
     }
@@ -263,15 +1115,16 @@ export async function generateWordDocument(doc: {
     flushTable();
   }
 
-  // Footer text
+  // Subtle End-of-document separator
   paragraphs.push(
     new Paragraph({
-      spacing: { before: 300 },
+      spacing: { before: 300, after: 100 },
       alignment: AlignmentType.CENTER,
       children: [
         new TextRun({
           text: "— Dibuat dengan IOnLearn Study Copilot —",
           italics: true,
+          font: targetFont,
           size: 16,
           color: "94A3B8",
         }),
@@ -279,10 +1132,99 @@ export async function generateWordDocument(doc: {
     })
   );
 
+  // Page Size Twips Calculation
+  const pageSizeType = options?.pageSize || "A4";
+  const pageSizeTwips =
+    pageSizeType === "Letter"
+      ? { width: convertMillimetersToTwip(215.9), height: convertMillimetersToTwip(279.4) }
+      : pageSizeType === "F4"
+      ? { width: convertMillimetersToTwip(215), height: convertMillimetersToTwip(330) }
+      : { width: convertMillimetersToTwip(210), height: convertMillimetersToTwip(297) };
+
+  // Page Margins Twips Calculation
+  const marginType = options?.pageMargin || "normal";
+  const pageMarginTwips =
+    marginType === "skripsi"
+      ? {
+          top: convertMillimetersToTwip(40),
+          left: convertMillimetersToTwip(40),
+          right: convertMillimetersToTwip(30),
+          bottom: convertMillimetersToTwip(30),
+        }
+      : marginType === "narrow"
+      ? {
+          top: convertMillimetersToTwip(12.7),
+          left: convertMillimetersToTwip(12.7),
+          right: convertMillimetersToTwip(12.7),
+          bottom: convertMillimetersToTwip(12.7),
+        }
+      : marginType === "wide"
+      ? {
+          top: convertMillimetersToTwip(31.8),
+          left: convertMillimetersToTwip(31.8),
+          right: convertMillimetersToTwip(31.8),
+          bottom: convertMillimetersToTwip(31.8),
+        }
+      : {
+          top: convertMillimetersToTwip(25.4),
+          left: convertMillimetersToTwip(25.4),
+          right: convertMillimetersToTwip(25.4),
+          bottom: convertMillimetersToTwip(25.4),
+        };
+
   const wordDoc = new Document({
+    creator: authorName,
+    title: cleanTitle,
+    description: "Dibuat dengan IOnLearn Study Copilot",
     sections: [
       {
-        properties: {},
+        properties: {
+          page: {
+            size: pageSizeTwips,
+            margin: pageMarginTwips,
+          },
+        },
+        headers:
+          options?.watermark !== false
+            ? {
+                default: new Header({
+                  children: [
+                    new Paragraph({
+                      alignment: AlignmentType.RIGHT,
+                      children: [
+                        new TextRun({
+                          text: options?.watermarkText || "IOnLearn Study Copilot",
+                          italics: true,
+                          size: 16,
+                          color: "CBD5E1",
+                          font: targetFont,
+                        }),
+                      ],
+                    }),
+                  ],
+                }),
+              }
+            : undefined,
+        footers:
+          options?.includePageNumbers !== false
+            ? {
+                default: new Footer({
+                  children: [
+                    new Paragraph({
+                      alignment: AlignmentType.RIGHT,
+                      children: [
+                        new TextRun({
+                          children: ["Halaman ", PageNumber.CURRENT, " dari ", PageNumber.TOTAL_PAGES],
+                          font: targetFont,
+                          size: 16,
+                          color: "94A3B8",
+                        }),
+                      ],
+                    }),
+                  ],
+                }),
+              }
+            : undefined,
         children: paragraphs,
       },
     ],
@@ -294,52 +1236,183 @@ export async function generateWordDocument(doc: {
 /**
  * Generate PDF file from title and markdown content using jsPDF & autotable
  */
-export async function generatePdfDocument(doc: {
-  title: string;
-  content: string;
-  subject?: string;
-  fileName?: string;
-}): Promise<Blob> {
+export async function generatePdfDocument(
+  doc: {
+    title: string;
+    content: string;
+    subject?: string;
+    fileName?: string;
+  },
+  options?: DocumentStyleOptions
+): Promise<Blob> {
   const cleanTitle = cleanLatexMath(doc.title);
   const cleanSubject = doc.subject ? cleanLatexMath(doc.subject) : undefined;
   const cleanContent = cleanLatexMath(doc.content);
 
+  const authorName = options?.author?.trim() || "IOnLearn";
+  const isCompact = options?.fontSize === "compact";
+  const isLarge = options?.fontSize === "large";
+
+  const pdfFont = options?.fontFamily === "Times New Roman"
+    ? "times"
+    : options?.fontFamily === "Courier New"
+    ? "courier"
+    : "helvetica";
+
+  const accentKey = options?.accentColor || "indigo";
+  const accent = ACCENT_PALETTES[accentKey] || ACCENT_PALETTES.indigo;
+
+  const titleSize = isCompact ? 15 : isLarge ? 21 : 18;
+  const h1Size = isCompact ? 12 : isLarge ? 16 : 14;
+  const h2Size = isCompact ? 10.5 : isLarge ? 14 : 12;
+  const h3Size = isCompact ? 9.5 : isLarge ? 12 : 10.5;
+  const bodySize = isCompact ? 8.5 : isLarge ? 11 : 9.5;
+  const subjectSize = isCompact ? 9 : isLarge ? 11 : 10;
+
   const pdf = new jsPDF({
     orientation: "portrait",
     unit: "mm",
-    format: "a4",
+    format: options?.pageSize === "Letter" ? "letter" : "a4",
+  });
+
+  pdf.setProperties({
+    title: cleanTitle,
+    subject: cleanSubject || "IOnLearn Study Copilot",
+    author: authorName,
+    creator: "IOnLearn Study Copilot",
   });
 
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
   const margin = 18;
   const contentWidth = pageWidth - margin * 2;
-  let cursorY = 22;
+  let cursorY = 12;
 
-  // Header band
-  pdf.setFillColor(79, 70, 229); // Indigo 600
-  pdf.rect(0, 0, pageWidth, 5, "F");
+  // Header band with theme accent color
+  pdf.setFillColor(accent.pdfRgb[0], accent.pdfRgb[1], accent.pdfRgb[2]);
+  pdf.rect(0, 0, pageWidth, 4, "F");
+
+  // Kop Surat / Logo Header (Formal Academic or Custom Header / Logo)
+  const hasKopLogo = !!options?.logoBase64;
+  const hasCustomKopText = !!(options?.customHeaderText && options.customHeaderText.trim().length > 0);
+  const isFormalKop = options?.headerStyle === "formal_academic" || hasKopLogo || hasCustomKopText;
+
+  if (isFormalKop && (hasKopLogo || hasCustomKopText || options?.institution)) {
+    const kopStartY = cursorY;
+    const logoSize = 16;
+    const logoPos = options?.logoPosition || "left";
+
+    // Draw logo if present
+    if (hasKopLogo && options?.logoBase64) {
+      try {
+        let logoX = margin;
+        if (logoPos === "center") {
+          logoX = (pageWidth - logoSize) / 2;
+        } else if (logoPos === "right") {
+          logoX = pageWidth - margin - logoSize;
+        }
+        pdf.addImage(options.logoBase64, logoX, cursorY, logoSize, logoSize);
+        if (logoPos === "center") {
+          cursorY += logoSize + 2;
+        }
+      } catch (err) {
+        console.warn("Gagal menyematkan logo di PDF:", err);
+      }
+    }
+
+    // Draw Kop Text lines
+    const textLines: Array<{ text: string; bold: boolean; size: number }> = [];
+    if (hasCustomKopText && options?.customHeaderText) {
+      const splitLines = options.customHeaderText.trim().split("\n");
+      splitLines.forEach((sl, idx) => {
+        const tr = sl.trim();
+        if (tr) {
+          textLines.push({
+            text: tr,
+            bold: idx === 0 || idx === 1,
+            size: idx === 0 ? 11 : idx === 1 ? 9.5 : 8.5,
+          });
+        }
+      });
+    } else {
+      if (options?.institution) {
+        textLines.push({ text: options.institution.toUpperCase(), bold: true, size: 11 });
+      }
+      if (options?.facultyOrClass) {
+        textLines.push({ text: options.facultyOrClass.toUpperCase(), bold: false, size: 9.5 });
+      }
+      if (cleanSubject && options?.headerStyle === "formal_academic") {
+        textLines.push({ text: `Topik: ${cleanSubject}`, bold: false, size: 8.5 });
+      }
+    }
+
+    if (textLines.length > 0) {
+      let textCursorY = logoPos === "center" ? cursorY : kopStartY + 2;
+      const textCenterX =
+        logoPos === "left" && hasKopLogo
+          ? (margin + logoSize + pageWidth - margin) / 2
+          : logoPos === "right" && hasKopLogo
+          ? (margin + pageWidth - margin - logoSize) / 2
+          : pageWidth / 2;
+
+      textLines.forEach((item) => {
+        pdf.setFont(pdfFont, item.bold ? "bold" : "normal");
+        pdf.setFontSize(item.size);
+        pdf.setTextColor(15, 23, 42);
+        pdf.text(item.text, textCenterX, textCursorY, { align: "center" });
+        textCursorY += 4.2;
+      });
+
+      cursorY = Math.max(cursorY, textCursorY, hasKopLogo && logoPos !== "center" ? kopStartY + logoSize + 2 : 0);
+    } else if (hasKopLogo && logoPos !== "center") {
+      cursorY = kopStartY + logoSize + 2;
+    }
+
+    // Double-line border for Kop Surat
+    cursorY += 1.5;
+    pdf.setDrawColor(15, 23, 42);
+    pdf.setLineWidth(0.5);
+    pdf.line(margin, cursorY, pageWidth - margin, cursorY);
+    pdf.setLineWidth(0.2);
+    pdf.line(margin, cursorY + 0.7, pageWidth - margin, cursorY + 0.7);
+    cursorY += 5;
+  } else {
+    cursorY = 16;
+  }
 
   // Title
-  pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(18);
+  pdf.setFont(pdfFont, "bold");
+  pdf.setFontSize(titleSize);
   pdf.setTextColor(15, 23, 42); // Slate 900
   const titleLines = pdf.splitTextToSize(cleanTitle, contentWidth);
   pdf.text(titleLines, margin, cursorY);
-  cursorY += titleLines.length * 7 + 2;
+  cursorY += titleLines.length * (isCompact ? 6 : 7.5) + 2;
 
   // Subject / Metadata
   if (cleanSubject) {
-    pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(10);
+    pdf.setFont(pdfFont, "normal");
+    pdf.setFontSize(subjectSize);
     pdf.setTextColor(100, 116, 139); // Slate 500
     pdf.text(`Topik / Mata Pelajaran: ${cleanSubject}`, margin, cursorY);
     cursorY += 5;
   }
 
+  // Student info metadata block if present
+  if (options?.userName || options?.studentId || options?.institution) {
+    pdf.setFont(pdfFont, "bold");
+    pdf.setFontSize(isCompact ? 8.5 : 9.5);
+    pdf.setTextColor(51, 65, 85);
+    const metaParts = [];
+    if (options.userName) metaParts.push(`Penyusun: ${options.userName}`);
+    if (options.studentId) metaParts.push(`NIM/NIS: ${options.studentId}`);
+    if (options.institution) metaParts.push(`${options.institution}`);
+    pdf.text(metaParts.join("  •  "), margin, cursorY);
+    cursorY += 5.5;
+  }
+
   // Date & App mark
-  pdf.setFont("helvetica", "italic");
-  pdf.setFontSize(9);
+  pdf.setFont(pdfFont, "italic");
+  pdf.setFontSize(isCompact ? 8 : 9);
   pdf.setTextColor(148, 163, 184); // Slate 400
   pdf.text(`IOnLearn Study Copilot • ${new Date().toLocaleDateString("id-ID", { dateStyle: "long" })}`, margin, cursorY);
   cursorY += 7;
@@ -374,8 +1447,8 @@ export async function generatePdfDocument(doc: {
         head: [headerRow],
         body: bodyRows,
         margin: { left: margin, right: margin },
-        styles: { fontSize: 8.5, cellPadding: 2.5, textColor: [30, 41, 59] },
-        headStyles: { fillColor: [79, 70, 229], textColor: [255, 255, 255], fontStyle: "bold" },
+        styles: { font: pdfFont as any, fontSize: isCompact ? 7.5 : 8.5, cellPadding: 2.5, textColor: [30, 41, 59] },
+        headStyles: { fillColor: accent.pdfRgb, textColor: [255, 255, 255], fontStyle: "bold" },
         alternateRowStyles: { fillColor: [248, 250, 252] },
       });
 
@@ -410,62 +1483,62 @@ export async function generatePdfDocument(doc: {
 
     if (line.startsWith("# ")) {
       checkPageBreak(12);
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(14);
-      pdf.setTextColor(30, 41, 59);
+      pdf.setFont(pdfFont, "bold");
+      pdf.setFontSize(h1Size);
+      pdf.setTextColor(accent.pdfRgb[0], accent.pdfRgb[1], accent.pdfRgb[2]);
       const cleanHeading = line.replace(/^#\s+/, "");
       const split = pdf.splitTextToSize(cleanHeading, contentWidth);
       pdf.text(split, margin, cursorY);
-      cursorY += split.length * 6 + 3;
+      cursorY += split.length * (isCompact ? 5 : 6) + 3;
     } else if (line.startsWith("## ")) {
       checkPageBreak(10);
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(12);
+      pdf.setFont(pdfFont, "bold");
+      pdf.setFontSize(h2Size);
       pdf.setTextColor(51, 65, 85);
       const cleanHeading = line.replace(/^##\s+/, "");
       const split = pdf.splitTextToSize(cleanHeading, contentWidth);
       pdf.text(split, margin, cursorY);
-      cursorY += split.length * 5 + 2;
+      cursorY += split.length * (isCompact ? 4.5 : 5) + 2;
     } else if (line.startsWith("### ")) {
       checkPageBreak(8);
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(10.5);
+      pdf.setFont(pdfFont, "bold");
+      pdf.setFontSize(h3Size);
       pdf.setTextColor(71, 85, 105);
       const cleanHeading = line.replace(/^###\s+/, "");
       const split = pdf.splitTextToSize(cleanHeading, contentWidth);
       pdf.text(split, margin, cursorY);
-      cursorY += split.length * 4.5 + 2;
+      cursorY += split.length * (isCompact ? 4 : 4.5) + 2;
     } else if (line.startsWith("- ") || line.startsWith("* ") || line.startsWith("• ")) {
       checkPageBreak(6);
       const bulletText = line.replace(/^[-*•]\s+/, "").replace(/[*_`#]/g, "");
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(9.5);
+      pdf.setFont(pdfFont, "normal");
+      pdf.setFontSize(bodySize);
       pdf.setTextColor(30, 41, 59);
       pdf.text("•", margin + 2, cursorY);
       const split = pdf.splitTextToSize(bulletText, contentWidth - 8);
       pdf.text(split, margin + 7, cursorY);
-      cursorY += split.length * 4.5 + 1.5;
+      cursorY += split.length * (isCompact ? 4 : 4.5) + 1.5;
     } else if (/^\d+[\.\)]\s+/.test(line)) {
       checkPageBreak(6);
       const numMatch = line.match(/^(\d+[\.\)])\s+(.*)/);
       const prefix = numMatch ? numMatch[1] : "1.";
       const body = (numMatch ? numMatch[2] : line).replace(/[*_`#]/g, "");
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(9.5);
+      pdf.setFont(pdfFont, "normal");
+      pdf.setFontSize(bodySize);
       pdf.setTextColor(30, 41, 59);
       pdf.text(prefix, margin + 2, cursorY);
       const split = pdf.splitTextToSize(body, contentWidth - 9);
       pdf.text(split, margin + 8, cursorY);
-      cursorY += split.length * 4.5 + 1.5;
+      cursorY += split.length * (isCompact ? 4 : 4.5) + 1.5;
     } else {
       checkPageBreak(6);
       const cleanText = rawLine.replace(/[*_`#]/g, "");
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(9.5);
+      pdf.setFont(pdfFont, "normal");
+      pdf.setFontSize(bodySize);
       pdf.setTextColor(30, 41, 59);
       const split = pdf.splitTextToSize(cleanText, contentWidth);
       pdf.text(split, margin, cursorY);
-      cursorY += split.length * 4.5 + 2;
+      cursorY += split.length * (isCompact ? 4 : 4.5) + 2;
     }
   }
 
@@ -473,15 +1546,30 @@ export async function generatePdfDocument(doc: {
     flushPdfTable();
   }
 
-  // Page numbering in footer
+  // Page numbering and watermark across every page
   const totalPages = pdf.internal.pages.length - 1;
   for (let p = 1; p <= totalPages; p++) {
     pdf.setPage(p);
-    pdf.setFont("helvetica", "normal");
+
+    if (options?.watermark !== false) {
+      pdf.saveGraphicsState();
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(isCompact ? 32 : 38);
+      pdf.setTextColor(241, 245, 249); // subtle faint slate watermark
+      pdf.text(
+        options?.watermarkText || "IOnLearn Study Copilot",
+        pageWidth / 2,
+        pageHeight / 2,
+        { align: "center", angle: 45 }
+      );
+      pdf.restoreGraphicsState();
+    }
+
+    pdf.setFont(pdfFont, "normal");
     pdf.setFontSize(8);
     pdf.setTextColor(148, 163, 184);
     pdf.text(
-      `Halaman ${p} dari ${totalPages}`,
+      `IOnLearn Study Copilot • Halaman ${p} dari ${totalPages}`,
       pageWidth / 2,
       pageHeight - 8,
       { align: "center" }
@@ -540,22 +1628,33 @@ export function parseBulletPoint(raw: string): { title: string; desc: string } {
 /**
  * Generate Microsoft PowerPoint (.pptx) presentation from CreatedSlides
  */
-export async function generatePptxPresentation(presentation: {
-  title: string;
-  theme?: string;
-  slides: Array<{
+export async function generatePptxPresentation(
+  presentation: {
     title: string;
-    bullets: string[];
-    notes?: string;
-  }>;
-  fileName?: string;
-  subject?: string;
-}): Promise<Blob> {
+    theme?: string;
+    slides: Array<{
+      title: string;
+      bullets: string[];
+      notes?: string;
+    }>;
+    fileName?: string;
+    subject?: string;
+  },
+  options?: DocumentStyleOptions
+): Promise<Blob> {
   const cleanTitle = cleanLatexMath(presentation.title);
   const cleanSubject = presentation.subject ? cleanLatexMath(presentation.subject) : undefined;
+  const authorName = options?.author?.trim() || "IOnLearn";
+  const institutionName = options?.institution?.trim() || "IOnLearn";
 
   const pptx = new pptxgen();
   pptx.layout = "LAYOUT_16x9";
+  pptx.author = authorName;
+  pptx.company = institutionName;
+  pptx.title = cleanTitle;
+  if (cleanSubject) {
+    pptx.subject = cleanSubject;
+  }
 
   const themeKey = presentation.theme || "indigo";
   const themes = {
@@ -694,6 +1793,40 @@ export async function generatePptxPresentation(presentation: {
     valign: "middle",
   });
 
+  // Logo on Slide 1 Hero Card
+  if (options?.logoBase64) {
+    try {
+      slide1.addImage({
+        data: options.logoBase64,
+        x: 7.7,
+        y: 0.85,
+        w: 1.1,
+        h: 1.1,
+      });
+    } catch (err) {
+      console.warn("Gagal menyematkan logo di slide 1 PPTX:", err);
+    }
+  }
+
+  // Optional custom header / institution subtitle on Slide 1
+  if (options?.customHeaderText && options.customHeaderText.trim().length > 0) {
+    const firstHeaderLine = options.customHeaderText.trim().split("\n")[0].trim();
+    if (firstHeaderLine) {
+      slide1.addText(firstHeaderLine, {
+        x: 4.3,
+        y: 1.05,
+        w: options?.logoBase64 ? 3.2 : 4.4,
+        h: 0.35,
+        fontSize: 9,
+        fontFace: "Arial",
+        bold: true,
+        color: currentTheme.subColor,
+        align: options?.logoBase64 ? "left" : "right",
+        valign: "middle",
+      });
+    }
+  }
+
   // Decorative divider
   slide1.addShape(pptx.ShapeType.line, {
     x: 1.3,
@@ -703,27 +1836,38 @@ export async function generatePptxPresentation(presentation: {
     line: { color: currentTheme.cardBorder, width: 0.8 },
   });
 
-  // Footer Metadata
-  slide1.addText("IOnLearn Study Copilot", {
+  // Footer Metadata & Student Identity
+  const presenterParts: string[] = [];
+  if (options?.userName) presenterParts.push(`Penyusun: ${options.userName}`);
+  if (options?.studentId) presenterParts.push(`NIM/NIS: ${options.studentId}`);
+  if (options?.institution) presenterParts.push(options.institution);
+  const presenterText = presenterParts.join("  •  ");
+
+  slide1.addText(presenterText || "IOnLearn Study Copilot", {
     x: 1.3,
     y: 3.55,
-    w: 4.5,
+    w: 5.2,
     h: 0.35,
-    fontSize: 11,
+    fontSize: presenterText ? 10 : 11,
     fontFace: "Arial",
     bold: true,
     color: currentTheme.titleColor,
   });
 
-  slide1.addText("Platform Pembelajaran Cerdas Berbasis AI", {
-    x: 1.3,
-    y: 3.9,
-    w: 4.5,
-    h: 0.3,
-    fontSize: 9.5,
-    fontFace: "Arial",
-    color: currentTheme.subColor,
-  });
+  slide1.addText(
+    presenterText
+      ? (options?.institution ? `IOnLearn Study Copilot • ${options.institution}` : "IOnLearn Study Copilot")
+      : "Platform Pembelajaran Cerdas Berbasis AI",
+    {
+      x: 1.3,
+      y: 3.9,
+      w: 5.2,
+      h: 0.3,
+      fontSize: 9,
+      fontFace: "Arial",
+      color: currentTheme.subColor,
+    }
+  );
 
   slide1.addShape(pptx.ShapeType.roundRect, {
     x: 6.7,
@@ -752,6 +1896,21 @@ export async function generatePptxPresentation(presentation: {
   presentation.slides.forEach((slideData, idx) => {
     const slide = pptx.addSlide();
     slide.background = { color: currentTheme.bg };
+
+    // Corner logo on content slides
+    if (options?.logoBase64) {
+      try {
+        slide.addImage({
+          data: options.logoBase64,
+          x: 8.8,
+          y: 0.18,
+          w: 0.5,
+          h: 0.5,
+        });
+      } catch (err) {
+        console.warn("Gagal menyematkan logo di content slide PPTX:", err);
+      }
+    }
 
     // Decorative top strip
     slide.addShape(pptx.ShapeType.rect, {
@@ -1249,16 +2408,19 @@ export async function generatePptxPresentation(presentation: {
       line: { color: currentTheme.cardBorder, width: 0.8 },
     });
 
-    slide.addText("IOnLearn Study Copilot", {
-      x: 0.8,
-      y: 5.18,
-      w: 4.0,
-      h: 0.3,
-      fontSize: 8.5,
-      fontFace: "Arial",
-      italic: true,
-      color: currentTheme.subColor,
-    });
+    const slideWatermark = options?.watermark !== false ? (options?.watermarkText || "IOnLearn Study Copilot") : "";
+    if (slideWatermark) {
+      slide.addText(slideWatermark, {
+        x: 0.8,
+        y: 5.18,
+        w: 4.0,
+        h: 0.3,
+        fontSize: 8.5,
+        fontFace: "Arial",
+        italic: true,
+        color: currentTheme.subColor,
+      });
+    }
 
     slide.addText(`Slide ${idx + 1} / ${totalSlides}`, {
       x: 5.2,
@@ -1284,12 +2446,15 @@ export async function generatePptxPresentation(presentation: {
 /**
  * Generate Excel (.xlsx) file from title and tabular/markdown content
  */
-export async function generateXlsxDocument(doc: {
-  title: string;
-  content: string;
-  subject?: string;
-  fileName?: string;
-}): Promise<Blob> {
+export async function generateXlsxDocument(
+  doc: {
+    title: string;
+    content: string;
+    subject?: string;
+    fileName?: string;
+  },
+  options?: DocumentStyleOptions
+): Promise<Blob> {
   const cleanTitle = cleanLatexMath(doc.title);
   const cleanSubject = doc.subject ? cleanLatexMath(doc.subject) : undefined;
   const cleanContent = cleanLatexMath(doc.content);
@@ -1301,6 +2466,13 @@ export async function generateXlsxDocument(doc: {
     rows.push([cleanTitle]);
     if (cleanSubject) {
       rows.push([`Mata Pelajaran / Topik: ${cleanSubject}`]);
+    }
+    if (options?.userName || options?.studentId || options?.institution) {
+      const studentParts: string[] = [];
+      if (options.userName) studentParts.push(`Penyusun: ${options.userName}`);
+      if (options.studentId) studentParts.push(`NIM/NIS: ${options.studentId}`);
+      if (options.institution) studentParts.push(options.institution);
+      rows.push([studentParts.join("  |  ")]);
     }
     rows.push([]); // empty spacer row
   }
@@ -1354,6 +2526,13 @@ export async function generateXlsxDocument(doc: {
   }
 
   const wb = XLSX.utils.book_new();
+  wb.Props = {
+    Title: cleanTitle,
+    Subject: cleanSubject || "IOnLearn Study Copilot",
+    Author: options?.author?.trim() || "IOnLearn",
+    Company: options?.institution?.trim() || "IOnLearn",
+    CreatedDate: new Date(),
+  };
   const ws = XLSX.utils.aoa_to_sheet(rows);
 
   // Auto-fit column widths
@@ -1379,8 +2558,14 @@ export async function generateXlsxDocument(doc: {
 /**
  * Direct download helper for CreatedDocument (PDF, DOCX, XLSX)
  */
-export async function downloadCreatedDocument(doc: CreatedDocument, fallbackContent?: string) {
+export async function downloadCreatedDocument(
+  doc: CreatedDocument,
+  fallbackContent?: string,
+  options?: DocumentStyleOptions
+) {
   const ext = doc.type === "pdf" ? ".pdf" : doc.type === "xlsx" ? ".xlsx" : ".docx";
+  const finalOptions = options || loadSavedDocStyle();
+
   const isFiller = (t?: string) => {
     if (!t || t.trim().length < 200) return true;
     const l = t.toLowerCase().trim();
@@ -1416,28 +2601,37 @@ export async function downloadCreatedDocument(doc: CreatedDocument, fallbackCont
   const filename = doc.fileName ? doc.fileName.slice(0, 70) : defaultName;
 
   if (doc.type === "pdf") {
-    const blob = await generatePdfDocument({
-      title: resolvedTitle,
-      content: safeContent,
-      subject: doc.subject,
-      fileName: filename,
-    });
+    const blob = await generatePdfDocument(
+      {
+        title: resolvedTitle,
+        content: safeContent,
+        subject: doc.subject,
+        fileName: filename,
+      },
+      finalOptions
+    );
     triggerFileDownload(blob, filename);
   } else if (doc.type === "xlsx") {
-    const blob = await generateXlsxDocument({
-      title: resolvedTitle,
-      content: safeContent,
-      subject: doc.subject,
-      fileName: filename,
-    });
+    const blob = await generateXlsxDocument(
+      {
+        title: resolvedTitle,
+        content: safeContent,
+        subject: doc.subject,
+        fileName: filename,
+      },
+      finalOptions
+    );
     triggerFileDownload(blob, filename);
   } else {
-    const blob = await generateWordDocument({
-      title: resolvedTitle,
-      content: safeContent,
-      subject: doc.subject,
-      fileName: filename,
-    });
+    const blob = await generateWordDocument(
+      {
+        title: resolvedTitle,
+        content: safeContent,
+        subject: doc.subject,
+        fileName: filename,
+      },
+      finalOptions
+    );
     triggerFileDownload(blob, filename);
   }
 }
@@ -1445,7 +2639,10 @@ export async function downloadCreatedDocument(doc: CreatedDocument, fallbackCont
 /**
  * Direct download helper for CreatedSlides
  */
-export async function downloadCreatedSlides(slides: CreatedSlides) {
+export async function downloadCreatedSlides(
+  slides: CreatedSlides,
+  options?: DocumentStyleOptions
+) {
   const cleanBase = (slides.title || "presentasi")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "_")
@@ -1454,14 +2651,18 @@ export async function downloadCreatedSlides(slides: CreatedSlides) {
   const filename = slides.fileName && slides.fileName.endsWith(".pptx")
     ? slides.fileName.slice(0, 70)
     : defaultName;
+  const finalOptions = options || loadSavedDocStyle();
 
-  const blob = await generatePptxPresentation({
-    title: slides.title,
-    theme: slides.theme,
-    slides: slides.slides,
-    fileName: filename,
-    subject: slides.subject,
-  });
+  const blob = await generatePptxPresentation(
+    {
+      title: slides.title,
+      theme: slides.theme,
+      slides: slides.slides,
+      fileName: filename,
+      subject: slides.subject,
+    },
+    finalOptions
+  );
 
   triggerFileDownload(blob, filename);
 }

@@ -186,6 +186,32 @@ export interface CreatedDocument {
   subject?: string;
 }
 
+export interface DocumentStyleOptions {
+  author?: string; // Default: "IOnLearn"
+  userName?: string; // Nama Penyusun / Siswa
+  studentId?: string; // NIM / NIS / ID
+  institution?: string; // Sekolah / Universitas / Instansi
+  facultyOrClass?: string; // Jurusan / Program Studi / Kelas
+  fontFamily?: 'Calibri' | 'Times New Roman' | 'Arial' | 'Georgia' | 'Courier New';
+  fontSize?: 'compact' | 'normal' | 'large';
+  lineSpacing?: 'single' | 'normal' | 'relaxed';
+  pageSize?: 'A4' | 'Letter' | 'F4'; // Ukuran Kertas
+  pageMargin?: 'normal' | 'skripsi' | 'narrow' | 'wide'; // skripsi = Aturan 4-4-3-3 cm
+  headerStyle?: 'modern' | 'formal_academic' | 'minimalist'; // Desain Kop / Header Dokumen
+  includeCoverPage?: boolean; // Halaman Sampul / Cover Tugas Terpisah
+  coverSubtitle?: string; // Subjudul Sampul
+  accentColor?: 'indigo' | 'navy' | 'emerald' | 'maroon' | 'slate'; // Skema Warna Aksen
+  textAlign?: 'justify' | 'left'; // Format Perataan Teks
+  firstLineIndent?: boolean; // Indentasi Alinea Pertama Paragraf (1 cm)
+  includePageNumbers?: boolean; // Nomor Halaman Otomatis di Footer
+  includeToc?: boolean; // Ringkasan / Daftar Isi Otomatis
+  logoBase64?: string; // Data URL logo institusi / sekolah (data:image/...;base64,...)
+  customHeaderText?: string; // Teks kustom kop surat / header instansi
+  logoPosition?: 'left' | 'center' | 'right'; // Posisi penempatan logo pada kop
+  watermark?: boolean; // Default true
+  watermarkText?: string; // Default "IOnLearn Study Copilot"
+}
+
 export interface CreatedSlides {
   id?: string;
   title: string;

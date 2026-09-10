@@ -803,7 +803,7 @@ function processAiChatResponse(
 export async function POST(req: Request) {
     try {
         const reqJson = await req.json();
-        const { messages, taskContext, userPreferences, aiConfig, studyMode, stream: wantStream = true } =
+        const { messages, taskContext, userPreferences, aiConfig, studyMode, stream: wantStream = true, enableGrounding = true } =
             reqJson as {
                 messages: { role: string; content: string }[];
                 taskContext?: any;
@@ -811,6 +811,7 @@ export async function POST(req: Request) {
                 aiConfig?: AIConfig | null;
                 studyMode?: "socratic" | "direct" | "quizzer";
                 stream?: boolean;
+                enableGrounding?: boolean;
             };
 
         if (!Array.isArray(messages) || messages.length === 0) {
@@ -943,10 +944,15 @@ ${personalizationInstruction}
      * \`notes\`: Catatan pemateri (*speaker notes*) berisi arahan narasi presenter saat membawakan slide tersebut.
 
 3. 🎨 **GENERATOR GAMBAR & DIAGRAM VISUAL AI (\`createdImage\`)**:
-   *Pemicu: Ketika pengguna meminta ilustrasi, gambar visual, gambarkan konsep, lukiskan, atau diagram.*
-   🚨 ATURAN MUTLAK PROMPT GAMBAR: Field \`prompt\` WAJIB ditulis dalam bahasa Inggris yang SANGAT KAYA DETAIL, VISUAL, dan SPESIFIK (minimal 15-30 kata) untuk model generator FLUX.1.
-   Sertakan kata kunci visual: gaya visual (3D infographic / cinematic photorealistic / isometric render), pencahayaan (studio lighting, volumetric glow), komposisi, resolusi (8k resolution, octane render, sharp focus, crisp details).
-   - \`prompt\`: Detailed descriptive English prompt (contoh: *"Crisp 3D educational infographic of photosynthesis process inside a green leaf cell, labeled chloroplasts, sunlight rays, water and carbon dioxide input, glucose and oxygen output, cinematic studio volumetric lighting, octane render, 8k resolution, award-winning scientific illustration"*).
+   *Pemicu: Ketika pengguna meminta ilustrasi, gambar visual, gambarkan konsep, lukiskan, diagram, atau infografis.*
+   🚨 ATURAN MUTLAK PROMPT GAMBAR: Field \`prompt\` WAJIB ditulis dalam bahasa Inggris yang SANGAT KAYA DETAIL, VISUAL, dan SPESIFIK (minimal 35-60 kata) untuk model generator FLUX.1.
+   Sertakan struktur lengkap:
+   - Subjek utama & anatomi/komponen ilmiah yang jelas dan akurat (misal: cross-section view with clearly visible internal structures).
+   - Gaya visual premium: (pilih sesuai topik: 'crisp 3D scientific octane render' / 'hyper-realistic National Geographic photography' / 'futuristic isometric 3D render').
+   - Pencahayaan & atmosfer: ('volumetric studio lighting, raytraced subsurface scattering, vivid natural color grading').
+   - Ketajaman & render: ('8k UHD, ultra-sharp focus, masterpiece composition, clean educational aesthetic').
+   DILARANG KERAS hanya menuliskan prompt pendek 2-5 kata!
+   - \`prompt\`: Detailed descriptive English prompt (contoh: *"Detailed cross-section diagram of a green plant leaf illustrating the cellular process of photosynthesis, featuring a microscopic view of chloroplasts with thylakoid stacks, sunlight rays penetrating the epidermis, carbon dioxide absorption, crisp 3D scientific octane render, educational infographic style, bright natural volumetric lighting, vivid natural colors, accurate botanical anatomy, 8k UHD, ultra-sharp focus"*).
    - \`caption\`: Keterangan gambar ringkas dan informatif dalam bahasa Indonesia.
    - \`aspectRatio\`: \`"16:9"\` (default lanskap), \`"1:1"\` (persegi), atau \`"4:3"\` (diagram standar).
 
@@ -967,6 +973,7 @@ ${personalizationInstruction}
         let responseText = "";
         let groundingSources: { title: string; url: string }[] = [];
         let groundingQueries: string[] = [];
+        let groundingAvailable = true;
 
         if (provider === "openai") {
             const baseUrl =
@@ -1234,17 +1241,37 @@ TUGAS ANDA:
                             );
 
                             let responseStream: any;
-                            try {
-                                responseStream = await ai.models.generateContentStream({
-                                    model: modelName,
-                                    contents,
-                                    config: {
-                                        ...generationConfig,
-                                        tools: [{ googleSearch: {} }],
-                                    },
-                                });
-                            } catch (groundingError: any) {
-                                console.warn("Grounding stream failed, retrying without grounding:", groundingError.message);
+                            if (enableGrounding) {
+                                try {
+                                    responseStream = await ai.models.generateContentStream({
+                                        model: modelName,
+                                        contents,
+                                        config: {
+                                            ...generationConfig,
+                                            tools: [{ googleSearch: {} }],
+                                        },
+                                    });
+                                } catch (groundingError: any) {
+                                    console.warn("Grounding stream failed, retrying without grounding:", groundingError.message);
+                                    // Notify client that grounding quota is exhausted or unavailable
+                                    try {
+                                        controller.enqueue(
+                                            encoder.encode(`data: ${JSON.stringify({
+                                                type: "grounding_status",
+                                                available: false,
+                                                reason: groundingError?.message?.includes("RESOURCE_EXHAUSTED") || groundingError?.status === 429
+                                                    ? "quota_exhausted"
+                                                    : groundingError?.message || "unavailable"
+                                            })}\n\n`)
+                                        );
+                                    } catch {}
+                                    responseStream = await ai.models.generateContentStream({
+                                        model: modelName,
+                                        contents,
+                                        config: generationConfig,
+                                    });
+                                }
+                            } else {
                                 responseStream = await ai.models.generateContentStream({
                                     model: modelName,
                                     contents,
@@ -1377,19 +1404,28 @@ TUGAS ANDA:
 
             // Try with Google Search grounding first, fall back to without if model doesn't support it
             let response: any;
+            groundingAvailable = true;
 
-            try {
-                response = await ai.models.generateContent({
-                    model: modelName,
-                    contents,
-                    config: {
-                        ...generationConfig,
-                        tools: [{ googleSearch: {} }],
-                    },
-                });
-            } catch (groundingError: any) {
-                // If grounding + schema is not supported by this model, retry without grounding
-                console.warn("Grounding with schema failed, retrying without grounding:", groundingError.message);
+            if (enableGrounding) {
+                try {
+                    response = await ai.models.generateContent({
+                        model: modelName,
+                        contents,
+                        config: {
+                            ...generationConfig,
+                            tools: [{ googleSearch: {} }],
+                        },
+                    });
+                } catch (groundingError: any) {
+                    console.warn("Grounding with schema failed, retrying without grounding:", groundingError.message);
+                    groundingAvailable = false;
+                    response = await ai.models.generateContent({
+                        model: modelName,
+                        contents,
+                        config: generationConfig,
+                    });
+                }
+            } else {
                 response = await ai.models.generateContent({
                     model: modelName,
                     contents,
@@ -1404,22 +1440,21 @@ TUGAS ANDA:
                 if (metadata) {
                     if (metadata.groundingChunks && Array.isArray(metadata.groundingChunks)) {
                         groundingSources = metadata.groundingChunks
-                            .filter((chunk: any) => chunk?.web?.uri && chunk?.web?.title)
-                            .map((chunk: any) => ({
-                                title: chunk.web.title,
-                                url: chunk.web.uri,
+                            .map((c: any) => ({
+                                title: c.web?.title || "Sumber Web",
+                                url: c.web?.uri || "",
                             }))
-                            .slice(0, 5);
+                            .filter((s: any) => s.url);
                     }
                     if (metadata.webSearchQueries && Array.isArray(metadata.webSearchQueries)) {
                         groundingQueries = metadata.webSearchQueries.slice(0, 3);
                     }
                 }
-            } catch {
+            } catch (e) {
                 // Grounding metadata extraction is best-effort
             }
 
-            responseText = response.text || "{}";
+            responseText = response?.text || "";
         }
 
         const finalResult = processAiChatResponse(
@@ -1430,7 +1465,7 @@ TUGAS ANDA:
             groundingQueries
         );
 
-        return NextResponse.json(finalResult);
+        return NextResponse.json({ ...finalResult, groundingAvailable });
     } catch (error: any) {
         console.error("Error in AI Chat:", error);
         return NextResponse.json(
@@ -1440,4 +1475,35 @@ TUGAS ANDA:
             { status: 500 },
         );
     }
+}
+
+export async function GET(req: Request) {
+    const { searchParams } = new URL(req.url);
+    if (searchParams.get("check") === "grounding") {
+        try {
+            const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+            if (!apiKey) {
+                return NextResponse.json({ available: false, reason: "no_api_key" });
+            }
+            const ai = new GoogleGenAI({ apiKey });
+            // Quick 1-token test with search to verify quota without latency
+            await ai.models.generateContent({
+                model: "gemini-2.5-flash",
+                contents: "test",
+                config: {
+                    maxOutputTokens: 1,
+                    tools: [{ googleSearch: {} }],
+                },
+            });
+            return NextResponse.json({ available: true });
+        } catch (err: any) {
+            return NextResponse.json({
+                available: false,
+                reason: err?.message?.includes("RESOURCE_EXHAUSTED") || err?.status === 429
+                    ? "quota_exhausted"
+                    : err?.message || "unavailable"
+            });
+        }
+    }
+    return NextResponse.json({ status: "ok" });
 }
