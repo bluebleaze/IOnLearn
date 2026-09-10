@@ -60,5 +60,8 @@
   },
   "overrides": {
     "image-size": "^2.0.2"
+  },
+  "allowScripts": {
+    "lenis@1.3.26": true
   }
 }
