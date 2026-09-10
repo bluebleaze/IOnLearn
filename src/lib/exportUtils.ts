@@ -6,6 +6,9 @@ import autoTable from "jspdf-autotable";
 import pptxgen from "pptxgenjs";
 import * as XLSX from "xlsx";
 import { CreatedDocument, CreatedSlides } from "@/types";
+import { cleanLatexMath } from "./mathUtils";
+
+export { cleanLatexMath };
 
 /**
  * Trigger file download on client side
@@ -65,6 +68,9 @@ export async function generateWordDocument(doc: {
   fileName?: string;
 }): Promise<Blob> {
   const paragraphs: (Paragraph | Table)[] = [];
+  const cleanTitle = cleanLatexMath(doc.title);
+  const cleanSubject = doc.subject ? cleanLatexMath(doc.subject) : undefined;
+  const cleanContent = cleanLatexMath(doc.content);
 
   // 1. Document Header / Title
   paragraphs.push(
@@ -73,7 +79,7 @@ export async function generateWordDocument(doc: {
       spacing: { after: 120 },
       children: [
         new TextRun({
-          text: doc.title,
+          text: cleanTitle,
           bold: true,
           size: 36, // 18pt
           color: "2B3A67",
@@ -82,13 +88,13 @@ export async function generateWordDocument(doc: {
     })
   );
 
-  if (doc.subject) {
+  if (cleanSubject) {
     paragraphs.push(
       new Paragraph({
         spacing: { after: 240 },
         children: [
           new TextRun({
-            text: `Topik / Mata Pelajaran: ${doc.subject}`,
+            text: `Topik / Mata Pelajaran: ${cleanSubject}`,
             italics: true,
             size: 20, // 10pt
             color: "64748B",
@@ -99,7 +105,7 @@ export async function generateWordDocument(doc: {
   }
 
   // 2. Parse Markdown Lines into Word Elements
-  const lines = doc.content.split("\n");
+  const lines = cleanContent.split("\n");
   let tableRows: string[][] = [];
   let inTable = false;
 
@@ -294,6 +300,10 @@ export async function generatePdfDocument(doc: {
   subject?: string;
   fileName?: string;
 }): Promise<Blob> {
+  const cleanTitle = cleanLatexMath(doc.title);
+  const cleanSubject = doc.subject ? cleanLatexMath(doc.subject) : undefined;
+  const cleanContent = cleanLatexMath(doc.content);
+
   const pdf = new jsPDF({
     orientation: "portrait",
     unit: "mm",
@@ -314,16 +324,16 @@ export async function generatePdfDocument(doc: {
   pdf.setFont("helvetica", "bold");
   pdf.setFontSize(18);
   pdf.setTextColor(15, 23, 42); // Slate 900
-  const titleLines = pdf.splitTextToSize(doc.title, contentWidth);
+  const titleLines = pdf.splitTextToSize(cleanTitle, contentWidth);
   pdf.text(titleLines, margin, cursorY);
   cursorY += titleLines.length * 7 + 2;
 
   // Subject / Metadata
-  if (doc.subject) {
+  if (cleanSubject) {
     pdf.setFont("helvetica", "normal");
     pdf.setFontSize(10);
     pdf.setTextColor(100, 116, 139); // Slate 500
-    pdf.text(`Topik / Mata Pelajaran: ${doc.subject}`, margin, cursorY);
+    pdf.text(`Topik / Mata Pelajaran: ${cleanSubject}`, margin, cursorY);
     cursorY += 5;
   }
 
@@ -341,7 +351,7 @@ export async function generatePdfDocument(doc: {
   cursorY += 8;
 
   // Parse lines & render
-  const lines = doc.content.split("\n");
+  const lines = cleanContent.split("\n");
   let tableRows: string[][] = [];
   let inTable = false;
 
@@ -482,6 +492,52 @@ export async function generatePdfDocument(doc: {
 }
 
 /**
+ * Parse a bullet point string into structured title and description
+ */
+export function parseBulletPoint(raw: string): { title: string; desc: string } {
+  const clean = cleanLatexMath(raw)
+    .replace(/^(\s*[-•]\s+|\s*\*(?!\*)\s*|\s*\d+[\.\)]\s*)/, "")
+    .trim();
+
+  const boldMatch = clean.match(/^\*\*([^*]+)\*\*[:\s\-–—]*(.*)$/);
+  if (boldMatch) {
+    return {
+      title: boldMatch[1].replace(/\*\*/g, "").trim(),
+      desc: boldMatch[2].replace(/^[:\s\-–—]+/, "").replace(/\*\*/g, "").trim(),
+    };
+  }
+
+  const colonMatch = clean.match(/^([^:\n]{2,40}):\s+(.+)$/);
+  if (colonMatch && !colonMatch[1].includes("http")) {
+    return {
+      title: colonMatch[1].replace(/\*\*/g, "").trim(),
+      desc: colonMatch[2].replace(/\*\*/g, "").trim(),
+    };
+  }
+
+  const dashMatch = clean.match(/^([^\-–—\n]{2,40})\s+[\-–—]\s+(.+)$/);
+  if (dashMatch) {
+    return {
+      title: dashMatch[1].replace(/\*\*/g, "").trim(),
+      desc: dashMatch[2].replace(/\*\*/g, "").trim(),
+    };
+  }
+
+  const words = clean.split(/\s+/);
+  if (words.length > 5) {
+    return {
+      title: words.slice(0, 4).join(" ").replace(/\*\*/g, ""),
+      desc: words.slice(4).join(" ").replace(/\*\*/g, ""),
+    };
+  }
+
+  return {
+    title: clean.replace(/\*\*/g, ""),
+    desc: "",
+  };
+}
+
+/**
  * Generate Microsoft PowerPoint (.pptx) presentation from CreatedSlides
  */
 export async function generatePptxPresentation(presentation: {
@@ -495,6 +551,9 @@ export async function generatePptxPresentation(presentation: {
   fileName?: string;
   subject?: string;
 }): Promise<Blob> {
+  const cleanTitle = cleanLatexMath(presentation.title);
+  const cleanSubject = presentation.subject ? cleanLatexMath(presentation.subject) : undefined;
+
   const pptx = new pptxgen();
   pptx.layout = "LAYOUT_16x9";
 
@@ -502,112 +561,194 @@ export async function generatePptxPresentation(presentation: {
   const themes = {
     indigo: {
       bg: "F8FAFC",
-      titleColor: "1E293B",
-      accentColor: "4F46E5",
-      subColor: "64748B",
       cardBg: "FFFFFF",
-      bulletColor: "4F46E5",
-    },
-    dark: {
-      bg: "0F172A",
-      titleColor: "F8FAFC",
-      accentColor: "818CF8",
-      subColor: "94A3B8",
-      cardBg: "1E293B",
-      bulletColor: "38BDF8",
+      cardBorder: "E2E8F0",
+      titleColor: "0F172A",
+      bodyColor: "334155",
+      subColor: "64748B",
+      accentColor: "4F46E5",
+      accentLight: "EEF2FF",
+      accentBorder: "C7D2FE",
+      badgeText: "4338CA",
     },
     emerald: {
       bg: "F0FDF4",
-      titleColor: "064E3B",
-      accentColor: "059669",
-      subColor: "047857",
       cardBg: "FFFFFF",
-      bulletColor: "10B981",
+      cardBorder: "D1FAE5",
+      titleColor: "064E3B",
+      bodyColor: "1F2937",
+      subColor: "047857",
+      accentColor: "059669",
+      accentLight: "ECFDF5",
+      accentBorder: "A7F3D0",
+      badgeText: "065F46",
+    },
+    dark: {
+      bg: "0B0F19",
+      cardBg: "1E293B",
+      cardBorder: "334155",
+      titleColor: "F8FAFC",
+      bodyColor: "CBD5E1",
+      subColor: "94A3B8",
+      accentColor: "6366F1",
+      accentLight: "1E1B4B",
+      accentBorder: "4338CA",
+      badgeText: "A5B4FC",
     },
     amber: {
       bg: "FFFBEB",
-      titleColor: "78350F",
-      accentColor: "D97706",
-      subColor: "92400E",
       cardBg: "FFFFFF",
-      bulletColor: "F59E0B",
+      cardBorder: "FDE68A",
+      titleColor: "78350F",
+      bodyColor: "451A03",
+      subColor: "92400E",
+      accentColor: "D97706",
+      accentLight: "FEF3C7",
+      accentBorder: "FCD34D",
+      badgeText: "B45309",
     },
     slate: {
-      bg: "F1F5F9",
-      titleColor: "0F172A",
-      accentColor: "334155",
-      subColor: "475569",
+      bg: "F8FAFC",
       cardBg: "FFFFFF",
-      bulletColor: "64748B",
+      cardBorder: "CBD5E1",
+      titleColor: "0F172A",
+      bodyColor: "334155",
+      subColor: "475569",
+      accentColor: "2563EB",
+      accentLight: "EFF6FF",
+      accentBorder: "BFDBFE",
+      badgeText: "1D4ED8",
     },
   };
 
   const currentTheme = themes[themeKey as keyof typeof themes] || themes.indigo;
+  const totalSlides = presentation.slides.length;
 
   // 1. Title Slide
   const slide1 = pptx.addSlide();
   slide1.background = { color: currentTheme.bg };
 
-  // Decorative header bar
+  // Decorative top accent strip
   slide1.addShape(pptx.ShapeType.rect, {
     x: 0,
     y: 0,
     w: "100%",
-    h: 0.15,
+    h: 0.1,
     fill: { color: currentTheme.accentColor },
   });
 
-  // Title Slide Container Card
+  // Hero Container Card
   slide1.addShape(pptx.ShapeType.roundRect, {
-    x: 1.0,
-    y: 1.2,
-    w: 8.0,
-    h: 4.8,
-    rectRadius: 0.2,
+    x: 0.8,
+    y: 0.6,
+    w: 8.4,
+    h: 4.4,
+    rectRadius: 0.15,
     fill: { color: currentTheme.cardBg },
-    line: { color: "E2E8F0", width: 1 },
+    line: { color: currentTheme.cardBorder, width: 1 },
   });
 
-  slide1.addText(presentation.title, {
-    x: 1.4,
-    y: 2.0,
-    w: 7.2,
-    h: 1.8,
-    fontSize: 32,
-    fontFace: "Arial",
+  // Top accent bar inside card
+  slide1.addShape(pptx.ShapeType.rect, {
+    x: 0.8,
+    y: 0.6,
+    w: 8.4,
+    h: 0.08,
+    fill: { color: currentTheme.accentColor },
+  });
+
+  // Category Pill Badge
+  slide1.addShape(pptx.ShapeType.roundRect, {
+    x: 1.3,
+    y: 1.05,
+    w: 2.8,
+    h: 0.35,
+    rectRadius: 0.08,
+    fill: { color: currentTheme.accentLight },
+    line: { color: currentTheme.accentBorder, width: 0.8 },
+  });
+
+  slide1.addText((cleanSubject || "PRESENTASI MATERI").toUpperCase(), {
+    x: 1.3,
+    y: 1.05,
+    w: 2.8,
+    h: 0.35,
+    fontSize: 9.5,
     bold: true,
-    color: currentTheme.titleColor,
+    color: currentTheme.badgeText,
     align: "center",
     valign: "middle",
   });
 
-  if (presentation.subject) {
-    slide1.addText(presentation.subject, {
-      x: 1.4,
-      y: 3.8,
-      w: 7.2,
-      h: 0.6,
-      fontSize: 16,
-      fontFace: "Arial",
-      color: currentTheme.accentColor,
-      bold: true,
-      align: "center",
-    });
-  }
-
-  slide1.addText("Dibuat dengan IOnLearn Study Copilot", {
-    x: 1.4,
-    y: 4.8,
-    w: 7.2,
-    h: 0.5,
-    fontSize: 11,
+  // Presentation Title
+  const titleFontSize = cleanTitle.length > 50 ? 24 : 28;
+  slide1.addText(cleanTitle, {
+    x: 1.3,
+    y: 1.55,
+    w: 7.4,
+    h: 1.6,
+    fontSize: titleFontSize,
     fontFace: "Arial",
-    italic: true,
-    color: currentTheme.subColor,
-    align: "center",
+    bold: true,
+    color: currentTheme.titleColor,
+    valign: "middle",
   });
 
-  // 2. Content Slides
+  // Decorative divider
+  slide1.addShape(pptx.ShapeType.line, {
+    x: 1.3,
+    y: 3.35,
+    w: 7.4,
+    h: 0,
+    line: { color: currentTheme.cardBorder, width: 0.8 },
+  });
+
+  // Footer Metadata
+  slide1.addText("IOnLearn Study Copilot", {
+    x: 1.3,
+    y: 3.55,
+    w: 4.5,
+    h: 0.35,
+    fontSize: 11,
+    fontFace: "Arial",
+    bold: true,
+    color: currentTheme.titleColor,
+  });
+
+  slide1.addText("Platform Pembelajaran Cerdas Berbasis AI", {
+    x: 1.3,
+    y: 3.9,
+    w: 4.5,
+    h: 0.3,
+    fontSize: 9.5,
+    fontFace: "Arial",
+    color: currentTheme.subColor,
+  });
+
+  slide1.addShape(pptx.ShapeType.roundRect, {
+    x: 6.7,
+    y: 3.65,
+    w: 2.0,
+    h: 0.35,
+    rectRadius: 0.08,
+    fill: { color: currentTheme.accentLight },
+    line: { color: currentTheme.accentBorder, width: 0.8 },
+  });
+
+  slide1.addText("DECK PRESENTASI", {
+    x: 6.7,
+    y: 3.65,
+    w: 2.0,
+    h: 0.35,
+    fontSize: 9,
+    fontFace: "Arial",
+    bold: true,
+    color: currentTheme.badgeText,
+    align: "center",
+    valign: "middle",
+  });
+
+  // 2. Content Slides with Adaptive Layouts
   presentation.slides.forEach((slideData, idx) => {
     const slide = pptx.addSlide();
     slide.background = { color: currentTheme.bg };
@@ -617,73 +758,523 @@ export async function generatePptxPresentation(presentation: {
       x: 0,
       y: 0,
       w: "100%",
-      h: 0.1,
+      h: 0.08,
       fill: { color: currentTheme.accentColor },
     });
 
-    // Header Slide Number Tag
-    slide.addText(`Slide ${idx + 1} / ${presentation.slides.length}`, {
+    // Category Breadcrumb Badge
+    slide.addShape(pptx.ShapeType.roundRect, {
       x: 0.8,
-      y: 0.35,
-      w: 2.5,
-      h: 0.4,
-      fontSize: 10,
-      fontFace: "Arial",
-      bold: true,
-      color: currentTheme.accentColor,
+      y: 0.3,
+      w: 2.2,
+      h: 0.28,
+      rectRadius: 0.06,
+      fill: { color: currentTheme.accentLight },
+      line: { color: currentTheme.accentBorder, width: 0.8 },
     });
 
+    slide.addText(
+      cleanSubject ? cleanSubject.slice(0, 22).toUpperCase() : "SLIDE PRESENTASI",
+      {
+        x: 0.8,
+        y: 0.3,
+        w: 2.2,
+        h: 0.28,
+        fontSize: 8.5,
+        fontFace: "Arial",
+        bold: true,
+        color: currentTheme.badgeText,
+        align: "center",
+        valign: "middle",
+      }
+    );
+
     // Slide Title
-    slide.addText(slideData.title, {
+    slide.addText(cleanLatexMath(slideData.title), {
       x: 0.8,
-      y: 0.7,
+      y: 0.65,
       w: 8.4,
-      h: 0.8,
-      fontSize: 24,
+      h: 0.65,
+      fontSize: 22,
       fontFace: "Arial",
       bold: true,
       color: currentTheme.titleColor,
+      valign: "middle",
     });
 
-    // Main Content Card
-    slide.addShape(pptx.ShapeType.roundRect, {
-      x: 0.8,
-      y: 1.6,
-      w: 8.4,
-      h: 4.8,
-      rectRadius: 0.15,
-      fill: { color: currentTheme.cardBg },
-      line: { color: "E2E8F0", width: 1 },
-    });
+    // Bullets Parsing
+    const rawBullets =
+      slideData.bullets && slideData.bullets.length > 0
+        ? slideData.bullets
+        : ["Poin bahasan materi utama slide ini."];
+    const parsedBullets = rawBullets.map(parseBulletPoint);
+    const bulletCount = parsedBullets.length;
+    const isLastSlide = idx === totalSlides - 1 && totalSlides > 2;
 
-    // Bullets
-    const bulletsList = slideData.bullets && slideData.bullets.length > 0
-      ? slideData.bullets
-      : ["Poin bahasan utama slide ini"];
+    // --- ADAPTIVE LAYOUTS ---
 
-    const bulletItems = bulletsList.map((bullet) => ({
-      text: bullet.replace(/^[-*•]\s*/, ""),
-      options: {
-        fontSize: 15,
+    // Layout A: Conclusion & Q&A Split (Final Slide)
+    if (isLastSlide && bulletCount <= 4) {
+      // Left: Summary takeaways card
+      slide.addShape(pptx.ShapeType.roundRect, {
+        x: 0.8,
+        y: 1.45,
+        w: 4.8,
+        h: 3.45,
+        rectRadius: 0.12,
+        fill: { color: currentTheme.cardBg },
+        line: { color: currentTheme.cardBorder, width: 1 },
+      });
+
+      slide.addShape(pptx.ShapeType.rect, {
+        x: 0.95,
+        y: 1.45,
+        w: 4.5,
+        h: 0.06,
+        fill: { color: currentTheme.accentColor },
+      });
+
+      slide.addShape(pptx.ShapeType.roundRect, {
+        x: 1.1,
+        y: 1.68,
+        w: 2.2,
+        h: 0.28,
+        rectRadius: 0.06,
+        fill: { color: currentTheme.accentLight },
+        line: { color: currentTheme.accentBorder, width: 0.8 },
+      });
+
+      slide.addText("RINGKASAN UTAMA", {
+        x: 1.1,
+        y: 1.68,
+        w: 2.2,
+        h: 0.28,
+        fontSize: 8.5,
         fontFace: "Arial",
-        color: currentTheme.titleColor,
-        bullet: { code: "25AA", color: currentTheme.bulletColor },
-        breakLine: true,
-        lineSpacing: 28,
-      },
-    }));
+        bold: true,
+        color: currentTheme.badgeText,
+        align: "center",
+        valign: "middle",
+      });
 
-    slide.addText(bulletItems as any, {
-      x: 1.2,
-      y: 1.9,
-      w: 7.6,
-      h: 4.2,
-      valign: "top",
+      const itemGap = (3.45 - 0.7) / Math.max(bulletCount, 1);
+      parsedBullets.forEach((item, i) => {
+        const itemY = 2.1 + i * itemGap;
+        slide.addShape(pptx.ShapeType.roundRect, {
+          x: 1.1,
+          y: itemY,
+          w: 0.45,
+          h: 0.26,
+          rectRadius: 0.06,
+          fill: { color: currentTheme.accentLight },
+        });
+        slide.addText(`0${i + 1}`, {
+          x: 1.1,
+          y: itemY,
+          w: 0.45,
+          h: 0.26,
+          fontSize: 8.5,
+          fontFace: "Arial",
+          bold: true,
+          color: currentTheme.badgeText,
+          align: "center",
+          valign: "middle",
+        });
+
+        const titleText = item.desc ? item.title : item.title.slice(0, 30);
+        const bodyText = item.desc ? item.desc : item.title;
+
+        slide.addText(
+          [
+            { text: titleText ? `${titleText}\n` : "", options: { bold: true, fontSize: 10.5, color: currentTheme.titleColor } },
+            { text: bodyText, options: { bold: false, fontSize: 9.5, color: currentTheme.bodyColor } },
+          ],
+          {
+            x: 1.65,
+            y: itemY - 0.04,
+            w: 3.75,
+            h: itemGap - 0.1,
+            valign: "top",
+          }
+        );
+      });
+
+      // Right: Closing / Q&A Callout Card
+      slide.addShape(pptx.ShapeType.roundRect, {
+        x: 5.8,
+        y: 1.45,
+        w: 3.4,
+        h: 3.45,
+        rectRadius: 0.12,
+        fill: { color: currentTheme.accentLight },
+        line: { color: currentTheme.accentBorder, width: 1.2 },
+      });
+
+      slide.addText("✨", {
+        x: 6.0,
+        y: 1.8,
+        w: 3.0,
+        h: 0.4,
+        fontSize: 22,
+        align: "center",
+      });
+
+      slide.addText("Terima Kasih!", {
+        x: 6.0,
+        y: 2.3,
+        w: 3.0,
+        h: 0.5,
+        fontSize: 22,
+        fontFace: "Arial",
+        bold: true,
+        color: currentTheme.accentColor,
+        align: "center",
+      });
+
+      slide.addText("Sesi Tanya Jawab & Diskusi", {
+        x: 6.0,
+        y: 2.85,
+        w: 3.0,
+        h: 0.4,
+        fontSize: 11.5,
+        fontFace: "Arial",
+        bold: true,
+        color: currentTheme.titleColor,
+        align: "center",
+      });
+
+      slide.addText("Pertanyaan, tanggapan, dan masukan dipersilakan.", {
+        x: 6.0,
+        y: 3.35,
+        w: 3.0,
+        h: 0.5,
+        fontSize: 9.5,
+        fontFace: "Arial",
+        italic: true,
+        color: currentTheme.subColor,
+        align: "center",
+      });
+
+      slide.addShape(pptx.ShapeType.roundRect, {
+        x: 6.4,
+        y: 4.15,
+        w: 2.2,
+        h: 0.32,
+        rectRadius: 0.08,
+        fill: { color: currentTheme.cardBg },
+        line: { color: currentTheme.cardBorder, width: 0.8 },
+      });
+
+      slide.addText("IOnLearn Study Copilot", {
+        x: 6.4,
+        y: 4.15,
+        w: 2.2,
+        h: 0.32,
+        fontSize: 8.5,
+        fontFace: "Arial",
+        bold: true,
+        color: currentTheme.accentColor,
+        align: "center",
+        valign: "middle",
+      });
+    }
+
+    // Layout B: Column Cards (1 to 3 items)
+    else if (bulletCount <= 3) {
+      const gap = 0.25;
+      const cardW = (8.4 - (bulletCount - 1) * gap) / bulletCount;
+      const cardH = 3.45;
+      const cardY = 1.45;
+
+      parsedBullets.forEach((item, i) => {
+        const cardX = 0.8 + i * (cardW + gap);
+
+        // Card Container
+        slide.addShape(pptx.ShapeType.roundRect, {
+          x: cardX,
+          y: cardY,
+          w: cardW,
+          h: cardH,
+          rectRadius: 0.12,
+          fill: { color: currentTheme.cardBg },
+          line: { color: currentTheme.cardBorder, width: 1 },
+        });
+
+        // Top accent line inside card
+        slide.addShape(pptx.ShapeType.rect, {
+          x: cardX + 0.15,
+          y: cardY,
+          w: cardW - 0.3,
+          h: 0.06,
+          fill: { color: currentTheme.accentColor },
+        });
+
+        // Number Badge
+        slide.addShape(pptx.ShapeType.roundRect, {
+          x: cardX + 0.2,
+          y: cardY + 0.22,
+          w: 0.55,
+          h: 0.32,
+          rectRadius: 0.08,
+          fill: { color: currentTheme.accentLight },
+          line: { color: currentTheme.accentBorder, width: 0.8 },
+        });
+
+        slide.addText(`0${i + 1}`, {
+          x: cardX + 0.2,
+          y: cardY + 0.22,
+          w: 0.55,
+          h: 0.32,
+          fontSize: 9.5,
+          fontFace: "Arial",
+          bold: true,
+          color: currentTheme.badgeText,
+          align: "center",
+          valign: "middle",
+        });
+
+        // Card Title
+        const titleText = item.desc ? item.title : item.title.slice(0, 35);
+        const bodyText = item.desc ? item.desc : item.title;
+
+        slide.addText(titleText, {
+          x: cardX + 0.2,
+          y: cardY + 0.68,
+          w: cardW - 0.4,
+          h: 0.6,
+          fontSize: 12.5,
+          fontFace: "Arial",
+          bold: true,
+          color: currentTheme.titleColor,
+          valign: "top",
+        });
+
+        // Divider
+        slide.addShape(pptx.ShapeType.line, {
+          x: cardX + 0.2,
+          y: cardY + 1.35,
+          w: cardW - 0.4,
+          h: 0,
+          line: { color: currentTheme.cardBorder, width: 0.8 },
+        });
+
+        // Card Description
+        slide.addText(bodyText, {
+          x: cardX + 0.2,
+          y: cardY + 1.48,
+          w: cardW - 0.4,
+          h: 1.8,
+          fontSize: 10,
+          fontFace: "Arial",
+          color: currentTheme.bodyColor,
+          valign: "top",
+        });
+      });
+    }
+
+    // Layout C: 2x2 Grid Cards (4 items)
+    else if (bulletCount === 4) {
+      const cols = 2;
+      const cardW = 4.05;
+      const cardH = 1.6;
+      const gapX = 0.3;
+      const gapY = 0.25;
+
+      parsedBullets.forEach((item, i) => {
+        const row = Math.floor(i / cols);
+        const col = i % cols;
+        const cardX = 0.8 + col * (cardW + gapX);
+        const cardY = 1.45 + row * (cardH + gapY);
+
+        slide.addShape(pptx.ShapeType.roundRect, {
+          x: cardX,
+          y: cardY,
+          w: cardW,
+          h: cardH,
+          rectRadius: 0.1,
+          fill: { color: currentTheme.cardBg },
+          line: { color: currentTheme.cardBorder, width: 1 },
+        });
+
+        // Left vertical accent stripe
+        slide.addShape(pptx.ShapeType.rect, {
+          x: cardX,
+          y: cardY + 0.15,
+          w: 0.08,
+          h: cardH - 0.3,
+          fill: { color: currentTheme.accentColor },
+        });
+
+        // Number pill
+        slide.addShape(pptx.ShapeType.roundRect, {
+          x: cardX + 0.2,
+          y: cardY + 0.18,
+          w: 0.5,
+          h: 0.28,
+          rectRadius: 0.06,
+          fill: { color: currentTheme.accentLight },
+          line: { color: currentTheme.accentBorder, width: 0.8 },
+        });
+
+        slide.addText(`0${i + 1}`, {
+          x: cardX + 0.2,
+          y: cardY + 0.18,
+          w: 0.5,
+          h: 0.28,
+          fontSize: 9,
+          fontFace: "Arial",
+          bold: true,
+          color: currentTheme.badgeText,
+          align: "center",
+          valign: "middle",
+        });
+
+        const titleText = item.desc ? item.title : item.title.slice(0, 30);
+        const bodyText = item.desc ? item.desc : item.title;
+
+        slide.addText(titleText, {
+          x: cardX + 0.8,
+          y: cardY + 0.18,
+          w: cardW - 0.95,
+          h: 0.28,
+          fontSize: 11.5,
+          fontFace: "Arial",
+          bold: true,
+          color: currentTheme.titleColor,
+          valign: "middle",
+        });
+
+        slide.addText(bodyText, {
+          x: cardX + 0.2,
+          y: cardY + 0.55,
+          w: cardW - 0.35,
+          h: 0.95,
+          fontSize: 9.5,
+          fontFace: "Arial",
+          color: currentTheme.bodyColor,
+          valign: "top",
+        });
+      });
+    }
+
+    // Layout D: Stacked Horizontal Cards (5+ items)
+    else {
+      const displayItems = parsedBullets.slice(0, 6);
+      const cols = 2;
+      const cardW = 4.05;
+      const cardH = 1.0;
+      const gapX = 0.3;
+      const gapY = 0.18;
+
+      displayItems.forEach((item, i) => {
+        const row = Math.floor(i / cols);
+        const col = i % cols;
+        const cardX = 0.8 + col * (cardW + gapX);
+        const cardY = 1.45 + row * (cardH + gapY);
+
+        slide.addShape(pptx.ShapeType.roundRect, {
+          x: cardX,
+          y: cardY,
+          w: cardW,
+          h: cardH,
+          rectRadius: 0.08,
+          fill: { color: currentTheme.cardBg },
+          line: { color: currentTheme.cardBorder, width: 1 },
+        });
+
+        slide.addShape(pptx.ShapeType.rect, {
+          x: cardX,
+          y: cardY + 0.1,
+          w: 0.06,
+          h: cardH - 0.2,
+          fill: { color: currentTheme.accentColor },
+        });
+
+        slide.addShape(pptx.ShapeType.roundRect, {
+          x: cardX + 0.15,
+          y: cardY + 0.12,
+          w: 0.45,
+          h: 0.24,
+          rectRadius: 0.05,
+          fill: { color: currentTheme.accentLight },
+        });
+
+        slide.addText(`0${i + 1}`, {
+          x: cardX + 0.15,
+          y: cardY + 0.12,
+          w: 0.45,
+          h: 0.24,
+          fontSize: 8.5,
+          fontFace: "Arial",
+          bold: true,
+          color: currentTheme.badgeText,
+          align: "center",
+          valign: "middle",
+        });
+
+        const titleText = item.desc ? item.title : item.title.slice(0, 30);
+        const bodyText = item.desc ? item.desc : item.title;
+
+        slide.addText(titleText, {
+          x: cardX + 0.68,
+          y: cardY + 0.12,
+          w: cardW - 0.85,
+          h: 0.24,
+          fontSize: 10.5,
+          fontFace: "Arial",
+          bold: true,
+          color: currentTheme.titleColor,
+          valign: "middle",
+        });
+
+        slide.addText(bodyText, {
+          x: cardX + 0.15,
+          y: cardY + 0.42,
+          w: cardW - 0.3,
+          h: 0.5,
+          fontSize: 9,
+          fontFace: "Arial",
+          color: currentTheme.bodyColor,
+          valign: "top",
+        });
+      });
+    }
+
+    // Subtle Footer Divider & Page Number
+    slide.addShape(pptx.ShapeType.line, {
+      x: 0.8,
+      y: 5.1,
+      w: 8.4,
+      h: 0,
+      line: { color: currentTheme.cardBorder, width: 0.8 },
+    });
+
+    slide.addText("IOnLearn Study Copilot", {
+      x: 0.8,
+      y: 5.18,
+      w: 4.0,
+      h: 0.3,
+      fontSize: 8.5,
+      fontFace: "Arial",
+      italic: true,
+      color: currentTheme.subColor,
+    });
+
+    slide.addText(`Slide ${idx + 1} / ${totalSlides}`, {
+      x: 5.2,
+      y: 5.18,
+      w: 4.0,
+      h: 0.3,
+      fontSize: 8.5,
+      fontFace: "Arial",
+      bold: true,
+      color: currentTheme.subColor,
+      align: "right",
     });
 
     // Speaker Notes
     if (slideData.notes) {
-      slide.addNotes(slideData.notes);
+      slide.addNotes(cleanLatexMath(slideData.notes));
     }
   });
 
@@ -699,14 +1290,17 @@ export async function generateXlsxDocument(doc: {
   subject?: string;
   fileName?: string;
 }): Promise<Blob> {
-  const lines = doc.content.split("\n");
+  const cleanTitle = cleanLatexMath(doc.title);
+  const cleanSubject = doc.subject ? cleanLatexMath(doc.subject) : undefined;
+  const cleanContent = cleanLatexMath(doc.content);
+  const lines = cleanContent.split("\n");
   const rows: (string | number)[][] = [];
 
   // Header meta rows
-  if (doc.title) {
-    rows.push([doc.title]);
-    if (doc.subject) {
-      rows.push([`Mata Pelajaran / Topik: ${doc.subject}`]);
+  if (cleanTitle) {
+    rows.push([cleanTitle]);
+    if (cleanSubject) {
+      rows.push([`Mata Pelajaran / Topik: ${cleanSubject}`]);
     }
     rows.push([]); // empty spacer row
   }
@@ -814,8 +1408,12 @@ export async function downloadCreatedDocument(doc: CreatedDocument, fallbackCont
     .slice(0, 90);
 
   const resolvedTitle = contentHeading || doc.title || "Dokumen";
-  const defaultName = ((resolvedTitle || "dokumen").toLowerCase().replace(/[^a-z0-9]+/g, "_")) + ext;
-  const filename = doc.fileName || defaultName;
+  const cleanBase = (resolvedTitle || "dokumen")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .slice(0, 60);
+  const defaultName = `${cleanBase || "dokumen"}${ext}`;
+  const filename = doc.fileName ? doc.fileName.slice(0, 70) : defaultName;
 
   if (doc.type === "pdf") {
     const blob = await generatePdfDocument({
@@ -848,8 +1446,14 @@ export async function downloadCreatedDocument(doc: CreatedDocument, fallbackCont
  * Direct download helper for CreatedSlides
  */
 export async function downloadCreatedSlides(slides: CreatedSlides) {
-  const defaultName = (slides.title.toLowerCase().replace(/[^a-z0-9]+/g, "_") || "presentasi") + ".pptx";
-  const filename = slides.fileName || defaultName;
+  const cleanBase = (slides.title || "presentasi")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .slice(0, 60);
+  const defaultName = `${cleanBase || "presentasi"}.pptx`;
+  const filename = slides.fileName && slides.fileName.endsWith(".pptx")
+    ? slides.fileName.slice(0, 70)
+    : defaultName;
 
   const blob = await generatePptxPresentation({
     title: slides.title,

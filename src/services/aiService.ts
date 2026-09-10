@@ -110,18 +110,30 @@ export async function analyzeTaskWithAI(
     return response.json();
 }
 
-export async function sendChatMessageToAI(
+export async function sendChatMessageToAIStream(
     messages: {
         role: "user" | "assistant";
         content: string;
         attachments?: ChatAttachment[];
     }[],
+    callbacks: {
+        onChunk: (delta: string, accumulated: string) => void;
+        onThought?: (delta: string, accumulated: string) => void;
+        onStatus?: (
+            stage: "analyzing" | "searching" | "thinking" | "answering",
+            detail: string,
+            searchQueries?: string[]
+        ) => void;
+        onGrounding?: (sources: { title: string; url: string }[]) => void;
+        signal?: AbortSignal;
+    },
     taskContext?: Partial<TodoTask>,
     userPreferences?: UserPreferences | null,
     aiConfig?: AIConfig | null,
     studyMode?: "socratic" | "direct" | "quizzer",
 ): Promise<{
     reply: string;
+    thoughtProcess?: string;
     timestamp: number;
     suggestedPrompts?: string[];
     createdNote?: {
@@ -193,7 +205,9 @@ export async function sendChatMessageToAI(
         headers: {
             "Content-Type": "application/json",
         },
+        signal: callbacks.signal,
         body: JSON.stringify({
+            stream: true,
             messages: processedMessages,
             userPreferences,
             aiConfig,
@@ -222,5 +236,107 @@ export async function sendChatMessageToAI(
         );
     }
 
-    return response.json();
+    const contentType = response.headers.get("content-type") || "";
+    if (contentType.includes("text/event-stream") && response.body) {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let accumulatedText = "";
+        let accumulatedThought = "";
+        let finalResult: any = null;
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const parts = buffer.split("\n\n");
+            buffer = parts.pop() || "";
+
+            for (const part of parts) {
+                const trimmed = part.trim();
+                if (!trimmed.startsWith("data:")) continue;
+                const jsonStr = trimmed.slice(5).trim();
+                if (!jsonStr) continue;
+
+                try {
+                    const event = JSON.parse(jsonStr);
+                    if (event.type === "chunk" && typeof event.delta === "string") {
+                        accumulatedText += event.delta;
+                        callbacks.onChunk(event.delta, accumulatedText);
+                    } else if (event.type === "thought" && typeof event.delta === "string") {
+                        accumulatedThought += event.delta;
+                        callbacks.onThought?.(event.delta, accumulatedThought);
+                    } else if (event.type === "status" && event.stage) {
+                        callbacks.onStatus?.(event.stage, event.detail || "", event.queries);
+                    } else if (event.type === "grounding" && event.sources) {
+                        callbacks.onGrounding?.(event.sources);
+                    } else if (event.type === "done") {
+                        finalResult = event;
+                    } else if (event.type === "error") {
+                        throw new Error(event.error || "Gagal memproses streaming AI");
+                    }
+                } catch (e: any) {
+                    if (e.message && e.message.includes("Gagal memproses streaming AI")) {
+                        throw e;
+                    }
+                    console.warn("Failed to parse SSE event:", jsonStr, e);
+                }
+            }
+        }
+
+        // Flush any remaining data in buffer
+        if (buffer.trim().startsWith("data:")) {
+            try {
+                const event = JSON.parse(buffer.trim().slice(5).trim());
+                if (event.type === "done") {
+                    finalResult = event;
+                } else if (event.type === "chunk" && typeof event.delta === "string") {
+                    accumulatedText += event.delta;
+                    callbacks.onChunk(event.delta, accumulatedText);
+                } else if (event.type === "thought" && typeof event.delta === "string") {
+                    accumulatedThought += event.delta;
+                    callbacks.onThought?.(event.delta, accumulatedThought);
+                }
+            } catch {}
+        }
+
+        if (finalResult) {
+            if (!finalResult.thoughtProcess && accumulatedThought) {
+                finalResult.thoughtProcess = accumulatedThought;
+            }
+            return finalResult;
+        }
+
+        return {
+            reply: accumulatedText || "Tanggapan selesai.",
+            thoughtProcess: accumulatedThought || undefined,
+            timestamp: Date.now(),
+        };
+    } else {
+        const data = await response.json();
+        callbacks.onChunk(data.reply || "", data.reply || "");
+        return data;
+    }
+}
+
+export async function sendChatMessageToAI(
+    messages: {
+        role: "user" | "assistant";
+        content: string;
+        attachments?: ChatAttachment[];
+    }[],
+    taskContext?: Partial<TodoTask>,
+    userPreferences?: UserPreferences | null,
+    aiConfig?: AIConfig | null,
+    studyMode?: "socratic" | "direct" | "quizzer",
+) {
+    return sendChatMessageToAIStream(
+        messages,
+        { onChunk: () => {} },
+        taskContext,
+        userPreferences,
+        aiConfig,
+        studyMode,
+    );
 }

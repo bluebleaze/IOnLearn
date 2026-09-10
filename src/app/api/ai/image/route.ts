@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
 import { AIConfig } from "@/types";
+import { buildPollinationsImageUrl } from "@/lib/imageUtils";
 
 export async function POST(req: Request) {
   try {
@@ -107,13 +108,8 @@ export async function POST(req: Request) {
       }
     }
 
-    // 3. High-Quality Fallback: Pollinations AI (FLUX model, zero API key requirement, instant)
-    // Enhancing educational illustration prompts
-    const enhancedPrompt = `${cleanPrompt}, clean high resolution, educational diagram, clear lighting, detailed visual illustration`;
-    const seed = Math.floor(Math.random() * 1000000);
-    const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(
-      enhancedPrompt
-    )}?width=${width}&height=${height}&seed=${seed}&model=flux&nologo=true`;
+    // 3. High-Quality Generation: Pollinations AI FLUX Model with Prompt Enhancer
+    const pollinationsUrl = buildPollinationsImageUrl(cleanPrompt, aspectRatio);
 
     return NextResponse.json({
       url: pollinationsUrl,

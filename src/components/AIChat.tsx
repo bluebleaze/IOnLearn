@@ -49,6 +49,7 @@ import {
   Link2,
   FileDown,
   Globe,
+  Square,
 } from "lucide-react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -65,7 +66,7 @@ import {
   StudyNote,
   PersonalTodo,
 } from "../types";
-import { sendChatMessageToAI } from "../services/aiService";
+import { sendChatMessageToAI, sendChatMessageToAIStream } from "../services/aiService";
 import {
   downloadCreatedDocument,
   downloadCreatedSlides,
@@ -74,6 +75,8 @@ import {
   generateXlsxDocument,
   generatePptxPresentation,
   triggerFileDownload,
+  cleanLatexMath,
+  parseBulletPoint,
 } from "@/lib/exportUtils";
 import {
   isGoogleWorkspaceUrl,
@@ -328,10 +331,10 @@ const CodeBlock = ({ inline, className, children, ...props }: any) => {
   );
 };
 
-// Clean and normalize markdown table strings if rows lack proper newlines
+// Clean and normalize markdown content, formatting tables and converting LaTeX math to clean Unicode
 const formatMarkdownTables = (content: string): string => {
   if (!content) return "";
-  let text = content;
+  let text = cleanLatexMath(content);
   // 1. Split concatenated table rows `| ... | | ... |` or `|:---| | 1 |` into separate lines
   text = text.replace(/\|\s*\|\s*(?=[^|\n]+?\|)/g, "|\n|");
 
@@ -366,6 +369,95 @@ const formatMarkdownTables = (content: string): string => {
   }
 
   return result.join("\n");
+};
+
+// Real-time live status indicator badge for streaming stages
+const LiveStreamStatusBadge: React.FC<{
+  stage?: "analyzing" | "searching" | "thinking" | "answering";
+  detail?: string;
+  queries?: string[];
+}> = ({ stage = "analyzing", detail, queries }) => {
+  return (
+    <div className="inline-flex flex-wrap items-center gap-2 px-3 py-1.5 rounded-xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200/70 dark:border-indigo-900/50 text-xs text-indigo-950 dark:text-indigo-200 transition-all shadow-2xs">
+      {stage === "searching" ? (
+        <Globe className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 animate-spin shrink-0" />
+      ) : stage === "thinking" ? (
+        <Brain className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 animate-pulse shrink-0" />
+      ) : stage === "answering" ? (
+        <Sparkles className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 animate-pulse shrink-0" />
+      ) : (
+        <Search className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 animate-pulse shrink-0" />
+      )}
+      <span className="font-medium text-xs">
+        {detail || "AI sedang memproses..."}
+      </span>
+      {queries && queries.length > 0 && (
+        <div className="flex flex-wrap gap-1 items-center">
+          {queries.map((q, idx) => (
+            <span
+              key={idx}
+              className="text-[10px] px-1.5 py-0.5 rounded-md bg-white/80 dark:bg-[#1e1e1e] text-slate-700 dark:text-slate-300 border border-indigo-200/50 dark:border-[#333] font-mono"
+            >
+              &ldquo;{q}&rdquo;
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Collapsible Chain-of-Thought / reasoning process box
+const ThoughtProcessAccordion: React.FC<{
+  thought?: string;
+  isStreaming?: boolean;
+}> = ({ thought, isStreaming }) => {
+  const [isOpen, setIsOpen] = useState(Boolean(isStreaming));
+
+  useEffect(() => {
+    if (isStreaming) {
+      setIsOpen(true);
+    }
+  }, [isStreaming]);
+
+  if (!thought || !thought.trim()) return null;
+
+  return (
+    <div className="my-1.5 rounded-2xl border border-slate-200/80 dark:border-[#282828] bg-slate-50/80 dark:bg-[#181818]/70 overflow-hidden text-xs transition-all shadow-2xs">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-slate-100/70 dark:hover:bg-[#202020] transition-colors cursor-pointer select-none"
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-5 h-5 rounded-md bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+            <Brain className="w-3 h-3" />
+          </div>
+          <span className="font-semibold text-slate-700 dark:text-slate-200 truncate">
+            {isStreaming ? "Sedang Menalar & Verifikasi Logika..." : "Alur Penalaran & Verifikasi Fakta (Chain of Thought)"}
+          </span>
+          {isStreaming && (
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
+          )}
+        </div>
+        <div className="flex items-center gap-1.5 text-slate-400 shrink-0 ml-2">
+          <span className="text-[11px] font-medium hidden sm:inline">
+            {isOpen ? "Sembunyikan" : "Lihat Analisis"}
+          </span>
+          {isOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+        </div>
+      </button>
+
+      {isOpen && (
+        <div className="px-3 pb-2.5 pt-1 text-slate-600 dark:text-slate-300 text-xs leading-relaxed border-t border-slate-200/50 dark:border-[#242424] whitespace-pre-wrap break-words bg-white/40 dark:bg-[#141414]/40 font-mono sm:font-sans">
+          {thought}
+          {isStreaming && (
+            <span className="inline-block w-1.5 h-3.5 ml-1 align-middle bg-amber-500 rounded-xs animate-pulse" />
+          )}
+        </div>
+      )}
+    </div>
+  );
 };
 
 export const AIChat: React.FC<AIChatProps> = ({
@@ -633,6 +725,27 @@ export const AIChat: React.FC<AIChatProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const contextRef = useRef<HTMLDivElement>(null);
   const formatMenuRef = useRef<HTMLDivElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  const handleStopGeneration = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setIsLoading(false);
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === currentId
+          ? {
+              ...s,
+              messages: s.messages.map((m) =>
+                m.isStreaming ? { ...m, isStreaming: false } : m
+              ),
+            }
+          : s
+      )
+    );
+  };
 
   const handleSelectFormat = (acceptString: string) => {
     setActiveAcceptFilter(acceptString);
@@ -1393,15 +1506,28 @@ export const AIChat: React.FC<AIChatProps> = ({
 
     const nextMessages = [...messages, userMessage];
 
+    const assistantMsgId = `msg-${Date.now() + 1}`;
+    const assistantPlaceholder: ChatMessage = {
+      id: assistantMsgId,
+      role: "assistant",
+      content: "",
+      isStreaming: true,
+      streamStage: "analyzing",
+      streamStageDetail: "Menganalisis pertanyaan & konteks materi...",
+      thoughtProcess: "",
+      timestamp: Date.now(),
+    };
+
     setSessions((prev) =>
       prev.map((s) =>
         s.id === currentId
-          ? { ...s, messages: nextMessages, updatedAt: Date.now() }
+          ? { ...s, messages: [...nextMessages, assistantPlaceholder], updatedAt: Date.now() }
           : s
       )
     );
 
     setIsLoading(true);
+    abortControllerRef.current = new AbortController();
 
     try {
       const chatHistory = nextMessages.map((m, idx) => ({
@@ -1412,8 +1538,93 @@ export const AIChat: React.FC<AIChatProps> = ({
           idx === nextMessages.length - 1 ? currentAttachments : undefined,
       }));
 
-      const res = await sendChatMessageToAI(
+      const res = await sendChatMessageToAIStream(
         chatHistory,
+        {
+          onStatus: (stage, detail, searchQueries) => {
+            setSessions((prev) =>
+              prev.map((s) =>
+                s.id === currentId
+                  ? {
+                      ...s,
+                      messages: s.messages.map((m) =>
+                        m.id === assistantMsgId
+                          ? {
+                              ...m,
+                              streamStage: stage,
+                              streamStageDetail: detail,
+                              ...(searchQueries && searchQueries.length > 0
+                                ? { streamSearchQueries: searchQueries }
+                                : {}),
+                            }
+                          : m
+                      ),
+                    }
+                  : s
+              )
+            );
+          },
+          onThought: (_delta, accumulated) => {
+            setSessions((prev) =>
+              prev.map((s) =>
+                s.id === currentId
+                  ? {
+                      ...s,
+                      messages: s.messages.map((m) =>
+                        m.id === assistantMsgId
+                          ? {
+                              ...m,
+                              thoughtProcess: accumulated,
+                              streamStage: "thinking",
+                              streamStageDetail: "Memverifikasi data & merumuskan analisis...",
+                            }
+                          : m
+                      ),
+                    }
+                  : s
+              )
+            );
+          },
+          onChunk: (_delta, accumulated) => {
+            setSessions((prev) =>
+              prev.map((s) =>
+                s.id === currentId
+                  ? {
+                      ...s,
+                      messages: s.messages.map((m) =>
+                        m.id === assistantMsgId
+                          ? {
+                              ...m,
+                              content: accumulated,
+                              isStreaming: true,
+                              streamStage: "answering",
+                              streamStageDetail: "Menyusun jawaban terstruktur...",
+                            }
+                          : m
+                      ),
+                    }
+                  : s
+              )
+            );
+          },
+          onGrounding: (sources) => {
+            setSessions((prev) =>
+              prev.map((s) =>
+                s.id === currentId
+                  ? {
+                      ...s,
+                      messages: s.messages.map((m) =>
+                        m.id === assistantMsgId
+                          ? { ...m, groundingSources: sources }
+                          : m
+                      ),
+                    }
+                  : s
+              )
+            );
+          },
+          signal: abortControllerRef.current?.signal,
+        },
         contextualTask,
         userPreferences,
         aiConfig,
@@ -1530,9 +1741,11 @@ export const AIChat: React.FC<AIChatProps> = ({
       }
 
       const assistantMessage: ChatMessage = {
-        id: `msg-${Date.now() + 1}`,
+        id: assistantMsgId,
         role: "assistant",
         content: res.reply,
+        thoughtProcess: res.thoughtProcess,
+        isStreaming: false,
         createdNote: res.createdNote ? { ...res.createdNote, id: noteCreatedId } : undefined,
         createdTodo: createdTodoObj || undefined,
         createdDocument: res.createdDocument || undefined,
@@ -1547,7 +1760,9 @@ export const AIChat: React.FC<AIChatProps> = ({
           s.id === currentId
             ? {
               ...s,
-              messages: [...nextMessages, assistantMessage],
+              messages: s.messages.map((m) =>
+                m.id === assistantMsgId ? assistantMessage : m
+              ),
               suggestedPrompts: res.suggestedPrompts || [],
               updatedAt: Date.now(),
             }
@@ -1555,14 +1770,38 @@ export const AIChat: React.FC<AIChatProps> = ({
         )
       );
     } catch (err: any) {
+      if (err?.name === "AbortError") {
+        setSessions((prev) =>
+          prev.map((s) =>
+            s.id === currentId
+              ? {
+                  ...s,
+                  messages: s.messages.map((m) =>
+                    m.id === assistantMsgId
+                      ? {
+                          ...m,
+                          content: m.content || "*(Jawaban dihentikan)*",
+                          isStreaming: false,
+                        }
+                      : m
+                  ),
+                }
+              : s
+          )
+        );
+        return;
+      }
+
       toast.error("Gagal memproses pesan AI", {
         description: err.message || "Periksa koneksi atau API key Anda.",
       });
       const errorMessage: ChatMessage = {
-        id: `msg-${Date.now() + 1}`,
+        id: assistantMsgId,
         role: "assistant",
         content: `⚠️ Maaf, terjadi kendala saat menghubungi AI: ${err.message || "Gagal memproses permintaan."
           }. Silakan cek konfigurasi API Key di menu Pengaturan.`,
+        isStreaming: false,
+        isError: true,
         timestamp: Date.now(),
       };
       setSessions((prev) =>
@@ -1570,7 +1809,9 @@ export const AIChat: React.FC<AIChatProps> = ({
           s.id === currentId
             ? {
               ...s,
-              messages: [...nextMessages, errorMessage],
+              messages: s.messages.map((m) =>
+                m.id === assistantMsgId ? errorMessage : m
+              ),
               updatedAt: Date.now(),
             }
             : s
@@ -1578,6 +1819,7 @@ export const AIChat: React.FC<AIChatProps> = ({
       );
     } finally {
       setIsLoading(false);
+      abortControllerRef.current = null;
     }
   };
 
@@ -1603,20 +1845,33 @@ export const AIChat: React.FC<AIChatProps> = ({
 
     if (historyToKeep.length === 0) return;
 
-    setIsLoading(true);
+    const assistantMsgId = `msg-${Date.now() + 1}`;
+    const assistantPlaceholder: ChatMessage = {
+      id: assistantMsgId,
+      role: "assistant",
+      content: "",
+      isStreaming: true,
+      streamStage: "analyzing",
+      streamStageDetail: "Menganalisis pertanyaan & konteks materi...",
+      thoughtProcess: "",
+      timestamp: Date.now(),
+    };
 
-    // Update sessions to roll back to that user message
+    // Update sessions to roll back to that user message and place streaming assistant placeholder
     setSessions((prev) =>
       prev.map((s) =>
         s.id === currentId
           ? {
             ...s,
-            messages: historyToKeep,
+            messages: [...historyToKeep, assistantPlaceholder],
             updatedAt: Date.now(),
           }
           : s
       )
     );
+
+    setIsLoading(true);
+    abortControllerRef.current = new AbortController();
 
     try {
       let contextualTask = activeTask;
@@ -1640,8 +1895,93 @@ export const AIChat: React.FC<AIChatProps> = ({
         attachments: m.attachments,
       }));
 
-      const res = await sendChatMessageToAI(
+      const res = await sendChatMessageToAIStream(
         apiMessages,
+        {
+          onStatus: (stage, detail, searchQueries) => {
+            setSessions((prev) =>
+              prev.map((s) =>
+                s.id === currentId
+                  ? {
+                      ...s,
+                      messages: s.messages.map((m) =>
+                        m.id === assistantMsgId
+                          ? {
+                              ...m,
+                              streamStage: stage,
+                              streamStageDetail: detail,
+                              ...(searchQueries && searchQueries.length > 0
+                                ? { streamSearchQueries: searchQueries }
+                                : {}),
+                            }
+                          : m
+                      ),
+                    }
+                  : s
+              )
+            );
+          },
+          onThought: (_delta, accumulated) => {
+            setSessions((prev) =>
+              prev.map((s) =>
+                s.id === currentId
+                  ? {
+                      ...s,
+                      messages: s.messages.map((m) =>
+                        m.id === assistantMsgId
+                          ? {
+                              ...m,
+                              thoughtProcess: accumulated,
+                              streamStage: "thinking",
+                              streamStageDetail: "Memverifikasi data & merumuskan analisis...",
+                            }
+                          : m
+                      ),
+                    }
+                  : s
+              )
+            );
+          },
+          onChunk: (_delta, accumulated) => {
+            setSessions((prev) =>
+              prev.map((s) =>
+                s.id === currentId
+                  ? {
+                      ...s,
+                      messages: s.messages.map((m) =>
+                        m.id === assistantMsgId
+                          ? {
+                              ...m,
+                              content: accumulated,
+                              isStreaming: true,
+                              streamStage: "answering",
+                              streamStageDetail: "Menyusun jawaban terstruktur...",
+                            }
+                          : m
+                      ),
+                    }
+                  : s
+              )
+            );
+          },
+          onGrounding: (sources) => {
+            setSessions((prev) =>
+              prev.map((s) =>
+                s.id === currentId
+                  ? {
+                      ...s,
+                      messages: s.messages.map((m) =>
+                        m.id === assistantMsgId
+                          ? { ...m, groundingSources: sources }
+                          : m
+                      ),
+                    }
+                  : s
+              )
+            );
+          },
+          signal: abortControllerRef.current?.signal,
+        },
         contextualTask,
         userPreferences,
         aiConfig,
@@ -1732,9 +2072,11 @@ export const AIChat: React.FC<AIChatProps> = ({
       }
 
       const assistantMessage: ChatMessage = {
-        id: `msg-${Date.now() + 1}`,
+        id: assistantMsgId,
         role: "assistant",
         content: res.reply,
+        thoughtProcess: res.thoughtProcess,
+        isStreaming: false,
         createdNote: res.createdNote ? { ...res.createdNote, id: noteCreatedId } : undefined,
         createdTodo: createdTodoObj || undefined,
         createdDocument: res.createdDocument || undefined,
@@ -1749,7 +2091,9 @@ export const AIChat: React.FC<AIChatProps> = ({
           s.id === currentId
             ? {
               ...s,
-              messages: [...historyToKeep, assistantMessage],
+              messages: s.messages.map((m) =>
+                m.id === assistantMsgId ? assistantMessage : m
+              ),
               suggestedPrompts: res.suggestedPrompts || [],
               updatedAt: Date.now(),
             }
@@ -1757,14 +2101,38 @@ export const AIChat: React.FC<AIChatProps> = ({
         )
       );
     } catch (err: any) {
+      if (err?.name === "AbortError") {
+        setSessions((prev) =>
+          prev.map((s) =>
+            s.id === currentId
+              ? {
+                  ...s,
+                  messages: s.messages.map((m) =>
+                    m.id === assistantMsgId
+                      ? {
+                          ...m,
+                          content: m.content || "*(Jawaban dihentikan)*",
+                          isStreaming: false,
+                        }
+                      : m
+                  ),
+                }
+              : s
+          )
+        );
+        return;
+      }
+
       toast.error("Gagal mengirim ulang pesan", {
         description: err.message || "Periksa koneksi atau API key Anda.",
       });
       const errorMessage: ChatMessage = {
-        id: `msg-${Date.now() + 1}`,
+        id: assistantMsgId,
         role: "assistant",
         content: `⚠️ Maaf, terjadi kendala saat mengirim ulang pesan: ${err.message || "Gagal memproses permintaan."
           }`,
+        isStreaming: false,
+        isError: true,
         timestamp: Date.now(),
       };
       setSessions((prev) =>
@@ -1772,7 +2140,9 @@ export const AIChat: React.FC<AIChatProps> = ({
           s.id === currentId
             ? {
               ...s,
-              messages: [...historyToKeep, errorMessage],
+              messages: s.messages.map((m) =>
+                m.id === assistantMsgId ? errorMessage : m
+              ),
               updatedAt: Date.now(),
             }
             : s
@@ -1780,6 +2150,7 @@ export const AIChat: React.FC<AIChatProps> = ({
       );
     } finally {
       setIsLoading(false);
+      abortControllerRef.current = null;
     }
   };
 
@@ -2129,21 +2500,24 @@ export const AIChat: React.FC<AIChatProps> = ({
                 >
                   <MicOff className="w-4 h-4" />
                 </button>
-              ) : inputPrompt.trim() || attachedFiles.length > 0 || isLoading ? (
+              ) : isLoading ? (
+                <button
+                  type="button"
+                  onClick={handleStopGeneration}
+                  className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 transition-all shrink-0 shadow-2xs cursor-pointer animate-in zoom-in-90 duration-150"
+                  title="Hentikan respons (Stop)"
+                >
+                  <Square className="w-3.5 h-3.5 fill-current" />
+                </button>
+              ) : inputPrompt.trim() || attachedFiles.length > 0 ? (
                 <button
                   type="button"
                   onClick={() => handleSendMessage()}
-                  disabled={
-                    (!inputPrompt.trim() && attachedFiles.length === 0) || isLoading
-                  }
+                  disabled={!inputPrompt.trim() && attachedFiles.length === 0}
                   className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-30 disabled:hover:bg-indigo-600 text-white transition-all shrink-0 shadow-2xs cursor-pointer disabled:cursor-not-allowed animate-in zoom-in-90 duration-150"
                   title="Kirim pesan (Enter)"
                 >
-                  {isLoading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <ArrowUp className="w-4 h-4 stroke-[2.5]" />
-                  )}
+                  <ArrowUp className="w-4 h-4 stroke-[2.5]" />
                 </button>
               ) : (
                 <button
@@ -2563,49 +2937,82 @@ export const AIChat: React.FC<AIChatProps> = ({
                   ) : (
                     <div className="max-w-[86%] sm:max-w-[80%] text-slate-900 dark:text-[#e8e8e8] text-xs sm:text-sm leading-relaxed">
                       <div className="space-y-3">
-                        <div className="prose prose-sm dark:prose-invert max-w-none leading-relaxed break-words">
-                          <Markdown
-                            remarkPlugins={[remarkGfm]}
-                            components={{
-                              code: CodeBlock,
-                              pre: ({ children }) => <>{children}</>,
-                              table: ({ children }) => (
-                                <div className="my-3.5 w-full overflow-x-auto rounded-2xl border border-slate-200/80 dark:border-[#2b2b2b] shadow-xs">
-                                  <table className="w-full min-w-[340px] text-xs sm:text-sm text-left border-collapse bg-white dark:bg-[#151515]">
+                        {/* Live Real-time Status Badge while streaming */}
+                        {m.isStreaming && (
+                          <div className="pb-1">
+                            <LiveStreamStatusBadge
+                              stage={m.streamStage}
+                              detail={m.streamStageDetail}
+                              queries={m.streamSearchQueries}
+                            />
+                          </div>
+                        )}
+
+                        {/* Collapsible Chain-of-Thought / Reasoning Process */}
+                        {m.thoughtProcess ? (
+                          <ThoughtProcessAccordion
+                            thought={m.thoughtProcess}
+                            isStreaming={m.isStreaming && !m.content}
+                          />
+                        ) : null}
+
+                        {m.isStreaming && !m.content && !m.thoughtProcess ? (
+                          <div className="flex items-center gap-2.5 py-1 text-slate-500 dark:text-[#888]">
+                            <span className="text-xs font-medium">{APP_NAME} sedang menyusun bimbingan...</span>
+                            <span className="flex gap-1 items-center">
+                              <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 dark:bg-indigo-400 animate-pulse" />
+                              <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 dark:bg-indigo-400 animate-pulse [animation-delay:200ms]" />
+                              <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 dark:bg-indigo-400 animate-pulse [animation-delay:400ms]" />
+                            </span>
+                          </div>
+                        ) : m.content ? (
+                          <div className="prose prose-sm dark:prose-invert max-w-none leading-relaxed break-words relative">
+                            <Markdown
+                              remarkPlugins={[remarkGfm]}
+                              components={{
+                                code: CodeBlock,
+                                pre: ({ children }) => <>{children}</>,
+                                table: ({ children }) => (
+                                  <div className="my-3.5 w-full overflow-x-auto rounded-2xl border border-slate-200/80 dark:border-[#2b2b2b] shadow-xs">
+                                    <table className="w-full min-w-[340px] text-xs sm:text-sm text-left border-collapse bg-white dark:bg-[#151515]">
+                                      {children}
+                                    </table>
+                                  </div>
+                                ),
+                                thead: ({ children }) => (
+                                  <thead className="bg-slate-100/90 dark:bg-[#1f1f1f] text-slate-900 dark:text-[#f2f2f2] font-bold border-b border-slate-200/80 dark:border-[#2b2b2b]">
                                     {children}
-                                  </table>
-                                </div>
-                              ),
-                              thead: ({ children }) => (
-                                <thead className="bg-slate-100/90 dark:bg-[#1f1f1f] text-slate-900 dark:text-[#f2f2f2] font-bold border-b border-slate-200/80 dark:border-[#2b2b2b]">
-                                  {children}
-                                </thead>
-                              ),
-                              tbody: ({ children }) => (
-                                <tbody className="divide-y divide-slate-100 dark:divide-[#242424]">
-                                  {children}
-                                </tbody>
-                              ),
-                              tr: ({ children }) => (
-                                <tr className="hover:bg-slate-50/75 dark:hover:bg-[#1a1a1a] transition-colors">
-                                  {children}
-                                </tr>
-                              ),
-                              th: ({ children }) => (
-                                <th className="px-3.5 py-2.5 font-bold text-slate-900 dark:text-white border-r border-slate-200/60 dark:border-[#2a2a2a] last:border-r-0">
-                                  {children}
-                                </th>
-                              ),
-                              td: ({ children }) => (
-                                <td className="px-3.5 py-2.5 text-slate-700 dark:text-[#ccc] border-r border-slate-100 dark:border-[#222] last:border-r-0 leading-relaxed">
-                                  {children}
-                                </td>
-                              ),
-                            }}
-                          >
-                            {formatMarkdownTables(m.content)}
-                          </Markdown>
-                        </div>
+                                  </thead>
+                                ),
+                                tbody: ({ children }) => (
+                                  <tbody className="divide-y divide-slate-100 dark:divide-[#242424]">
+                                    {children}
+                                  </tbody>
+                                ),
+                                tr: ({ children }) => (
+                                  <tr className="hover:bg-slate-50/75 dark:hover:bg-[#1a1a1a] transition-colors">
+                                    {children}
+                                  </tr>
+                                ),
+                                th: ({ children }) => (
+                                  <th className="px-3.5 py-2.5 font-bold text-slate-900 dark:text-white border-r border-slate-200/60 dark:border-[#2a2a2a] last:border-r-0">
+                                    {children}
+                                  </th>
+                                ),
+                                td: ({ children }) => (
+                                  <td className="px-3.5 py-2.5 text-slate-700 dark:text-[#ccc] border-r border-slate-100 dark:border-[#222] last:border-r-0 leading-relaxed">
+                                    {children}
+                                  </td>
+                                ),
+                              }}
+                            >
+                              {formatMarkdownTables(m.content)}
+                            </Markdown>
+                            {m.isStreaming && (
+                              <span className="inline-block w-1.5 h-4 ml-1 align-middle bg-indigo-600 dark:bg-indigo-400 rounded-xs animate-pulse" />
+                            )}
+                          </div>
+                        ) : null}
 
                         {/* Web Grounding Citations / Sumber Rujukan Terverifikasi */}
                         {m.groundingSources && m.groundingSources.length > 0 && (
@@ -2838,17 +3245,17 @@ export const AIChat: React.FC<AIChatProps> = ({
                             <div className="bg-white dark:bg-[#1a1a1a] p-3 rounded-xl border border-slate-200/70 dark:border-[#2b2b2b] space-y-1.5">
                               <div className="flex items-start justify-between gap-2">
                                 <p className="text-xs font-bold text-slate-900 dark:text-[#eee]">
-                                  {m.createdDocument.title}
+                                  {cleanLatexMath(m.createdDocument.title)}
                                 </p>
                                 {m.createdDocument.subject && (
                                   <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 dark:bg-[#252525] text-slate-700 dark:text-slate-300 shrink-0">
-                                    {m.createdDocument.subject}
+                                    {cleanLatexMath(m.createdDocument.subject)}
                                   </span>
                                 )}
                               </div>
                               {m.createdDocument.description && (
                                 <p className="text-xs text-slate-500 dark:text-[#888] leading-relaxed">
-                                  {m.createdDocument.description}
+                                  {cleanLatexMath(m.createdDocument.description)}
                                 </p>
                               )}
                             </div>
@@ -2878,7 +3285,7 @@ export const AIChat: React.FC<AIChatProps> = ({
                                       </span>
                                     </div>
                                     <p className="text-[11px] text-slate-500 dark:text-[#888] truncate max-w-[200px] sm:max-w-xs">
-                                      {m.createdSlides.title}
+                                      {cleanLatexMath(m.createdSlides.title)}
                                     </p>
                                   </div>
                                 </div>
@@ -2895,34 +3302,66 @@ export const AIChat: React.FC<AIChatProps> = ({
                               </div>
 
                               {/* Slide Preview Viewer Box */}
-                              <div className="relative rounded-xl border border-slate-200/80 dark:border-[#2d2d2d] bg-white dark:bg-[#181818] p-4 sm:p-5 shadow-xs min-h-[160px] flex flex-col justify-between overflow-hidden">
-                                <div className="space-y-2">
-                                  <div className="flex items-center justify-between border-b border-slate-100 dark:border-[#242424] pb-2">
-                                    <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white leading-snug">
-                                      {activeSlide.title}
-                                    </h4>
-                                    <span className="text-[11px] font-bold text-slate-400 dark:text-[#777] shrink-0 ml-2">
-                                      Slide {currentIdx + 1} / {slides.length}
+                              <div className="relative rounded-2xl border border-slate-200/90 dark:border-[#2d2d2d] bg-slate-50/50 dark:bg-[#141414] p-4 sm:p-5 shadow-xs flex flex-col justify-between overflow-hidden">
+                                <div className="space-y-3">
+                                  <div className="flex items-center justify-between border-b border-slate-200/70 dark:border-[#242424] pb-2.5">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 shrink-0">
+                                        Slide {currentIdx + 1}
+                                      </span>
+                                      <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white leading-snug truncate">
+                                        {cleanLatexMath(activeSlide.title)}
+                                      </h4>
+                                    </div>
+                                    <span className="text-[11px] font-medium text-slate-400 dark:text-[#777] shrink-0 ml-2">
+                                      {currentIdx + 1} dari {slides.length}
                                     </span>
                                   </div>
 
-                                  <ul className="space-y-1.5 pt-1">
-                                    {activeSlide.bullets.map((bullet, bIdx) => (
-                                      <li key={bIdx} className="flex items-start gap-2 text-xs text-slate-700 dark:text-[#ccc]">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0" />
-                                        <span className="leading-relaxed">{bullet}</span>
-                                      </li>
-                                    ))}
-                                  </ul>
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5">
+                                    {activeSlide.bullets.map((bullet, bIdx) => {
+                                      const parsed = parseBulletPoint(bullet);
+                                      return (
+                                        <div
+                                          key={bIdx}
+                                          className="p-2.5 rounded-xl bg-white dark:bg-[#1c1c1c] border border-slate-200/80 dark:border-[#2a2a2a] shadow-2xs flex items-start gap-2.5"
+                                        >
+                                          <span className="w-5 h-5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+                                            0{bIdx + 1}
+                                          </span>
+                                          <div className="min-w-0 text-xs">
+                                            {parsed.desc ? (
+                                              <>
+                                                <span className="font-semibold text-slate-900 dark:text-white block leading-snug">
+                                                  {parsed.title}
+                                                </span>
+                                                <span className="text-slate-600 dark:text-[#aaa] text-[11px] leading-relaxed block mt-0.5">
+                                                  {parsed.desc}
+                                                </span>
+                                              </>
+                                            ) : (
+                                              <span className="text-slate-700 dark:text-[#ccc] leading-relaxed block">
+                                                {parsed.title}
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
 
                                   {activeSlide.notes && (
-                                    <div className="mt-3 p-2 rounded-lg bg-slate-50 dark:bg-[#202020] border border-slate-100 dark:border-[#282828] text-[11px] text-slate-500 dark:text-[#888] italic">
-                                      💡 Catatan Presenter: {activeSlide.notes}
+                                    <div className="mt-2 p-2.5 rounded-xl bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/20 text-[11px] text-slate-600 dark:text-[#bbb] flex items-start gap-2">
+                                      <span className="shrink-0 text-xs">💡</span>
+                                      <div>
+                                        <strong className="text-amber-700 dark:text-amber-400 font-semibold mr-1">Catatan Pemateri:</strong>
+                                        <span className="italic">{cleanLatexMath(activeSlide.notes)}</span>
+                                      </div>
                                     </div>
                                   )}
                                 </div>
 
-                                <div className="flex items-center justify-between pt-3 mt-3 border-t border-slate-100 dark:border-[#242424]">
+                                <div className="flex items-center justify-between pt-3 mt-3 border-t border-slate-200/70 dark:border-[#242424]">
                                   <div className="flex items-center gap-1">
                                     {slides.map((_, dotIdx) => (
                                       <button
@@ -2942,7 +3381,7 @@ export const AIChat: React.FC<AIChatProps> = ({
                                     <button
                                       type="button"
                                       onClick={() => handlePrevSlide(m.id, slides.length)}
-                                      className="p-1 rounded-lg text-slate-500 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#252525] transition cursor-pointer"
+                                      className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-[#252525] transition cursor-pointer"
                                       title="Slide Sebelumnya"
                                     >
                                       <ChevronLeft className="w-4 h-4" />
@@ -2953,7 +3392,7 @@ export const AIChat: React.FC<AIChatProps> = ({
                                     <button
                                       type="button"
                                       onClick={() => handleNextSlide(m.id, slides.length)}
-                                      className="p-1 rounded-lg text-slate-500 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#252525] transition cursor-pointer"
+                                      className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-[#252525] transition cursor-pointer"
                                       title="Slide Berikutnya"
                                     >
                                       <ChevronRight className="w-4 h-4" />
@@ -2992,17 +3431,23 @@ export const AIChat: React.FC<AIChatProps> = ({
                                 >
                                   <Maximize2 className="w-3.5 h-3.5" />
                                 </button>
-                                <a
-                                  href={m.createdImage.url}
-                                  download={`ai_image_${Date.now()}.png`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    try {
+                                      const res = await fetch(m.createdImage!.url!);
+                                      const blob = await res.blob();
+                                      triggerFileDownload(blob, `ai_image_${Date.now()}.png`);
+                                    } catch {
+                                      window.open(m.createdImage!.url!, "_blank");
+                                    }
+                                  }}
                                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white bg-purple-600 hover:bg-purple-700 active:scale-95 shadow-xs transition-all cursor-pointer"
                                   title="Unduh Gambar PNG"
                                 >
                                   <Download className="w-3.5 h-3.5" />
                                   <span>Unduh Gambar</span>
-                                </a>
+                                </button>
                               </div>
                             </div>
 
@@ -3192,8 +3637,8 @@ export const AIChat: React.FC<AIChatProps> = ({
               );
             })}
 
-            {/* Loading Thinking Indicator */}
-            {isLoading && (
+            {/* Loading Thinking Indicator (only shown if not already rendering inline streaming placeholder) */}
+            {isLoading && !messages.some((m) => m.isStreaming) && (
               <div className="flex gap-3.5 justify-start">
                 <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0">
                   <Loader2 className="w-4 h-4 animate-spin" />

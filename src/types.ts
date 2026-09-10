@@ -132,6 +132,11 @@ export interface ChatMessage {
   taskId?: string;
   taskTitle?: string;
   isError?: boolean;
+  isStreaming?: boolean;
+  thoughtProcess?: string;
+  streamStage?: 'analyzing' | 'searching' | 'thinking' | 'answering';
+  streamStageDetail?: string;
+  streamSearchQueries?: string[];
   attachments?: ChatAttachment[];
   createdNote?: {
     id?: string;

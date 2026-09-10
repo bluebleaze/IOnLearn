@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { GoogleGenAI, Type } from "@google/genai";
 import { AIConfig } from "@/types";
+import { cleanLatexMath } from "@/lib/mathUtils";
+import { buildPollinationsImageUrl, enhanceImagePrompt } from "@/lib/imageUtils";
 const KNOWN_SUBJECTS = [
     "Fisika",
     "Matematika",
@@ -337,23 +339,37 @@ function extractFallbackActions(
         };
     }
 
-    // Check Presentation Slides intent: "slide", "presentasi", "ppt", "pptx", "powerpoint"
+    // Check Presentation Slides intent: "slide", "presentasi", "ppt", "pptx", "powerpoint", "bahan tayang", "tayangan", "deck"
     const wantsSlides =
         lowerUser.includes("slide") ||
         lowerUser.includes("presentasi") ||
         lowerUser.includes("ppt") ||
         lowerUser.includes("pptx") ||
-        lowerUser.includes("powerpoint");
+        lowerUser.includes("powerpoint") ||
+        lowerUser.includes("power point") ||
+        lowerUser.includes("bahan tayang") ||
+        lowerUser.includes("tayangan") ||
+        lowerUser.includes("deck");
 
     if (wantsSlides) {
-        const rawSections = replyText.split(/(?:^|\n)(?=#+\s*(?:Slide|\d+|Bagian|Topik))/i);
+        // Multi-strategy section splitter: Slide headings, numbered parts, or any level 1-3 headings
+        let rawSections = replyText.split(/(?:^|\n)(?=#+\s*(?:Slide|\d+|Bagian|Topik))/i);
+        if (rawSections.length <= 1) {
+            rawSections = replyText.split(/(?:^|\n)(?=#{1,3}\s+)/);
+        }
+        if (rawSections.length <= 1) {
+            rawSections = replyText.split(/(?:^|\n)(?=(?:\*\*Slide\s*\d+[:\*]*|\d+\.\s+\*\*))/i);
+        }
+
         const parsedSlides: { title: string; bullets: string[]; notes?: string }[] = [];
 
         for (const sec of rawSections) {
             const secLines = sec.trim().split("\n").map((l) => l.trim()).filter(Boolean);
             if (secLines.length === 0) continue;
 
-            const slideTitle = secLines[0].replace(/^[#\s*]+/, "").slice(0, 70);
+            const slideTitle = secLines[0].replace(/^[#\s*]+/, "").replace(/[*_`]/g, "").slice(0, 70);
+            if (!slideTitle || slideTitle.length < 3) continue;
+
             const bullets: string[] = [];
             let notes = "";
 
@@ -362,13 +378,19 @@ function extractFallbackActions(
                 if (l.toLowerCase().startsWith("notes:") || l.toLowerCase().startsWith("catatan:")) {
                     notes = l.replace(/^(notes|catatan):\s*/i, "");
                 } else if (/^[-*•\d\.]\s+/.test(l)) {
-                    bullets.push(l.replace(/^[-*•\d\.]\s+/, ""));
-                } else if (bullets.length < 5 && l.length > 5 && !l.startsWith("#")) {
-                    bullets.push(l);
+                    const b = l.replace(/^[-*•\d\.]+\s*/, "").replace(/[*_`]/g, "").trim();
+                    if (b.length > 3) bullets.push(b);
+                } else if (bullets.length < 5 && l.length > 10 && !l.startsWith("#")) {
+                    bullets.push(l.replace(/[*_`]/g, "").trim());
                 }
             }
 
-            if (slideTitle && (bullets.length > 0 || parsedSlides.length === 0)) {
+            if (bullets.length === 0) {
+                const sentences = secLines.slice(1).join(" ").split(/(?<=[.?!])\s+/).filter((s) => s.length > 10);
+                bullets.push(...sentences.slice(0, 4));
+            }
+
+            if (slideTitle && bullets.length > 0) {
                 parsedSlides.push({
                     title: slideTitle,
                     bullets: bullets.slice(0, 5),
@@ -377,34 +399,68 @@ function extractFallbackActions(
             }
         }
 
+        // Guaranteed fallback if replyText didn't contain explicit slide splits
+        if (parsedSlides.length === 0 && replyText.length > 30) {
+            const paragraphs = replyText.split(/\n\s*\n/).map((p) => p.trim()).filter((p) => p.length > 20);
+            const mainTitle = (taskContext?.title || "Materi Presentasi").slice(0, 60);
+            parsedSlides.push({
+                title: mainTitle,
+                bullets: [
+                    taskContext?.courseName ? `Mata Pelajaran: ${taskContext.courseName}` : "Ringkasan Materi Presentasi",
+                    "Disusun dengan IOnLearn Study Copilot",
+                ],
+                notes: "Slide pembuka materi presentasi.",
+            });
+
+            for (let i = 0; i < Math.min(paragraphs.length, 5); i++) {
+                const p = paragraphs[i];
+                const lines = p.split("\n").map((l) => l.trim()).filter(Boolean);
+                const pTitle = lines[0]?.replace(/^[#\s*]+/, "").slice(0, 50) || `Poin Pembahasan ${i + 1}`;
+                const pBullets = lines.slice(1).length > 0
+                    ? lines.slice(1).map((l) => l.replace(/^[-*•\d\.]+\s*/, "")).slice(0, 4)
+                    : p.split(". ").filter((s) => s.length > 8).slice(0, 4);
+
+                parsedSlides.push({
+                    title: pTitle,
+                    bullets: pBullets.length > 0 ? pBullets : [p.slice(0, 100)],
+                    notes: `Catatan materi slide ${i + 1}.`,
+                });
+            }
+        }
+
         if (parsedSlides.length > 0) {
+            const baseTitle = (taskContext?.title || parsedSlides[0]?.title || "Materi Presentasi").slice(0, 60);
             createdSlides = {
-                title: taskContext?.title || parsedSlides[0]?.title || "Materi Presentasi",
+                title: baseTitle,
                 theme: "indigo",
-                slides: parsedSlides.slice(0, 10),
-                fileName: `${(taskContext?.title || "presentasi").toLowerCase().replace(/[^a-z0-9]+/g, "_")}.pptx`,
+                slides: parsedSlides.slice(0, 8),
+                fileName: `${baseTitle.toLowerCase().replace(/[^a-z0-9]+/g, "_").slice(0, 50)}.pptx`,
                 subject: taskContext?.courseName,
             };
         }
     }
 
-    // Check Image intent: "gambarkan", "buatkan gambar", "ilustrasikan", "generate image", "lukiskan", "gambar"
+    // Check Image intent: "gambarkan", "buatkan gambar", "ilustrasikan", "generate image", "lukiskan", "gambar", "visualisasikan"
     const wantsImage =
         lowerUser.includes("gambarkan") ||
         lowerUser.includes("buatkan gambar") ||
         lowerUser.includes("bikin gambar") ||
         lowerUser.includes("ilustrasikan") ||
         lowerUser.includes("generate image") ||
-        lowerUser.includes("lukiskan");
+        lowerUser.includes("lukiskan") ||
+        lowerUser.includes("visualisasikan") ||
+        lowerUser.includes("buatkan ilustrasi") ||
+        (lowerUser.includes("diagram") && !wantsSlides);
 
     if (wantsImage) {
         const cleanPrompt = lastUserMessage
-            .replace(/^(tolong\s+)?(gambarkan|buatkan gambar|bikin gambar|ilustrasikan|generate image|lukiskan)\s+/i, "")
+            .replace(/^(tolong\s+)?(buatkan\s+|bikin\s+)?(gambar(kan)?|ilustrasi(kan)?|diagram|foto|lukis(kan)?|visualisasikan|generate image)\s*(tentang|mengenai|dari|untuk)?\s*/i, "")
             .trim();
 
-        if (cleanPrompt.length > 3) {
+        if (cleanPrompt.length > 2) {
+            const enhanced = enhanceImagePrompt(cleanPrompt);
             createdImage = {
-                prompt: cleanPrompt,
+                prompt: enhanced,
                 caption: cleanPrompt.slice(0, 60),
                 aspectRatio: "16:9",
             };
@@ -414,15 +470,347 @@ function extractFallbackActions(
     return { createdNote, createdTodo, createdDocument, createdSlides, createdImage };
 }
 
+/**
+ * Progressive streaming extractor for structured JSON output from Gemini (extracts thoughtProcess and reply)
+ */
+class StreamingJsonExtractor {
+    private buffer = "";
+    private isRawMode = false;
+    public thoughtText = "";
+    public replyText = "";
+    private activeField: "none" | "thoughtProcess" | "reply" = "none";
+    private thoughtDone = false;
+    private replyDone = false;
+
+    processChunk(chunk: string): { type: "thought" | "chunk"; delta: string }[] {
+        if (!chunk) return [];
+        const events: { type: "thought" | "chunk"; delta: string }[] = [];
+
+        if (this.isRawMode) {
+            this.replyText += chunk;
+            return [{ type: "chunk", delta: chunk }];
+        }
+
+        this.buffer += chunk;
+
+        while (true) {
+            if (this.activeField === "none") {
+                // If thoughtProcess has not finished and is present in buffer
+                if (!this.thoughtDone) {
+                    const matchThought = this.buffer.match(/"thoughtProcess"\s*:\s*"/);
+                    if (matchThought && matchThought.index !== undefined) {
+                        this.activeField = "thoughtProcess";
+                        const startIndex = matchThought.index + matchThought[0].length;
+                        this.buffer = this.buffer.slice(startIndex);
+                        continue;
+                    }
+                }
+
+                // If reply has not finished and is present in buffer
+                if (!this.replyDone) {
+                    const matchReply = this.buffer.match(/"reply"\s*:\s*"/);
+                    if (matchReply && matchReply.index !== undefined) {
+                        this.activeField = "reply";
+                        const startIndex = matchReply.index + matchReply[0].length;
+                        this.buffer = this.buffer.slice(startIndex);
+                        continue;
+                    }
+                }
+
+                // Fallback to raw mode if buffer is large and does not start as JSON object
+                if (this.buffer.length > 80 && !this.buffer.trim().startsWith("{")) {
+                    this.isRawMode = true;
+                    const text = this.buffer;
+                    this.buffer = "";
+                    this.replyText += text;
+                    return [{ type: "chunk", delta: text }];
+                }
+
+                break;
+            }
+
+            if (this.activeField === "thoughtProcess" || this.activeField === "reply") {
+                let delta = "";
+                let i = 0;
+                let fieldClosed = false;
+
+                while (i < this.buffer.length) {
+                    const char = this.buffer[i];
+                    if (char === "\\") {
+                        if (i + 1 < this.buffer.length) {
+                            const next = this.buffer[i + 1];
+                            if (next === "n") delta += "\n";
+                            else if (next === "t") delta += "\t";
+                            else if (next === '"') delta += '"';
+                            else if (next === "\\") delta += "\\";
+                            else if (next === "/") delta += "/";
+                            else if (next === "r") delta += "\r";
+                            else if (next === "u") {
+                                if (i + 5 < this.buffer.length) {
+                                    const hex = this.buffer.slice(i + 2, i + 6);
+                                    delta += String.fromCharCode(parseInt(hex, 16));
+                                    i += 6;
+                                    continue;
+                                } else {
+                                    break;
+                                }
+                            } else {
+                                delta += next;
+                            }
+                            i += 2;
+                            continue;
+                        } else {
+                            break;
+                        }
+                    } else if (char === '"') {
+                        fieldClosed = true;
+                        i++;
+                        break;
+                    } else {
+                        delta += char;
+                        i++;
+                    }
+                }
+
+                this.buffer = this.buffer.slice(i);
+
+                if (delta) {
+                    if (this.activeField === "thoughtProcess") {
+                        this.thoughtText += delta;
+                        events.push({ type: "thought", delta });
+                    } else {
+                        this.replyText += delta;
+                        events.push({ type: "chunk", delta });
+                    }
+                }
+
+                if (fieldClosed) {
+                    if (this.activeField === "thoughtProcess") {
+                        this.thoughtDone = true;
+                    } else {
+                        this.replyDone = true;
+                    }
+                    this.activeField = "none";
+                    continue;
+                }
+
+                break;
+            }
+        }
+
+        return events;
+    }
+}
+
+/**
+ * Shared post-processing pipeline for AI chat responses
+ */
+function processAiChatResponse(
+    responseText: string,
+    messages: any[],
+    taskContext: any,
+    groundingSources: any[] = [],
+    groundingQueries: any[] = []
+) {
+    let resultData: any = {};
+    try {
+        const cleaned = responseText.replace(/^```json\s*/i, "").replace(/\s*```$/i, "").trim();
+        resultData = JSON.parse(cleaned);
+    } catch {
+        const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+            try {
+                resultData = JSON.parse(jsonMatch[0]);
+            } catch {
+                resultData = { reply: responseText, suggestedPrompts: [] };
+            }
+        } else {
+            resultData = { reply: responseText, suggestedPrompts: [] };
+        }
+    }
+
+    const lastUserMsg = [...messages].reverse().find((m: any) => m.role === "user")?.content || "";
+    const fallback = extractFallbackActions(lastUserMsg, resultData.reply || responseText, taskContext, messages);
+
+    const finalNote = sanitizeNoteOutput(resultData.createdNote, resultData.reply || responseText, taskContext)
+        || fallback.createdNote
+        || undefined;
+    const finalTodo = resultData.createdTodo || (resultData.createdTodos && resultData.createdTodos.length > 0 ? undefined : fallback.createdTodo) || undefined;
+    const finalTodos = resultData.createdTodos || undefined;
+
+    const geminiDoc = resultData.createdDocument;
+    let isGeminiDocValid = Boolean(geminiDoc && geminiDoc.title && geminiDoc.content && !isConversationalFiller(geminiDoc.content));
+
+    if (geminiDoc && geminiDoc.title) {
+        if (!geminiDoc.content || isConversationalFiller(geminiDoc.content)) {
+            const prevAssistantMsgs = messages.filter(
+                (m: any) => m.role === "assistant" && m.content && !isConversationalFiller(m.content) && m.content.length > 200
+            );
+            if (resultData.reply && !isConversationalFiller(resultData.reply) && resultData.reply.length > 150) {
+                geminiDoc.content = resultData.reply;
+                isGeminiDocValid = true;
+            } else if (prevAssistantMsgs.length > 0) {
+                geminiDoc.content = prevAssistantMsgs[prevAssistantMsgs.length - 1].content;
+                isGeminiDocValid = true;
+            } else if (fallback.createdDocument && !isConversationalFiller(fallback.createdDocument.content)) {
+                geminiDoc.content = fallback.createdDocument.content;
+                isGeminiDocValid = true;
+            } else if (resultData.reply && resultData.reply.trim().length > 30) {
+                geminiDoc.content = `# ${geminiDoc.title}\n\n${resultData.reply}`;
+                isGeminiDocValid = true;
+            }
+        } else if (isGeminiDocValid && isConversationalFiller(resultData.reply)) {
+            resultData.reply = geminiDoc.content;
+        }
+    }
+
+    const rawDocument = (isGeminiDocValid ? geminiDoc : fallback.createdDocument) || undefined;
+    if (rawDocument) {
+        const headingMatch = rawDocument.content?.split("\n").find((l: string) => l.trim().startsWith("#"));
+        if (headingMatch) {
+            const headingTitle = headingMatch.replace(/^[#\s*]+/, "").trim().slice(0, 80);
+            if (headingTitle && headingTitle.length > 3) {
+                rawDocument.title = headingTitle;
+            }
+        } else if (taskContext?.title) {
+            rawDocument.title = taskContext.title;
+        }
+    }
+
+    const geminiSlides = resultData.createdSlides;
+    if (geminiSlides && geminiSlides.title) {
+        if (geminiSlides.title.length > 80) {
+            geminiSlides.title = geminiSlides.title.split(/[:\n]/)[0].slice(0, 70);
+        }
+        if (!Array.isArray(geminiSlides.slides) || geminiSlides.slides.length === 0) {
+            if (fallback.createdSlides && Array.isArray(fallback.createdSlides.slides) && fallback.createdSlides.slides.length > 0) {
+                geminiSlides.slides = fallback.createdSlides.slides;
+            }
+        }
+    }
+
+    const isGeminiSlidesValid = geminiSlides && Array.isArray(geminiSlides.slides) && geminiSlides.slides.length > 0;
+    const rawSlides = (isGeminiSlidesValid ? geminiSlides : fallback.createdSlides) || undefined;
+
+    const geminiImage = resultData.createdImage;
+    const isGeminiImageValid = geminiImage && geminiImage.prompt && geminiImage.prompt.trim().length > 0;
+    const rawImage = (isGeminiImageValid ? geminiImage : fallback.createdImage) || undefined;
+
+    const lowerMsg = lastUserMsg.toLowerCase();
+    const userWantsSlides =
+        lowerMsg.includes("slide") ||
+        lowerMsg.includes("presentasi") ||
+        lowerMsg.includes("ppt") ||
+        lowerMsg.includes("pptx") ||
+        lowerMsg.includes("powerpoint") ||
+        lowerMsg.includes("power point") ||
+        lowerMsg.includes("bahan tayang") ||
+        lowerMsg.includes("tayangan") ||
+        lowerMsg.includes("deck") ||
+        lowerMsg.includes("slides");
+
+    const userWantsDocument =
+        (lowerMsg.includes("word") ||
+        lowerMsg.includes("docx") ||
+        lowerMsg.includes("pdf") ||
+        lowerMsg.includes("makalah") ||
+        lowerMsg.includes("excel") ||
+        lowerMsg.includes("xlsx") ||
+        lowerMsg.includes("spreadsheet") ||
+        lowerMsg.includes("spredsheet") ||
+        lowerMsg.includes("xlxs") ||
+        (lowerMsg.includes("dokumen") && !userWantsSlides)) &&
+        !userWantsSlides;
+
+    const userWantsImage =
+        lowerMsg.includes("gambarkan") ||
+        lowerMsg.includes("buatkan gambar") ||
+        lowerMsg.includes("bikin gambar") ||
+        lowerMsg.includes("ilustrasikan") ||
+        lowerMsg.includes("generate image") ||
+        lowerMsg.includes("lukiskan") ||
+        lowerMsg.includes("visualisasikan") ||
+        lowerMsg.includes("buatkan ilustrasi") ||
+        (lowerMsg.includes("diagram") && !userWantsSlides && !userWantsDocument);
+
+    const userWantsAnyCreation = userWantsDocument || userWantsSlides || userWantsImage;
+
+    const finalDocument = (rawDocument && rawDocument.title && (rawDocument.content || rawDocument.title))
+        ? (userWantsAnyCreation && !userWantsDocument ? undefined : rawDocument)
+        : undefined;
+
+    const finalSlides = (rawSlides && Array.isArray(rawSlides.slides) && rawSlides.slides.length > 0)
+        ? (userWantsAnyCreation && !userWantsSlides ? undefined : rawSlides)
+        : undefined;
+
+    const finalImage = (rawImage && rawImage.prompt)
+        ? (userWantsAnyCreation && !userWantsImage ? undefined : rawImage)
+        : undefined;
+
+    if (finalImage && !finalImage.url && finalImage.prompt) {
+        finalImage.url = buildPollinationsImageUrl(finalImage.prompt, finalImage.aspectRatio);
+    }
+
+    if (finalDocument) {
+        if (finalDocument.title) finalDocument.title = cleanLatexMath(finalDocument.title);
+        if (finalDocument.subject) finalDocument.subject = cleanLatexMath(finalDocument.subject);
+        if (finalDocument.content) finalDocument.content = cleanLatexMath(finalDocument.content);
+        if (finalDocument.description) finalDocument.description = cleanLatexMath(finalDocument.description);
+    }
+
+    if (finalSlides) {
+        if (finalSlides.title) {
+            finalSlides.title = cleanLatexMath(finalSlides.title.slice(0, 80));
+        }
+        if (finalSlides.fileName) {
+            const baseName = (finalSlides.title || "presentasi").toLowerCase().replace(/[^a-z0-9]+/g, "_").slice(0, 50);
+            finalSlides.fileName = `${baseName}.pptx`;
+        }
+        if (finalSlides.subject) finalSlides.subject = cleanLatexMath(finalSlides.subject);
+        if (Array.isArray(finalSlides.slides)) {
+            finalSlides.slides = finalSlides.slides.map((s: any) => ({
+                ...s,
+                title: cleanLatexMath((s.title || "Slide").slice(0, 70)),
+                bullets: Array.isArray(s.bullets)
+                    ? s.bullets.map((b: string) => cleanLatexMath(b)).filter((b: string) => b.trim().length > 0)
+                    : ["Poin bahasan materi."],
+                notes: s.notes ? cleanLatexMath(s.notes) : undefined,
+            }));
+        }
+    }
+
+    const rawReplyText =
+        resultData.reply ||
+        (typeof responseText === "string" && !responseText.startsWith("{") ? responseText : "Tugas berhasil diproses.");
+    const cleanReply = cleanLatexMath(rawReplyText);
+
+    return {
+        reply: cleanReply,
+        thoughtProcess: typeof resultData.thoughtProcess === "string" ? cleanLatexMath(resultData.thoughtProcess.trim()) : undefined,
+        suggestedPrompts: Array.isArray(resultData.suggestedPrompts) ? resultData.suggestedPrompts : [],
+        createdNote: finalNote,
+        createdTodo: finalTodo,
+        createdTodos: finalTodos,
+        createdDocument: finalDocument,
+        createdSlides: finalSlides,
+        createdImage: finalImage,
+        groundingSources: groundingSources.length > 0 ? groundingSources : undefined,
+        groundingQueries: groundingQueries.length > 0 ? groundingQueries : undefined,
+        timestamp: Date.now(),
+    };
+}
+
 export async function POST(req: Request) {
     try {
-        const { messages, taskContext, userPreferences, aiConfig, studyMode } =
-            (await req.json()) as {
+        const reqJson = await req.json();
+        const { messages, taskContext, userPreferences, aiConfig, studyMode, stream: wantStream = true } =
+            reqJson as {
                 messages: { role: string; content: string }[];
                 taskContext?: any;
                 userPreferences?: any;
                 aiConfig?: AIConfig | null;
                 studyMode?: "socratic" | "direct" | "quizzer";
+                stream?: boolean;
             };
 
         if (!Array.isArray(messages) || messages.length === 0) {
@@ -490,6 +878,23 @@ ${personalizationInstruction}
    - Anda dilengkapi Google Search grounding untuk memvalidasi fakta mutakhir, data statistik resmi, literatur akademik, dan peristiwa riil.
    - Selalu manfaatkan pencarian web agar isi materi, dokumen, slide, dan data tabel tidak pernah berhalusinasi atau usang.
    - Jika terdapat data faktual penting, sebutkan konteks tahun atau rujukan ilmiahnya secara alami di dalam narasi.
+4. **Format Notasi Matematika, Statistika, & Sains Bersih & Terbaca**:
+   - DILARANG KERAS menggunakan format raw LaTeX bermasalah seperti \`$\\bar{x} = \\frac{\\sum{i=1}^{n} xi}{n}$$\` dengan tanda dollar ($), tanda dollar ganda ($$), atau kurung kurawal ganda yang tidak rapi.
+   - Selalu tulis rumus matematika, statistika, fisika, dan sains menggunakan simbol Unicode standar yang bersih, elegan, dan langsung terbaca sempurna di dokumen Word (.docx), PDF, maupun di tampilan chat:
+     • Gunakan \`x̄ = (Σ(i=1..n) xᵢ) / n\` atau \`x̄ = (x₁ + x₂ + ... + xₙ) / n\`.
+     • Gunakan simbol standar: \`Σ\` (sigma/penjumlahan), \`Π\` (produk), \`√\` (akar), \`±\` (plus-minus), \`×\` (kali), \`÷\` (bagi), \`≈\` (mendekati), \`≠\` (tidak sama dengan), \`≤\`, \`≥\`, \`∞\` (tak hingga).
+     • Gunakan subscript dan superscript Unicode untuk variabel: \`x₁\`, \`x₂\`, \`xᵢ\`, \`yᵢ\`, \`x²\`, \`r²\`, \`n\`.
+     • Tuliskan keterangan variabel dalam daftar yang rapi:
+       • \`x̄\` = Nilai rerata (mean)
+       • \`xᵢ\` = Nilai data pengujian ke-i
+       • \`n\` = Jumlah total sampel atau iterasi
+5. **Protokol Anti-Halusinasi & Chain-of-Thought (Penalaran Kritis)**:
+   - Sebelum menuliskan teks jawaban akhir pada \`reply\`, Anda WAJIB memetakan penalaran, memverifikasi fakta, dan menguji rumus di dalam field \`thoughtProcess\`:
+     • Uraikan inti persoalan dan kebutuhan spesifik pengguna.
+     • Periksa kebenaran formula, substitusi angka, dan langkah kalkulasi matematika/sains secara teliti.
+     • Jika menggunakan Google Search grounding, pastikan kesimpulan Anda bersumber langsung dari fakta yang ditemukan di web rujukan.
+   - DILARANG KERAS MENGARANG FAKTA, ANGKA STATISTIK FIKTIF, TANGGAL BOHONGAN, RUMUS PALSU, ATAU KUTIPAN ILMIAH KARANGAN (Zero Hallucination Policy).
+   - Jika ada hal yang tidak dapat dipastikan secara ilmiah atau di luar data yang tersedia, nyatakan secara jujur dan transparan bahwa data tersebut membutuhkan konfirmasi literatur rujukan lanjutan, jangan mereka-reka jawaban.
 
 ---
 
@@ -523,24 +928,27 @@ ${personalizationInstruction}
      * PADA FIELD \`reply\`: Tuliskan ringkasan materi atau ulasan eksekutif dari isi dokumen tersebut, JANGAN hanya 1 baris kalimat template!
 
 2. 📊 **SLIDE PRESENTASI PROFESIONAL POWERPOINT (.PPTX)**:
-   *Pemicu: Ketika pengguna meminta slide, presentasi, ppt, powerpoint, atau deck presentasi.*
+   *Pemicu: Ketika pengguna meminta slide, presentasi, ppt, pptx, powerpoint, bahan tayang, atau deck presentasi.*
+   🚨 ATURAN MUTLAK PPTX: Jika pengguna meminta format PPTX/presentasi/slide, Anda WAJIB mengisi field \`createdSlides\` secara lengkap dengan array \`slides\` (minimal 4 hingga 8 slide).
    Isi field \`createdSlides\` dengan objek:
-   - \`title\`: Judul utama topik presentasi.
-   - \`theme\`: \`"indigo"\` (umum/akademik), \`"emerald"\` (lingkungan/kesehatan), \`"dark"\` (teknologi/koding), atau \`"amber"\` (kreatif/sejarah).
-   - \`fileName\`: Nama file rapi berakhiran \`.pptx\` (contoh: \`presentasi_revolusi_industri.pptx\`).
-   - \`slides\`: Daftar slide (antara 4 sampai 8 slide terstruktur):
+   - \`title\`: Judul utama topik presentasi (RINGKAS & PADAT, MAKSIMAL 8-10 KATA, DILARANG MENGULANG KATA BERKALI-KALI).
+   - \`theme\`: \`"indigo"\` (umum/akademik), \`"emerald"\` (lingkungan/kesehatan), \`"dark"\` (teknologi/koding), \`"amber"\` (kreatif/sejarah), atau \`"slate"\` (formal).
+   - \`fileName\`: Nama file rapi berakhiran \`.pptx\` (contoh: \`dampak_revolusi_industri.pptx\`).
+   - \`subject\`: Mata pelajaran atau topik relevan.
+   - \`slides\`: Array berisi 4 sampai 8 slide terstruktur:
      * Slide 1: Judul Utama & Sub-judul Pembuka.
-     * Slide 2: Latar Belakang / Urgensi Topik.
-     * Slide 3-N: Poin Inti Materi (buat 3-5 bullet point terukur dan padat per slide, jangan berupa paragraf panjang).
-     * Slide Terakhir: Rangkuman Kunci & Call-to-Action / Kesimpulan.
-     * \`notes\`: Catatan pemateri (*speaker notes*) yang memuat kalimat panduan berbicara untuk presenter di atas panggung.
+     * Slide 2: Latar Belakang & Urgensi Topik.
+     * Slide 3-N: Pembahasan Inti (buat 3-4 poin bullet informatif). PENTING: Setiap poin bullet WAJIB diawali dengan judul poin tebal (contoh: "**Judul Poin**: Penjelasan ringkas dan padat 8-20 kata...") agar otomatis tersusun menjadi kartu visual modern.
+     * Slide Terakhir: Rangkuman Kunci & Kesimpulan / Call-to-Action (gunakan juga format "**Poin Kunci**: Ringkasan...").
+     * \`notes\`: Catatan pemateri (*speaker notes*) berisi arahan narasi presenter saat membawakan slide tersebut.
 
 3. 🎨 **GENERATOR GAMBAR & DIAGRAM VISUAL AI (\`createdImage\`)**:
-   *Pemicu: Ketika pengguna meminta ilustrasi, gambar visual, gambarkan konsep, atau diagram.*
-   Isi field \`createdImage\` dengan objek:
-   - \`prompt\`: Prompt berbahasa Inggris yang sangat deskriptif, artistik, dan spesifik untuk model AI Image (contoh: *"High-resolution educational 3D render of human respiratory system with labeled lungs and alveoli, soft studio volumetric lighting, clean medical infographic style, sharp focus, 8k resolution"*).
-   - \`caption\`: Keterangan gambar dalam bahasa Indonesia yang ringkas dan informatif.
-   - \`aspectRatio\`: \`"16:9"\` (default lanskap/presentasi), \`"1:1"\` (ikon/kotak), atau \`"4:3"\` (diagram standar).
+   *Pemicu: Ketika pengguna meminta ilustrasi, gambar visual, gambarkan konsep, lukiskan, atau diagram.*
+   🚨 ATURAN MUTLAK PROMPT GAMBAR: Field \`prompt\` WAJIB ditulis dalam bahasa Inggris yang SANGAT KAYA DETAIL, VISUAL, dan SPESIFIK (minimal 15-30 kata) untuk model generator FLUX.1.
+   Sertakan kata kunci visual: gaya visual (3D infographic / cinematic photorealistic / isometric render), pencahayaan (studio lighting, volumetric glow), komposisi, resolusi (8k resolution, octane render, sharp focus, crisp details).
+   - \`prompt\`: Detailed descriptive English prompt (contoh: *"Crisp 3D educational infographic of photosynthesis process inside a green leaf cell, labeled chloroplasts, sunlight rays, water and carbon dioxide input, glucose and oxygen output, cinematic studio volumetric lighting, octane render, 8k resolution, award-winning scientific illustration"*).
+   - \`caption\`: Keterangan gambar ringkas dan informatif dalam bahasa Indonesia.
+   - \`aspectRatio\`: \`"16:9"\` (default lanskap), \`"1:1"\` (persegi), atau \`"4:3"\` (diagram standar).
 
 4. 📌 **CATATAN MATERI BARU (\`createdNote\`)**:
    *Pemicu: Ketika pengguna meminta "simpan ke catatan", "catatkan materi ini", atau "buat catatan rangkuman".*
@@ -582,7 +990,7 @@ ${personalizationInstruction}
                     role: "system",
                     content:
                         systemInstruction +
-                        '\n\nKEMBALIKAN OUTPUT HARUS HANYA DALAM BENTUK JSON OBJECT YANG VALID SESUAI SKEMA BERIKUT:\n{\n  "reply": "Jawaban Markdown",\n  "suggestedPrompts": ["Pertanyaan 1", "Pertanyaan 2"],\n  "createdNote": { "title": "Judul Singkat", "content": "Isi Markdown", "subject": "Nama Mata Kuliah", "tags": ["Label"] },\n  "createdTodo": { "title": "Judul Rencana", "description": "Deskripsi", "priority": "medium", "category": "Materi", "subtasks": [{ "title": "Langkah 1" }] },\n  "createdDocument": { "type": "docx" | "pdf", "title": "Judul Dokumen", "content": "Isi Markdown", "fileName": "dokumen.docx" },\n  "createdSlides": { "title": "Judul Presentasi", "theme": "indigo", "slides": [{ "title": "Slide 1", "bullets": ["Poin 1"], "notes": "Catatan" }], "fileName": "presentasi.pptx" },\n  "createdImage": { "prompt": "English detailed prompt", "caption": "Keterangan Indonesia", "aspectRatio": "16:9" }\n}',
+                        '\n\nKEMBALIKAN OUTPUT HARUS HANYA DALAM BENTUK JSON OBJECT YANG VALID SESUAI SKEMA BERIKUT:\n{\n  "thoughtProcess": "Penalaran kritis, verifikasi keabsahan data/rumus, langkah kalkulasi step-by-step, dan evaluasi anti-halusinasi sebelum menulis jawaban",\n  "reply": "Jawaban Markdown",\n  "suggestedPrompts": ["Pertanyaan 1", "Pertanyaan 2"],\n  "createdNote": { "title": "Judul Singkat", "content": "Isi Markdown", "subject": "Nama Mata Kuliah", "tags": ["Label"] },\n  "createdTodo": { "title": "Judul Rencana", "description": "Deskripsi", "priority": "medium", "category": "Materi", "subtasks": [{ "title": "Langkah 1" }] },\n  "createdDocument": { "type": "docx" | "pdf", "title": "Judul Dokumen", "content": "Isi Markdown", "fileName": "dokumen.docx" },\n  "createdSlides": { "title": "Judul Presentasi", "theme": "indigo", "slides": [{ "title": "Slide 1", "bullets": ["Poin 1"], "notes": "Catatan" }], "fileName": "presentasi.pptx" },\n  "createdImage": { "prompt": "English detailed prompt", "caption": "Keterangan Indonesia", "aspectRatio": "16:9" }\n}',
                 },
                 ...messages.map((m: any) => {
                     if (m.attachments && Array.isArray(m.attachments) && m.attachments.length > 0) {
@@ -703,14 +1111,19 @@ TUGAS ANDA:
                 },
             );
 
-            // Build Gemini config with structured JSON output
+            // Build Gemini config with structured JSON output and low temperature for zero hallucination
             const generationConfig: any = {
                 systemInstruction,
-                temperature: 0.7,
+                temperature: 0.3,
                 responseMimeType: "application/json",
                 responseSchema: {
                     type: Type.OBJECT,
                     properties: {
+                        thoughtProcess: {
+                            type: Type.STRING,
+                            description:
+                                "Proses berpikir kritis, verifikasi fakta/rumus sains matematika, perhitungan langkah-demi-langkah, dan evaluasi anti-halusinasi sebelum menuliskan jawaban utama (Chain of Thought). Tulis secara terstruktur, analitis, dan ringkas.",
+                        },
                         reply: {
                             type: Type.STRING,
                             description:
@@ -769,39 +1182,198 @@ TUGAS ANDA:
                         },
                         createdSlides: {
                             type: Type.OBJECT,
-                            description: "HANYA isi jika pengguna SECARA EKSPLISIT meminta presentasi/slide/ppt/pptx/powerpoint. JANGAN isi jika pengguna minta dokumen word/pdf atau penjelasan biasa.",
+                            description: "HANYA isi jika pengguna SECARA EKSPLISIT meminta presentasi/slide/ppt/pptx/powerpoint/bahan tayang/deck. JANGAN isi jika pengguna minta dokumen word/pdf atau penjelasan biasa.",
                             properties: {
-                                title: { type: Type.STRING, description: "Judul utama presentasi" },
+                                title: { type: Type.STRING, description: "Judul utama presentasi ringkas dan padat (maksimal 8-10 kata)" },
                                 theme: { type: Type.STRING, description: "Tema warna: indigo, dark, emerald, amber, atau slate" },
-                                fileName: { type: Type.STRING, description: "Nama file dengan ekstensi .pptx" },
+                                fileName: { type: Type.STRING, description: "Nama file dengan ekstensi .pptx (contoh: presentasi_materi.pptx)" },
                                 subject: { type: Type.STRING, description: "Mata kuliah atau topik" },
                                 slides: {
                                     type: Type.ARRAY,
-                                    description: "Daftar slide materi",
+                                    description: "Daftar 4-8 slide materi terstruktur",
                                     items: {
                                         type: Type.OBJECT,
                                         properties: {
-                                            title: { type: Type.STRING, description: "Judul slide" },
-                                            bullets: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Poin-poin bullet materi" },
-                                            notes: { type: Type.STRING, description: "Catatan presenter" },
+                                            title: { type: Type.STRING, description: "Judul slide (maks 8 kata)" },
+                                            bullets: { type: Type.ARRAY, items: { type: Type.STRING }, description: "3-5 poin bullet materi informatif" },
+                                            notes: { type: Type.STRING, description: "Catatan narasi presenter" },
                                         },
+                                        required: ["title", "bullets"],
                                     },
                                 },
                             },
+                            required: ["title", "slides", "fileName"],
                         },
                         createdImage: {
                             type: Type.OBJECT,
                             description: "HANYA isi jika pengguna SECARA EKSPLISIT meminta gambar/ilustrasi/diagram/generate image. JANGAN isi jika pengguna minta dokumen, slide, atau penjelasan biasa.",
                             properties: {
-                                prompt: { type: Type.STRING, description: "Prompt berbahasa Inggris yang jelas dan deskriptif untuk generator gambar" },
+                                prompt: { type: Type.STRING, description: "Prompt bahasa Inggris sangat kaya visual, detail, dan deskriptif (minimal 15-30 kata) untuk FLUX image generator" },
                                 caption: { type: Type.STRING, description: "Keterangan gambar dalam bahasa Indonesia" },
                                 aspectRatio: { type: Type.STRING, description: "Rasio aspek: 16:9, 1:1, atau 4:3" },
                             },
+                            required: ["prompt", "caption"],
                         },
                     },
                     required: ["reply", "suggestedPrompts"],
                 },
             };
+
+            if (wantStream) {
+                const encoder = new TextEncoder();
+                const stream = new ReadableStream({
+                    async start(controller) {
+                        try {
+                            // Immediately signal analyzing stage
+                            controller.enqueue(
+                                encoder.encode(`data: ${JSON.stringify({
+                                    type: "status",
+                                    stage: "analyzing",
+                                    detail: "Menganalisis pertanyaan & konteks materi..."
+                                })}\n\n`)
+                            );
+
+                            let responseStream: any;
+                            try {
+                                responseStream = await ai.models.generateContentStream({
+                                    model: modelName,
+                                    contents,
+                                    config: {
+                                        ...generationConfig,
+                                        tools: [{ googleSearch: {} }],
+                                    },
+                                });
+                            } catch (groundingError: any) {
+                                console.warn("Grounding stream failed, retrying without grounding:", groundingError.message);
+                                responseStream = await ai.models.generateContentStream({
+                                    model: modelName,
+                                    contents,
+                                    config: generationConfig,
+                                });
+                            }
+
+                            let fullResponseText = "";
+                            const extractor = new StreamingJsonExtractor();
+                            const collectedGroundingSources: any[] = [];
+                            const collectedGroundingQueries: any[] = [];
+                            let hasEmittedThinkingStatus = false;
+                            let hasEmittedAnsweringStatus = false;
+
+                            for await (const chunk of responseStream) {
+                                const chunkText = chunk.text || "";
+                                fullResponseText += chunkText;
+
+                                try {
+                                    const metadata = chunk.candidates?.[0]?.groundingMetadata;
+                                    if (metadata) {
+                                        if (metadata.webSearchQueries && Array.isArray(metadata.webSearchQueries) && collectedGroundingQueries.length === 0) {
+                                            const queries = metadata.webSearchQueries.filter(Boolean).slice(0, 3);
+                                            if (queries.length > 0) {
+                                                collectedGroundingQueries.push(...queries);
+                                                controller.enqueue(
+                                                    encoder.encode(`data: ${JSON.stringify({
+                                                        type: "status",
+                                                        stage: "searching",
+                                                        detail: "Mencari referensi & fakta terkini di web...",
+                                                        queries
+                                                    })}\n\n`)
+                                                );
+                                            }
+                                        }
+                                        if (metadata.groundingChunks && Array.isArray(metadata.groundingChunks) && collectedGroundingSources.length === 0) {
+                                            const sources = metadata.groundingChunks
+                                                .filter((c: any) => c?.web?.uri && c?.web?.title)
+                                                .map((c: any) => ({
+                                                    title: c.web.title,
+                                                    url: c.web.uri,
+                                                }))
+                                                .slice(0, 5);
+                                            if (sources.length > 0) {
+                                                collectedGroundingSources.push(...sources);
+                                                controller.enqueue(
+                                                    encoder.encode(`data: ${JSON.stringify({
+                                                        type: "status",
+                                                        stage: "analyzing",
+                                                        detail: `Mengevaluasi ${sources.length} sumber rujukan terverifikasi...`
+                                                    })}\n\n`)
+                                                );
+                                                controller.enqueue(
+                                                    encoder.encode(`data: ${JSON.stringify({ type: "grounding", sources })}\n\n`)
+                                                );
+                                            }
+                                        }
+                                    }
+                                } catch {}
+
+                                const events = extractor.processChunk(chunkText);
+                                for (const ev of events) {
+                                    if (ev.type === "thought" && ev.delta) {
+                                        if (!hasEmittedThinkingStatus) {
+                                            hasEmittedThinkingStatus = true;
+                                            controller.enqueue(
+                                                encoder.encode(`data: ${JSON.stringify({
+                                                    type: "status",
+                                                    stage: "thinking",
+                                                    detail: "Memverifikasi data, menghitung, & merumuskan analisis..."
+                                                })}\n\n`)
+                                            );
+                                        }
+                                        controller.enqueue(
+                                            encoder.encode(`data: ${JSON.stringify({ type: "thought", delta: ev.delta })}\n\n`)
+                                        );
+                                    } else if (ev.type === "chunk" && ev.delta) {
+                                        if (!hasEmittedAnsweringStatus) {
+                                            hasEmittedAnsweringStatus = true;
+                                            controller.enqueue(
+                                                encoder.encode(`data: ${JSON.stringify({
+                                                    type: "status",
+                                                    stage: "answering",
+                                                    detail: "Menyusun jawaban terstruktur..."
+                                                })}\n\n`)
+                                            );
+                                        }
+                                        controller.enqueue(
+                                            encoder.encode(`data: ${JSON.stringify({ type: "chunk", delta: ev.delta })}\n\n`)
+                                        );
+                                    }
+                                }
+                            }
+
+                            const finalResult = processAiChatResponse(
+                                fullResponseText,
+                                messages,
+                                taskContext,
+                                collectedGroundingSources,
+                                collectedGroundingQueries
+                            );
+
+                            if (!finalResult.thoughtProcess && extractor.thoughtText) {
+                                finalResult.thoughtProcess = cleanLatexMath(extractor.thoughtText.trim());
+                            }
+
+                            controller.enqueue(
+                                encoder.encode(`data: ${JSON.stringify({ type: "done", ...finalResult })}\n\n`)
+                            );
+                            controller.close();
+                        } catch (streamErr: any) {
+                            console.error("Stream generation error:", streamErr);
+                            controller.enqueue(
+                                encoder.encode(`data: ${JSON.stringify({ type: "error", error: streamErr.message || "Gagal memproses streaming AI." })}\n\n`)
+                            );
+                            controller.close();
+                        }
+                    },
+                });
+
+                return new Response(stream, {
+                    headers: {
+                        "Content-Type": "text/event-stream; charset=utf-8",
+                        "Cache-Control": "no-cache, no-transform",
+                        "Connection": "keep-alive",
+                        "X-Accel-Buffering": "no",
+                    },
+                });
+            }
 
             // Try with Google Search grounding first, fall back to without if model doesn't support it
             let response: any;
@@ -850,124 +1422,15 @@ TUGAS ANDA:
             responseText = response.text || "{}";
         }
 
-        let resultData: any = {};
-        try {
-            const cleaned = responseText.replace(/^```json\s*/i, "").replace(/\s*```$/i, "").trim();
-            resultData = JSON.parse(cleaned);
-        } catch (e) {
-            const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-            if (jsonMatch) {
-                try {
-                    resultData = JSON.parse(jsonMatch[0]);
-                } catch {
-                    resultData = { reply: responseText, suggestedPrompts: [] };
-                }
-            } else {
-                resultData = { reply: responseText, suggestedPrompts: [] };
-            }
-        }
+        const finalResult = processAiChatResponse(
+            responseText,
+            messages,
+            taskContext,
+            groundingSources,
+            groundingQueries
+        );
 
-        const lastUserMsg = [...messages].reverse().find((m: any) => m.role === "user")?.content || "";
-        const fallback = extractFallbackActions(lastUserMsg, resultData.reply || responseText, taskContext, messages);
-
-        const finalNote = sanitizeNoteOutput(resultData.createdNote, resultData.reply || responseText, taskContext)
-            || fallback.createdNote
-            || undefined;
-        const finalTodo = resultData.createdTodo || (resultData.createdTodos && resultData.createdTodos.length > 0 ? undefined : fallback.createdTodo) || undefined;
-        const finalTodos = resultData.createdTodos || undefined;
-
-        // Validate Gemini response objects before preferring them over fallback
-        // If geminiDoc is just conversational filler (e.g. "Tentu saja saya telah membuat..."), rescue the real content!
-        const geminiDoc = resultData.createdDocument;
-        let isGeminiDocValid = Boolean(geminiDoc && geminiDoc.title && geminiDoc.content && !isConversationalFiller(geminiDoc.content));
-
-        if (geminiDoc && geminiDoc.title) {
-            if (!geminiDoc.content || isConversationalFiller(geminiDoc.content)) {
-                const prevAssistantMsgs = messages.filter(
-                    (m: any) => m.role === "assistant" && m.content && !isConversationalFiller(m.content) && m.content.length > 200
-                );
-                if (resultData.reply && !isConversationalFiller(resultData.reply) && resultData.reply.length > 150) {
-                    geminiDoc.content = resultData.reply;
-                    isGeminiDocValid = true;
-                } else if (prevAssistantMsgs.length > 0) {
-                    geminiDoc.content = prevAssistantMsgs[prevAssistantMsgs.length - 1].content;
-                    isGeminiDocValid = true;
-                } else if (fallback.createdDocument && !isConversationalFiller(fallback.createdDocument.content)) {
-                    geminiDoc.content = fallback.createdDocument.content;
-                    isGeminiDocValid = true;
-                } else if (resultData.reply && resultData.reply.trim().length > 30) {
-                    geminiDoc.content = `# ${geminiDoc.title}\n\n${resultData.reply}`;
-                    isGeminiDocValid = true;
-                }
-            } else if (isGeminiDocValid && isConversationalFiller(resultData.reply)) {
-                // If the document content is complete and rich, display it in chat as well
-                resultData.reply = geminiDoc.content;
-            }
-        }
-
-        const rawDocument = (isGeminiDocValid ? geminiDoc : fallback.createdDocument) || undefined;
-        if (rawDocument) {
-            const headingMatch = rawDocument.content?.split("\n").find((l: string) => l.trim().startsWith("#"));
-            if (headingMatch) {
-                const headingTitle = headingMatch.replace(/^[#\s*]+/, "").trim().slice(0, 80);
-                if (headingTitle && headingTitle.length > 3) {
-                    rawDocument.title = headingTitle;
-                }
-            } else if (taskContext?.title) {
-                rawDocument.title = taskContext.title;
-            }
-        }
-
-        const geminiSlides = resultData.createdSlides;
-        const isGeminiSlidesValid = geminiSlides && Array.isArray(geminiSlides.slides) && geminiSlides.slides.length > 0;
-        const rawSlides = (isGeminiSlidesValid ? geminiSlides : fallback.createdSlides) || undefined;
-
-        const geminiImage = resultData.createdImage;
-        const isGeminiImageValid = geminiImage && geminiImage.prompt && geminiImage.prompt.trim().length > 0;
-        const rawImage = (isGeminiImageValid ? geminiImage : fallback.createdImage) || undefined;
-
-        // Intent-based filtering: only include creation types the user actually asked for
-        const lowerMsg = lastUserMsg.toLowerCase();
-        const userWantsDocument = lowerMsg.includes("word") || lowerMsg.includes("docx") || lowerMsg.includes("pdf") || lowerMsg.includes("makalah") || lowerMsg.includes("dokumen") || lowerMsg.includes("excel") || lowerMsg.includes("xlsx") || lowerMsg.includes("spreadsheet") || lowerMsg.includes("spredsheet") || lowerMsg.includes("xlxs");
-        const userWantsSlides = lowerMsg.includes("slide") || lowerMsg.includes("presentasi") || lowerMsg.includes("ppt") || lowerMsg.includes("powerpoint");
-        const userWantsImage = lowerMsg.includes("gambarkan") || lowerMsg.includes("buatkan gambar") || lowerMsg.includes("bikin gambar") || lowerMsg.includes("ilustrasikan") || lowerMsg.includes("generate image") || lowerMsg.includes("lukiskan") || lowerMsg.includes("diagram");
-        const userWantsAnyCreation = userWantsDocument || userWantsSlides || userWantsImage;
-
-        // If user explicitly asked for a specific type, only include that type
-        // If user didn't ask for anything specific, allow Gemini's judgement
-        const finalDocument = (rawDocument && rawDocument.title && (rawDocument.content || rawDocument.title))
-            ? (userWantsAnyCreation && !userWantsDocument ? undefined : rawDocument)
-            : undefined;
-
-        const finalSlides = (rawSlides && Array.isArray(rawSlides.slides) && rawSlides.slides.length > 0)
-            ? (userWantsAnyCreation && !userWantsSlides ? undefined : rawSlides)
-            : undefined;
-
-        const finalImage = (rawImage && rawImage.prompt)
-            ? (userWantsAnyCreation && !userWantsImage ? undefined : rawImage)
-            : undefined;
-
-        if (finalImage && !finalImage.url && finalImage.prompt) {
-            const width = finalImage.aspectRatio === "1:1" ? 1024 : finalImage.aspectRatio === "4:3" ? 1024 : 1280;
-            const height = finalImage.aspectRatio === "1:1" ? 1024 : finalImage.aspectRatio === "4:3" ? 768 : 720;
-            finalImage.url = `https://image.pollinations.ai/prompt/${encodeURIComponent(finalImage.prompt)}?width=${width}&height=${height}&model=flux&nologo=true`;
-        }
-
-        return NextResponse.json({
-            reply:
-                resultData.reply ||
-                (typeof responseText === "string" && !responseText.startsWith("{") ? responseText : "Tugas berhasil diproses."),
-            suggestedPrompts: Array.isArray(resultData.suggestedPrompts) ? resultData.suggestedPrompts : [],
-            createdNote: finalNote,
-            createdTodo: finalTodo,
-            createdTodos: finalTodos,
-            createdDocument: finalDocument,
-            createdSlides: finalSlides,
-            createdImage: finalImage,
-            groundingSources: groundingSources.length > 0 ? groundingSources : undefined,
-            groundingQueries: groundingQueries.length > 0 ? groundingQueries : undefined,
-            timestamp: Date.now(),
-        });
+        return NextResponse.json(finalResult);
     } catch (error: any) {
         console.error("Error in AI Chat:", error);
         return NextResponse.json(
