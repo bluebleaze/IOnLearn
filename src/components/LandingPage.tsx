@@ -58,7 +58,7 @@ export function LandingPage({
       demoButton: selectedLanguage === "IND" ? "Mode Demo" : "Demo Mode",
       syncButton: selectedLanguage === "IND" ? "Sinkron Sekarang" : "Sync Now",
       loading: selectedLanguage === "IND" ? "Menghubungkan..." : "Connecting...",
-      signIn: selectedLanguage === "IND" ? "Masuk Google" : "Sign in with Google",
+      signIn: selectedLanguage === "IND" ? "Sync" : "Sync",
       simulation: selectedLanguage === "IND" ? "Mode Simulasi" : "Simulation Mode",
       scroll: selectedLanguage === "IND" ? "Gulir" : "Scroll",
       loginErrorTitle: selectedLanguage === "IND" ? "Gagal Masuk Google" : "Google Sign-In Failed",
@@ -305,23 +305,23 @@ export function LandingPage({
 
       {/* Navbar */}
       <header
-        className={`fixed left-1/2 top-0 z-30 w-[calc(100%-2rem)] -translate-x-1/2 transition-all duration-300 ease-out ${isScrolled
-          ? "mt-3 max-w-6xl rounded-[30px] border border-white/60 bg-white/50 shadow-[0_10px_30px_rgba(15,23,42,0.08)] backdrop-blur-[50px] dark:border-white/10 dark:bg-[#0c0c0c]/50"
+        className={`fixed left-1/2 top-0 z-30 w-[calc(100%-0.75rem)] sm:w-[calc(100%-2rem)] -translate-x-1/2 transition-all duration-300 ease-out ${isScrolled
+          ? "mt-2 sm:mt-3 max-w-6xl rounded-[22px] sm:rounded-[30px] border border-white/60 bg-white/50 shadow-[0_10px_30px_rgba(15,23,42,0.08)] backdrop-blur-[50px] dark:border-white/10 dark:bg-[#0c0c0c]/50"
           : "mt-0 max-w-none rounded-none border-b border-slate-200/70 bg-white/50 dark:border-[#2b2b2b] dark:bg-[#0c0c0c]/50 backdrop-blur-[50px]"
           }`}
       >
-        <div className={`mx-auto flex items-center gap-4 px-5 sm:px-8 transition-all duration-300 ease-out ${isScrolled ? "max-w-6xl py-2.5" : "max-w-6xl py-3.5"}`}>
-          <div className="flex items-center gap-3 shrink-0">
-            <a href="#home" className="flex items-center gap-3">
+        <div className={`mx-auto flex items-center justify-between gap-2 px-3 sm:px-8 transition-all duration-300 ease-out ${isScrolled ? "max-w-6xl py-2.5" : "max-w-6xl py-2.5 sm:py-3.5"}`}>
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3 shrink-0">
+            <a href="#home" className="flex items-center gap-2 sm:gap-3 min-w-0">
               <img
                 src="/logos/logoionlearnfulltext.png"
                 alt="IOnLearn"
-                className="h-8 sm:h-9 w-auto object-contain block dark:hidden"
+                className="h-7 sm:h-9 w-auto object-contain block dark:hidden"
               />
               <img
                 src="/logos/logoionlearnfulltext-dark.png"
                 alt="IOnLearn"
-                className="h-8 sm:h-9 w-auto object-contain hidden dark:block"
+                className="h-7 sm:h-9 w-auto object-contain hidden dark:block"
               />
             </a>
 
@@ -389,13 +389,13 @@ export function LandingPage({
             </nav>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 shrink-0 ml-auto sm:ml-0">
             {/* Theme Toggle */}
             <button
               type="button"
               onClick={handleToggleTheme}
               title={isDark ? "Ganti ke Mode Terang" : "Ganti ke Mode Gelap"}
-              className="w-9 h-9 rounded-[10px] text-slate-500 hover:text-slate-900 dark:text-[#a3a3a3] dark:hover:text-[#f5f5f5] bg-slate-100 hover:bg-slate-200 dark:bg-[#141414] dark:hover:bg-[#161616] border border-slate-200 dark:border-[#2b2b2b] flex items-center justify-center transition cursor-pointer"
+              className="w-8 h-8 sm:w-9 sm:h-9 rounded-[10px] text-slate-500 hover:text-slate-900 dark:text-[#a3a3a3] dark:hover:text-[#f5f5f5] bg-slate-100 hover:bg-slate-200 dark:bg-[#141414] dark:hover:bg-[#161616] border border-slate-200 dark:border-[#2b2b2b] flex items-center justify-center transition cursor-pointer shrink-0"
             >
               {isDark ? (
                 <Sun className="w-4 h-4 text-amber-400" />
@@ -405,16 +405,16 @@ export function LandingPage({
             </button>
 
             {/* Mode Simulasi CTA */}
-            <div className="group relative flex items-center justify-center">
+            <div className="group relative flex items-center justify-center hidden sm:flex">
               <button
                 type="button"
                 onClick={onDemoMode}
                 disabled={isAuthenticating}
                 title="Mode Simulasi"
-                className="group/button flex items-center justify-center gap-0 overflow-hidden rounded-[10px] border border-slate-200 bg-slate-100 px-2.5 py-2 text-slate-600 transition-all duration-300 ease-out hover:bg-slate-200 hover:px-3 dark:border-[#2b2b2b] dark:bg-[#141414] dark:text-[#a3a3a3] dark:hover:bg-[#161616] dark:hover:text-[#f5f5f5] disabled:opacity-50 cursor-pointer"
+                className="group/button flex items-center justify-center gap-0 overflow-hidden rounded-[10px] border border-slate-200 bg-slate-100 px-2 py-2 text-slate-600 transition-all duration-300 ease-out hover:bg-slate-200 hover:px-3 dark:border-[#2b2b2b] dark:bg-[#141414] dark:text-[#a3a3a3] dark:hover:bg-[#161616] dark:hover:text-[#f5f5f5] disabled:opacity-50 cursor-pointer shrink-0"
               >
                 <MonitorPlay className="h-4 w-4 shrink-0" />
-                <span className="max-w-0 overflow-hidden whitespace-nowrap text-[11px] font-medium opacity-0 transition-all duration-300 ease-out group-hover/button:max-w-[110px] group-hover/button:opacity-100 group-hover/button:ml-1.5">
+                <span className="max-w-0 overflow-hidden whitespace-nowrap text-[11px] font-medium opacity-0 transition-all duration-300 ease-out group-hover/button:max-w-[110px] group-hover/button:opacity-100 group-hover/button:ml-1.5 hidden sm:inline-block">
                   {uiText.hero.simulation}
                 </span>
               </button>
@@ -425,7 +425,7 @@ export function LandingPage({
               type="button"
               onClick={onConnectGoogle}
               disabled={isAuthenticating}
-              className="font-montserrat inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold rounded-[10px] bg-slate-900 hover:bg-[#fbbf24] dark:bg-[#f5f5f5] dark:hover:bg-[#fbbf24] text-white dark:text-[#0c0c0c] transition cursor-pointer disabled:opacity-50 active:scale-95 shadow-xs"
+              className="font-montserrat inline-flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 text-[11px] sm:text-sm font-semibold rounded-[10px] bg-slate-900 hover:bg-[#fbbf24] dark:bg-[#f5f5f5] dark:hover:bg-[#fbbf24] text-white dark:text-[#0c0c0c] transition cursor-pointer disabled:opacity-50 active:scale-95 shadow-xs whitespace-nowrap"
             >
               <LogIn className="w-3.5 h-3.5" />
               <span>{isAuthenticating ? uiText.hero.loading : uiText.hero.signIn}</span>
@@ -567,7 +567,7 @@ export function LandingPage({
 
         {/* Hero Main Content (Centered in 100vh Banner) */}
         <main
-          className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 text-center max-w-4xl mx-auto w-full relative z-10 font-inter py-12 sm:py-16"
+          className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 text-center max-w-[90vw] sm:max-w-4xl mx-auto w-full relative z-10 font-inter py-10 sm:py-16"
           style={{
             transform: `translate3d(0, ${heroParallax * -0.8}px, 0)`,
             transformOrigin: "center center",
@@ -593,7 +593,7 @@ export function LandingPage({
           </h1>
 
           {/* Hero Tagline with Fade-Up Entrance */}
-          <p className="animate-hero-tagline font-cal text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-semibold tracking-tight text-slate-900 dark:text-[#f5f5f5] max-w-2xl mx-auto mb-10 leading-snug whitespace-pre-line">
+          <p className="animate-hero-tagline font-cal text-[clamp(2rem,6vw,4rem)] font-semibold tracking-tight text-slate-900 dark:text-[#f5f5f5] max-w-[14ch] sm:max-w-2xl mx-auto mb-8 sm:mb-10 leading-[0.95] sm:leading-snug whitespace-pre-line">
             {uiText.hero.tagline}
           </p>
 
@@ -610,12 +610,12 @@ export function LandingPage({
           )}
 
           {/* Hero Actions (Demo Mode & Sync Now) with Bounce-Up Entrance */}
-          <div className="animate-hero-btn font-montserrat flex flex-row items-center justify-center gap-3.5 w-full sm:w-auto">
+          <div className="animate-hero-btn font-montserrat flex flex-col sm:flex-row items-center justify-center gap-3.5 w-full sm:w-auto">
             {/* Demo Mode Button (Secondary) */}
             <button
               type="button"
               onClick={onDemoMode}
-              className="group relative overflow-hidden rounded-2xl border border-slate-300 bg-white px-5 sm:px-6 py-2.5 sm:py-3 text-slate-800 shadow-[0_4px_14px_rgba(15,23,42,0.05)] transition-all duration-300 ease-out hover:border-slate-400 hover:shadow-[0_12px_30px_rgba(79,70,229,0.12)] hover:px-6 sm:hover:px-7 dark:border-[#333333] dark:bg-[#121212] dark:text-[#e5e5e5] dark:hover:border-[#555555] dark:hover:text-white cursor-pointer active:scale-95"
+              className="group relative overflow-hidden rounded-2xl border border-slate-300 bg-white px-5 sm:px-6 py-2.5 sm:py-3 text-slate-800 shadow-[0_4px_14px_rgba(15,23,42,0.05)] transition-all duration-300 ease-out hover:border-slate-400 hover:shadow-[0_12px_30px_rgba(79,70,229,0.12)] hover:px-6 sm:hover:px-7 dark:border-[#333333] dark:bg-[#121212] dark:text-[#e5e5e5] dark:hover:border-[#555555] dark:hover:text-white cursor-pointer active:scale-95 w-full sm:w-auto"
             >
               <span className="absolute inset-y-0 left-0 w-0 origin-left scale-x-0 rounded-full bg-gradient-to-r from-indigo-100 to-indigo-50 transition-all duration-300 ease-out group-hover:w-full group-hover:scale-x-100 dark:from-indigo-500/10 dark:to-indigo-400/10" />
               <span className="relative flex items-center justify-center gap-0 text-sm sm:text-base font-medium transition-all duration-300 ease-out group-hover:gap-2">
@@ -629,7 +629,7 @@ export function LandingPage({
               type="button"
               onClick={onConnectGoogle}
               disabled={isAuthenticating}
-              className="group relative overflow-hidden rounded-2xl bg-[#4b43c6] px-5 sm:px-6 py-2.5 sm:py-3 text-white shadow-[0_10px_28px_rgba(79,70,229,0.28)] transition-all duration-300 ease-out hover:bg-[#3e36b8] hover:px-6 sm:hover:px-7 hover:shadow-[0_18px_36px_rgba(79,70,229,0.35)] dark:bg-[#5b52e0] dark:hover:bg-[#4d44d0] cursor-pointer disabled:opacity-50 active:scale-95"
+              className="group relative overflow-hidden rounded-2xl bg-[#4b43c6] px-5 sm:px-6 py-2.5 sm:py-3 text-white shadow-[0_10px_28px_rgba(79,70,229,0.28)] transition-all duration-300 ease-out hover:bg-[#3e36b8] hover:px-6 sm:hover:px-7 hover:shadow-[0_18px_36px_rgba(79,70,229,0.35)] dark:bg-[#5b52e0] dark:hover:bg-[#4d44d0] cursor-pointer disabled:opacity-50 active:scale-95 w-full sm:w-auto"
             >
               <span className="absolute inset-y-0 left-0 w-0 origin-left scale-x-0 rounded-full bg-white/10 transition-all duration-300 ease-out group-hover:w-full group-hover:scale-x-100" />
               <span className="relative flex items-center justify-center gap-0 text-sm sm:text-base font-medium transition-all duration-300 ease-out group-hover:gap-2">

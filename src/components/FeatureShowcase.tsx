@@ -144,8 +144,8 @@ export function FeatureShowcase({ language = "ENG" }: FeatureShowcaseProps) {
 
       {/* Main Display Container */}
       <div className="relative w-full max-w-4xl mx-auto">
-        {/* Left Chat Bubbles (Overlapping frame left border, bottom-anchored with collapsible message stack) */}
-        <div className="absolute -left-4 sm:-left-8 md:-left-12 lg:-left-16 bottom-[10%] sm:bottom-[12%] md:bottom-[14%] z-30 flex flex-col items-start gap-2.5 sm:gap-3 pointer-events-auto select-none">
+        {/* Left Chat Bubbles (desktop-only accent; hidden on small screens to avoid clutter on mobile) */}
+        <div className="absolute -left-4 sm:-left-8 md:-left-12 lg:-left-16 bottom-[10%] sm:bottom-[12%] md:bottom-[14%] z-30 hidden sm:flex flex-col items-start gap-2.5 sm:gap-3 pointer-events-auto select-none">
           {/* Collapsible 4 Message Bubbles with Staggered Open & Close Animation */}
           {isShown && (
             <div className="flex flex-col items-start gap-2.5 sm:gap-3 origin-bottom">
