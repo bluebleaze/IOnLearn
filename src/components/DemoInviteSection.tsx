@@ -205,7 +205,7 @@ export function DemoInviteSection({ onDemoMode, language = "ENG" }: DemoInviteSe
           <div className="flex flex-col gap-3 ">
             <button
               onClick={onDemoMode}
-              className="w-full bg-[#493fe4] hover:bg-[#3d32d4] text-white font-montserrat font-bold py-3.5 px-6 rounded-2xl sm:rounded-full flex items-center justify-center gap-2 shadow-md hover:shadow-indigo-500/25 transition-all duration-200 cursor-pointer active:scale-[0.99] text-sm sm:text-base group mt-1"
+              className="w-full bg-[#493fe4] hover:bg-[#3d32d4] text-white font-montserrat font-bold py-3.5 px-6 rounded-2xl sm:rounded-full flex items-center justify-center gap-2 shadow-md hover:shadow-indigo-500/25 transition-all duration-200 cursor-pointer active:scale-[0.99] text-sm sm:text-base group mt-1 z-1"
             >
               <span>{copy.button}</span>
               <ArrowUpRight className="w-4 h-4 sm:w-5 sm:h-5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
