@@ -124,7 +124,8 @@ Hanya berikan JSON murni.`;
       }
 
       const ai = new GoogleGenAI({ apiKey });
-      const modelName = aiConfig?.model || "gemini-2.5-flash";
+      const rawModel = aiConfig?.model || process.env.NEXT_PUBLIC_GEMINI_MODEL || "gemini-3.6-flash";
+      const modelName = rawModel.startsWith("gemini-2.5") ? "gemini-3.6-flash" : rawModel;
 
       const response = await ai.models.generateContent({
         model: modelName,

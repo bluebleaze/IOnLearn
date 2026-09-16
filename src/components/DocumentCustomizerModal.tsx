@@ -52,6 +52,15 @@ interface DocumentCustomizerModalProps {
   onSuccess?: (msg: string) => void;
 }
 
+const EXCEL_THEMES = [
+  { id: "emerald", label: "Emerald Excel", primary: "059669", bg: "bg-emerald-600", light: "bg-emerald-50 dark:bg-emerald-950/30", desc: "Klasik Excel Elegan" },
+  { id: "teal", label: "Modern Teal", primary: "0d9488", bg: "bg-teal-600", light: "bg-teal-50 dark:bg-teal-950/30", desc: "Toska Segar & Modern" },
+  { id: "indigo", label: "Royal Indigo", primary: "4f46e5", bg: "bg-indigo-600", light: "bg-indigo-50 dark:bg-indigo-950/30", desc: "Biru Ungu Profesional" },
+  { id: "blue", label: "Cobalt Blue", primary: "2563eb", bg: "bg-blue-600", light: "bg-blue-50 dark:bg-blue-950/30", desc: "Biru Korporat Resmi" },
+  { id: "slate", label: "Graphite Slate", primary: "475569", bg: "bg-slate-600", light: "bg-slate-50 dark:bg-slate-950/30", desc: "Abu Gelap Minimalis" },
+  { id: "amber", label: "Warm Amber", primary: "d97706", bg: "bg-amber-600", light: "bg-amber-50 dark:bg-amber-950/30", desc: "Emas / Oranye Hangat" },
+] as const;
+
 export const DocumentCustomizerModal: React.FC<DocumentCustomizerModalProps> = ({
   isOpen,
   onClose,
@@ -63,7 +72,9 @@ export const DocumentCustomizerModal: React.FC<DocumentCustomizerModalProps> = (
   const [styleOptions, setStyleOptions] = useState<DocumentStyleOptions>(DEFAULT_DOCUMENT_STYLE);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
-  const [activeTab, setActiveTab] = useState<"identity" | "kop" | "typography" | "layout" | "metadata">("identity");
+  const [activeTab, setActiveTab] = useState<
+    "identity" | "kop" | "typography" | "layout" | "metadata" | "excel_sheet" | "excel_style" | "excel_columns"
+  >("identity");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load saved preferences on modal open
@@ -83,19 +94,28 @@ export const DocumentCustomizerModal: React.FC<DocumentCustomizerModalProps> = (
         logoBase64: saved.logoBase64,
         customHeaderText: saved.customHeaderText || "",
         logoPosition: saved.logoPosition || "left",
+        sheetName: saved.sheetName || "Sheet1",
+        tableTitle: saved.tableTitle || "",
+        excelTheme: saved.excelTheme || "emerald",
+        autoFitColumns: saved.autoFitColumns !== false,
+        showGridLines: saved.showGridLines !== false,
       }));
+      if (document?.type === "xlsx") {
+        setActiveTab("identity");
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, document?.type]);
 
   if (!isOpen) return null;
 
   const isSlide = !!slides;
+  const isExcel = !isSlide && document?.type === "xlsx";
   const docTitle = slides?.title || document?.title || "Dokumen Tanpa Judul";
   const docType = isSlide
     ? "PPTX"
     : document?.type === "pdf"
     ? "PDF"
-    : document?.type === "xlsx"
+    : isExcel
     ? "XLSX"
     : "DOCX";
 
@@ -239,7 +259,9 @@ export const DocumentCustomizerModal: React.FC<DocumentCustomizerModalProps> = (
     },
   ];
 
-  const currentAccent = ACCENT_PALETTES[styleOptions.accentColor || "indigo"] || ACCENT_PALETTES.indigo;
+  const currentAccent = isExcel
+    ? (EXCEL_THEMES.find((t) => t.id === (styleOptions.excelTheme || "emerald")) || EXCEL_THEMES[0])
+    : (ACCENT_PALETTES[styleOptions.accentColor || "indigo"] || ACCENT_PALETTES.indigo);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
@@ -251,11 +273,11 @@ export const DocumentCustomizerModal: React.FC<DocumentCustomizerModalProps> = (
               className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-2xs font-bold"
               style={{ backgroundColor: `#${currentAccent.primary}` }}
             >
-              {isSlide ? <Presentation className="w-5 h-5" /> : document?.type === "xlsx" ? <FileSpreadsheet className="w-5 h-5" /> : <Sliders className="w-5 h-5" />}
+              {isSlide ? <Presentation className="w-5 h-5" /> : isExcel ? <FileSpreadsheet className="w-5 h-5" /> : <Sliders className="w-5 h-5" />}
             </div>
             <div>
               <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                Kustomisasi Generator Dokumen
+                {isExcel ? "Kustomisasi Spreadsheet Excel" : "Kustomisasi Generator Dokumen"}
                 <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold uppercase">
                   {docType}
                 </span>
@@ -275,69 +297,136 @@ export const DocumentCustomizerModal: React.FC<DocumentCustomizerModalProps> = (
 
         {/* Tab Navigation */}
         <div className="flex border-b border-slate-200 dark:border-slate-800 px-3 sm:px-6 bg-slate-50/50 dark:bg-slate-900/30 overflow-x-auto">
-          <button
-            type="button"
-            onClick={() => setActiveTab("identity")}
-            className={`flex items-center gap-1.5 py-3 px-3 text-xs font-semibold border-b-2 whitespace-nowrap transition cursor-pointer ${
-              activeTab === "identity"
-                ? "border-indigo-600 text-indigo-600 dark:text-indigo-400"
-                : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
-            }`}
-          >
-            <User className="w-3.5 h-3.5" />
-            Identitas
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("kop")}
-            className={`flex items-center gap-1.5 py-3 px-3 text-xs font-semibold border-b-2 whitespace-nowrap transition cursor-pointer ${
-              activeTab === "kop"
-                ? "border-indigo-600 text-indigo-600 dark:text-indigo-400"
-                : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
-            }`}
-          >
-            <Building2 className="w-3.5 h-3.5" />
-            Logo & Kop
-            {styleOptions.logoBase64 && (
-              <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("typography")}
-            className={`flex items-center gap-1.5 py-3 px-3 text-xs font-semibold border-b-2 whitespace-nowrap transition cursor-pointer ${
-              activeTab === "typography"
-                ? "border-indigo-600 text-indigo-600 dark:text-indigo-400"
-                : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
-            }`}
-          >
-            <Type className="w-3.5 h-3.5" />
-            Font & Teks
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("layout")}
-            className={`flex items-center gap-1.5 py-3 px-3 text-xs font-semibold border-b-2 whitespace-nowrap transition cursor-pointer ${
-              activeTab === "layout"
-                ? "border-indigo-600 text-indigo-600 dark:text-indigo-400"
-                : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
-            }`}
-          >
-            <Layout className="w-3.5 h-3.5" />
-            Format & Sampul
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("metadata")}
-            className={`flex items-center gap-1.5 py-3 px-3 text-xs font-semibold border-b-2 whitespace-nowrap transition cursor-pointer ${
-              activeTab === "metadata"
-                ? "border-indigo-600 text-indigo-600 dark:text-indigo-400"
-                : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
-            }`}
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            Watermark & Hak Cipta
-          </button>
+          {isExcel ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setActiveTab("identity")}
+                className={`flex items-center gap-1.5 py-3 px-3 text-xs font-semibold border-b-2 whitespace-nowrap transition cursor-pointer ${
+                  activeTab === "identity"
+                    ? "border-emerald-600 text-emerald-600 dark:text-emerald-400"
+                    : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                }`}
+              >
+                <User className="w-3.5 h-3.5" />
+                Identitas
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("excel_sheet")}
+                className={`flex items-center gap-1.5 py-3 px-3 text-xs font-semibold border-b-2 whitespace-nowrap transition cursor-pointer ${
+                  activeTab === "excel_sheet"
+                    ? "border-emerald-600 text-emerald-600 dark:text-emerald-400"
+                    : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                }`}
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5" />
+                Lembar Kerja (Sheet)
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("excel_style")}
+                className={`flex items-center gap-1.5 py-3 px-3 text-xs font-semibold border-b-2 whitespace-nowrap transition cursor-pointer ${
+                  activeTab === "excel_style"
+                    ? "border-emerald-600 text-emerald-600 dark:text-emerald-400"
+                    : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                }`}
+              >
+                <Palette className="w-3.5 h-3.5" />
+                Tema Warna
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("excel_columns")}
+                className={`flex items-center gap-1.5 py-3 px-3 text-xs font-semibold border-b-2 whitespace-nowrap transition cursor-pointer ${
+                  activeTab === "excel_columns"
+                    ? "border-emerald-600 text-emerald-600 dark:text-emerald-400"
+                    : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                }`}
+              >
+                <Layout className="w-3.5 h-3.5" />
+                Format Kolom & Grid
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("metadata")}
+                className={`flex items-center gap-1.5 py-3 px-3 text-xs font-semibold border-b-2 whitespace-nowrap transition cursor-pointer ${
+                  activeTab === "metadata"
+                    ? "border-emerald-600 text-emerald-600 dark:text-emerald-400"
+                    : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                Informasi Berkas
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => setActiveTab("identity")}
+                className={`flex items-center gap-1.5 py-3 px-3 text-xs font-semibold border-b-2 whitespace-nowrap transition cursor-pointer ${
+                  activeTab === "identity"
+                    ? "border-indigo-600 text-indigo-600 dark:text-indigo-400"
+                    : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                }`}
+              >
+                <User className="w-3.5 h-3.5" />
+                Identitas
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("kop")}
+                className={`flex items-center gap-1.5 py-3 px-3 text-xs font-semibold border-b-2 whitespace-nowrap transition cursor-pointer ${
+                  activeTab === "kop"
+                    ? "border-indigo-600 text-indigo-600 dark:text-indigo-400"
+                    : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                }`}
+              >
+                <Building2 className="w-3.5 h-3.5" />
+                Logo & Kop
+                {styleOptions.logoBase64 && (
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("typography")}
+                className={`flex items-center gap-1.5 py-3 px-3 text-xs font-semibold border-b-2 whitespace-nowrap transition cursor-pointer ${
+                  activeTab === "typography"
+                    ? "border-indigo-600 text-indigo-600 dark:text-indigo-400"
+                    : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                }`}
+              >
+                <Type className="w-3.5 h-3.5" />
+                Font & Teks
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("layout")}
+                className={`flex items-center gap-1.5 py-3 px-3 text-xs font-semibold border-b-2 whitespace-nowrap transition cursor-pointer ${
+                  activeTab === "layout"
+                    ? "border-indigo-600 text-indigo-600 dark:text-indigo-400"
+                    : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                }`}
+              >
+                <Layout className="w-3.5 h-3.5" />
+                Format & Sampul
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("metadata")}
+                className={`flex items-center gap-1.5 py-3 px-3 text-xs font-semibold border-b-2 whitespace-nowrap transition cursor-pointer ${
+                  activeTab === "metadata"
+                    ? "border-indigo-600 text-indigo-600 dark:text-indigo-400"
+                    : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                Watermark & Hak Cipta
+              </button>
+            </>
+          )}
         </div>
 
         {/* Modal Body */}
@@ -409,6 +498,140 @@ export const DocumentCustomizerModal: React.FC<DocumentCustomizerModalProps> = (
                     className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                   />
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB EXCEL 1: LEMBAR KERJA (SHEET) */}
+          {activeTab === "excel_sheet" && isExcel && (
+            <div className="space-y-4">
+              <div className="bg-emerald-50/70 dark:bg-emerald-950/30 p-3.5 rounded-xl border border-emerald-100 dark:border-emerald-900/50 flex items-start gap-3">
+                <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                <p className="text-xs text-emerald-900 dark:text-emerald-200 leading-relaxed">
+                  Konfigurasikan judul header dan label tab lembar kerja Excel (.xlsx). Nama tab akan muncul pada bilah bawah buku kerja (*workbook*).
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Nama Sheet / Tab Lembar Kerja (Maksimal 31 Karakter)
+                </label>
+                <input
+                  type="text"
+                  maxLength={31}
+                  value={styleOptions.sheetName || ""}
+                  onChange={(e) => handleUpdate("sheetName", e.target.value)}
+                  placeholder="Sheet1 (contoh: Ringkasan, Komparasi, Data Nilai)"
+                  className="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                />
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                  Sesuai standar Microsoft Excel, nama sheet maksimal 31 karakter dan tidak boleh mengandung karakter <code>\ / ? * [ ] :</code>.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Judul Utama Tabel Data
+                </label>
+                <input
+                  type="text"
+                  value={styleOptions.tableTitle ?? docTitle}
+                  onChange={(e) => handleUpdate("tableTitle", e.target.value)}
+                  placeholder={docTitle}
+                  className="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                />
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                  Judul ini ditempatkan di baris paling atas tabel sebagai kepala lembar kerja Excel Anda.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* TAB EXCEL 2: TEMA & WARNA */}
+          {activeTab === "excel_style" && isExcel && (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                  Pilih Tema Warna Header Excel
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                  {EXCEL_THEMES.map((th) => {
+                    const isSelected = (styleOptions.excelTheme || "emerald") === th.id;
+                    return (
+                      <button
+                        key={th.id}
+                        type="button"
+                        onClick={() => handleUpdate("excelTheme", th.id)}
+                        className={`p-3 rounded-xl border text-left transition cursor-pointer flex flex-col gap-1.5 ${
+                          isSelected
+                            ? "border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/30 ring-2 ring-emerald-500/20"
+                            : "border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/60"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className="w-4 h-4 rounded-full shadow-xs shrink-0"
+                              style={{ backgroundColor: `#${th.primary}` }}
+                            />
+                            <span className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                              {th.label}
+                            </span>
+                          </div>
+                          {isSelected && <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />}
+                        </div>
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                          {th.desc}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB EXCEL 3: FORMAT KOLOM & GRID */}
+          {activeTab === "excel_columns" && isExcel && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+                <div>
+                  <span className="text-xs font-semibold text-slate-900 dark:text-slate-100 block">
+                    Penyesuaian Lebar Kolom Otomatis (Auto-Fit Columns)
+                  </span>
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Menghitung dan melebarkan kolom sesuai panjang teks agar angka & data tidak terpotong (###).
+                  </span>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={styleOptions.autoFitColumns !== false}
+                    onChange={(e) => handleUpdate("autoFitColumns", e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-10 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-slate-600 peer-checked:bg-emerald-600"></div>
+                </label>
+              </div>
+
+              <div className="flex items-center justify-between p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+                <div>
+                  <span className="text-xs font-semibold text-slate-900 dark:text-slate-100 block">
+                    Tampilkan Garis Kisi Sel (Gridlines)
+                  </span>
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Mengaktifkan batas garis pembatas sel bawaan Excel untuk memudahkan pembacaan lembar kerja.
+                  </span>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={styleOptions.showGridLines !== false}
+                    onChange={(e) => handleUpdate("showGridLines", e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-10 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-slate-600 peer-checked:bg-emerald-600"></div>
+                </label>
               </div>
             </div>
           )}
@@ -1049,113 +1272,179 @@ export const DocumentCustomizerModal: React.FC<DocumentCustomizerModalProps> = (
             <div className="flex items-center justify-between mb-2">
               <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5" />
-                Pratinjau Format Dokumen
+                {isExcel ? "Pratinjau Lembar Kerja Excel (.xlsx)" : "Pratinjau Format Dokumen"}
               </span>
               <div className="flex items-center gap-1 text-[10px] text-slate-400">
-                <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-semibold">{styleOptions.pageSize || "A4"}</span>
-                <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800">{styleOptions.pageMargin || "normal"}</span>
-                <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800">{styleOptions.fontFamily || "Calibri"}</span>
-              </div>
-            </div>
-
-            <div
-              className="p-3 bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-100 dark:border-slate-700/60 space-y-2 relative overflow-hidden text-left"
-              style={{ fontFamily: styleOptions.fontFamily || "Calibri" }}
-            >
-              {styleOptions.watermark !== false && (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none opacity-10 rotate-[-15deg] font-bold text-slate-900 dark:text-slate-100 text-base">
-                  {styleOptions.watermarkText || "IOnLearn Study Copilot"}
-                </div>
-              )}
-
-              {/* Cover badge if enabled */}
-              {styleOptions.includeCoverPage && (
-                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
-                  <Bookmark className="w-3 h-3" />
-                  Halaman Sampul Aktif
-                </div>
-              )}
-
-              {/* Miniature Kop Surat Preview with Logo */}
-              {(styleOptions.logoBase64 || styleOptions.customHeaderText || styleOptions.headerStyle === "formal_academic") && (
-                <div className="p-2 bg-slate-50 dark:bg-slate-900/60 rounded-md border border-slate-200 dark:border-slate-700/80 mb-2">
-                  <div
-                    className={`flex items-center gap-2 mb-1.5 ${
-                      styleOptions.logoPosition === "center"
-                        ? "flex-col text-center"
-                        : styleOptions.logoPosition === "right"
-                        ? "flex-row-reverse text-right"
-                        : "flex-row text-left"
-                    }`}
-                  >
-                    {styleOptions.logoBase64 && (
-                      <div className="w-8 h-8 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-0.5 flex-shrink-0 flex items-center justify-center">
-                        <img
-                          src={styleOptions.logoBase64}
-                          alt="Logo Preview"
-                          className="max-h-full max-w-full object-contain"
-                        />
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0 text-[10px] leading-tight">
-                      {styleOptions.customHeaderText ? (
-                        styleOptions.customHeaderText
-                          .trim()
-                          .split("\n")
-                          .slice(0, 3)
-                          .map((l, i) => (
-                            <div
-                              key={i}
-                              className={i === 0 ? "font-bold text-slate-900 dark:text-slate-100" : "text-slate-600 dark:text-slate-400"}
-                            >
-                              {l.trim()}
-                            </div>
-                          ))
-                      ) : (
-                        <>
-                          <div className="font-bold text-slate-900 dark:text-slate-100">
-                            {(styleOptions.institution || "NAMA INSTANSI RESMI").toUpperCase()}
-                          </div>
-                          {styleOptions.facultyOrClass && (
-                            <div className="text-slate-600 dark:text-slate-400">
-                              {styleOptions.facultyOrClass.toUpperCase()}
-                            </div>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  {/* Miniature Kop Surat double divider */}
-                  <div className="border-b border-slate-800 dark:border-slate-200"></div>
-                  <div className="border-b border-slate-800 dark:border-slate-200 mt-[1px]"></div>
-                </div>
-              )}
-
-              {/* Document title colored by accent */}
-              <div
-                className="text-sm font-bold truncate"
-                style={{ color: `#${currentAccent.primary}` }}
-              >
-                {docTitle}
-              </div>
-
-              {/* Student info tags */}
-              <div className="text-xs text-slate-500 dark:text-slate-400 flex flex-wrap gap-x-2.5 gap-y-1">
-                {styleOptions.userName && <span>Penyusun: <strong>{styleOptions.userName}</strong></span>}
-                {styleOptions.studentId && <span>NIM: <strong>{styleOptions.studentId}</strong></span>}
-                {styleOptions.facultyOrClass && <span>{styleOptions.facultyOrClass}</span>}
-                {styleOptions.institution && <span>{styleOptions.institution}</span>}
-                {!styleOptions.userName && !styleOptions.studentId && (
-                  <span className="italic text-slate-400">Identitas penyusun kosong.</span>
+                {isExcel ? (
+                  <>
+                    <span className="px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-semibold">
+                      Tab: {styleOptions.sheetName || "Sheet1"}
+                    </span>
+                    <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800">
+                      Auto-fit: {styleOptions.autoFitColumns !== false ? "Aktif" : "Mati"}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-semibold">{styleOptions.pageSize || "A4"}</span>
+                    <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800">{styleOptions.pageMargin || "normal"}</span>
+                    <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800">{styleOptions.fontFamily || "Calibri"}</span>
+                  </>
                 )}
               </div>
-
-              {/* Bottom footer metadata */}
-              <div className="text-[10px] text-slate-400 dark:text-slate-500 pt-1.5 border-t border-slate-100 dark:border-slate-700/50 flex justify-between">
-                <span>Author: {styleOptions.author || "IOnLearn"}</span>
-                <span>{styleOptions.includePageNumbers !== false ? "Halaman 1 dari 1" : ""}</span>
-              </div>
             </div>
+
+            {isExcel ? (
+              <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-hidden text-xs shadow-2xs">
+                {/* Excel Table Title Bar */}
+                <div
+                  className="px-3 py-2 text-white font-bold flex items-center justify-between"
+                  style={{ backgroundColor: `#${currentAccent.primary}` }}
+                >
+                  <span className="truncate">{styleOptions.tableTitle || docTitle}</span>
+                  <span className="text-[10px] font-normal opacity-85 shrink-0">
+                    Microsoft Excel (.xlsx)
+                  </span>
+                </div>
+                {/* Student Meta Row */}
+                {(styleOptions.userName || styleOptions.studentId || styleOptions.institution) && (
+                  <div className="px-3 py-1 bg-slate-50 dark:bg-slate-800/80 text-[11px] text-slate-600 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700 flex flex-wrap gap-x-2">
+                    {styleOptions.userName && <span>Penyusun: <strong>{styleOptions.userName}</strong></span>}
+                    {styleOptions.studentId && <span>NIM: <strong>{styleOptions.studentId}</strong></span>}
+                    {styleOptions.institution && <span>{styleOptions.institution}</span>}
+                  </div>
+                )}
+                {/* Simulated Table Data */}
+                <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                  <div className="grid grid-cols-4 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 font-semibold text-[11px] text-slate-700 dark:text-slate-300">
+                    <div>No</div>
+                    <div>Parameter / Kategori</div>
+                    <div>Uraian Komparasi</div>
+                    <div className="text-right">Nilai / Metrik</div>
+                  </div>
+                  <div className="grid grid-cols-4 px-3 py-1.5 text-[11px] text-slate-600 dark:text-slate-400">
+                    <div>1</div>
+                    <div>Performa Sistem</div>
+                    <div>Sangat Cepat & Efisien</div>
+                    <div className="text-right font-mono text-emerald-600 dark:text-emerald-400 font-bold">98.5%</div>
+                  </div>
+                  <div className="grid grid-cols-4 px-3 py-1.5 text-[11px] text-slate-600 dark:text-slate-400 bg-slate-50/50 dark:bg-slate-800/30">
+                    <div>2</div>
+                    <div>Estimasi Anggaran</div>
+                    <div>Kebutuhan Implementasi</div>
+                    <div className="text-right font-mono text-emerald-600 dark:text-emerald-400 font-bold">Rp 2.500.000</div>
+                  </div>
+                </div>
+                {/* Bottom Sheet Tab Bar */}
+                <div className="px-3 py-1 bg-slate-100 dark:bg-slate-800/90 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400">
+                  <div className="flex items-center gap-1">
+                    <span className="px-2 py-0.5 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-bold text-slate-800 dark:text-slate-200">
+                      📊 {styleOptions.sheetName || "Sheet1"}
+                    </span>
+                  </div>
+                  <span>Garis Kisi: {styleOptions.showGridLines !== false ? "Aktif" : "Nonaktif"}</span>
+                </div>
+              </div>
+            ) : (
+              <div
+                className="p-3 bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-100 dark:border-slate-700/60 space-y-2 relative overflow-hidden text-left"
+                style={{ fontFamily: styleOptions.fontFamily || "Calibri" }}
+              >
+                {styleOptions.watermark !== false && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none opacity-10 rotate-[-15deg] font-bold text-slate-900 dark:text-slate-100 text-base">
+                    {styleOptions.watermarkText || "IOnLearn Study Copilot"}
+                  </div>
+                )}
+
+                {/* Cover badge if enabled */}
+                {styleOptions.includeCoverPage && (
+                  <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
+                    <Bookmark className="w-3 h-3" />
+                    Halaman Sampul Aktif
+                  </div>
+                )}
+
+                {/* Miniature Kop Surat Preview with Logo */}
+                {(styleOptions.logoBase64 || styleOptions.customHeaderText || styleOptions.headerStyle === "formal_academic") && (
+                  <div className="p-2 bg-slate-50 dark:bg-slate-900/60 rounded-md border border-slate-200 dark:border-slate-700/80 mb-2">
+                    <div
+                      className={`flex items-center gap-2 mb-1.5 ${
+                        styleOptions.logoPosition === "center"
+                          ? "flex-col text-center"
+                          : styleOptions.logoPosition === "right"
+                          ? "flex-row-reverse text-right"
+                          : "flex-row text-left"
+                      }`}
+                    >
+                      {styleOptions.logoBase64 && (
+                        <div className="w-8 h-8 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-0.5 flex-shrink-0 flex items-center justify-center">
+                          <img
+                            src={styleOptions.logoBase64}
+                            alt="Logo Preview"
+                            className="max-h-full max-w-full object-contain"
+                          />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0 text-[10px] leading-tight">
+                        {styleOptions.customHeaderText ? (
+                          styleOptions.customHeaderText
+                            .trim()
+                            .split("\n")
+                            .slice(0, 3)
+                            .map((l, i) => (
+                              <div
+                                key={i}
+                                className={i === 0 ? "font-bold text-slate-900 dark:text-slate-100" : "text-slate-600 dark:text-slate-400"}
+                              >
+                                {l.trim()}
+                              </div>
+                            ))
+                        ) : (
+                          <>
+                            <div className="font-bold text-slate-900 dark:text-slate-100">
+                              {(styleOptions.institution || "NAMA INSTANSI RESMI").toUpperCase()}
+                            </div>
+                            {styleOptions.facultyOrClass && (
+                              <div className="text-slate-600 dark:text-slate-400">
+                                {styleOptions.facultyOrClass.toUpperCase()}
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    {/* Miniature Kop Surat double divider */}
+                    <div className="border-b border-slate-800 dark:border-slate-200"></div>
+                    <div className="border-b border-slate-800 dark:border-slate-200 mt-[1px]"></div>
+                  </div>
+                )}
+
+                {/* Document title colored by accent */}
+                <div
+                  className="text-sm font-bold truncate"
+                  style={{ color: `#${currentAccent.primary}` }}
+                >
+                  {docTitle}
+                </div>
+
+                {/* Student info tags */}
+                <div className="text-xs text-slate-500 dark:text-slate-400 flex flex-wrap gap-x-2.5 gap-y-1">
+                  {styleOptions.userName && <span>Penyusun: <strong>{styleOptions.userName}</strong></span>}
+                  {styleOptions.studentId && <span>NIM: <strong>{styleOptions.studentId}</strong></span>}
+                  {styleOptions.facultyOrClass && <span>{styleOptions.facultyOrClass}</span>}
+                  {styleOptions.institution && <span>{styleOptions.institution}</span>}
+                  {!styleOptions.userName && !styleOptions.studentId && (
+                    <span className="italic text-slate-400">Identitas penyusun kosong.</span>
+                  )}
+                </div>
+
+                {/* Bottom footer metadata */}
+                <div className="text-[10px] text-slate-400 dark:text-slate-500 pt-1.5 border-t border-slate-100 dark:border-slate-700/50 flex justify-between">
+                  <span>Author: {styleOptions.author || "IOnLearn"}</span>
+                  <span>{styleOptions.includePageNumbers !== false ? "Halaman 1 dari 1" : ""}</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

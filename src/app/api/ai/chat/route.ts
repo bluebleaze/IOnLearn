@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { GoogleGenAI, Type } from "@google/genai";
 import { AIConfig } from "@/types";
 import { cleanLatexMath } from "@/lib/mathUtils";
-import { buildPollinationsImageUrl, enhanceImagePrompt } from "@/lib/imageUtils";
+import { buildPollinationsImageUrl, enhanceImagePrompt, generateGoogleImagenImage } from "@/lib/imageUtils";
+import { extractYouTubeUrls, parseYouTubeUrl } from "@/lib/youtubeUtils";
 const KNOWN_SUBJECTS = [
     "Fisika",
     "Matematika",
@@ -708,18 +709,28 @@ function processAiChatResponse(
         lowerMsg.includes("tayangan") ||
         lowerMsg.includes("deck") ||
         lowerMsg.includes("slides");
-
-    const userWantsDocument =
-        (lowerMsg.includes("word") ||
-        lowerMsg.includes("docx") ||
-        lowerMsg.includes("pdf") ||
-        lowerMsg.includes("makalah") ||
+    const userWantsXlsx =
         lowerMsg.includes("excel") ||
         lowerMsg.includes("xlsx") ||
+        lowerMsg.includes(".xlsx") ||
         lowerMsg.includes("spreadsheet") ||
         lowerMsg.includes("spredsheet") ||
         lowerMsg.includes("xlxs") ||
-        (lowerMsg.includes("dokumen") && !userWantsSlides)) &&
+        lowerMsg.includes("lembar kerja") ||
+        lowerMsg.includes("tabel excel") ||
+        lowerMsg.includes("tabel data") ||
+        lowerMsg.includes("data tabel") ||
+        lowerMsg.includes("tabel statistik") ||
+        lowerMsg.includes("tabel") ||
+        lowerMsg.includes("data excel");
+
+    const userWantsDocument =
+        (lowerMsg.includes("dokumen") ||
+        lowerMsg.includes("word") ||
+        lowerMsg.includes("docx") ||
+        lowerMsg.includes("pdf") ||
+        lowerMsg.includes("makalah") ||
+        userWantsXlsx) &&
         !userWantsSlides;
 
     const userWantsImage =
@@ -731,11 +742,23 @@ function processAiChatResponse(
         lowerMsg.includes("lukiskan") ||
         lowerMsg.includes("visualisasikan") ||
         lowerMsg.includes("buatkan ilustrasi") ||
+        lowerMsg.includes("bikin foto") ||
+        lowerMsg.includes("buat foto") ||
+        lowerMsg.includes("buatkan foto") ||
+        lowerMsg.includes("jadi foto") ||
+        lowerMsg.includes("jadikan foto") ||
+        lowerMsg.includes("fotonya") ||
+        lowerMsg.includes("foto nya") ||
+        lowerMsg.includes("gambarnya") ||
+        lowerMsg.includes("gambar nya") ||
+        lowerMsg.includes("bikin jadi foto") ||
+        lowerMsg.includes("jadi gambar") ||
+        /\b(foto|gambar|lukisan)\b/i.test(lowerMsg) ||
         (lowerMsg.includes("diagram") && !userWantsSlides && !userWantsDocument);
 
     const userWantsAnyCreation = userWantsDocument || userWantsSlides || userWantsImage;
 
-    const finalDocument = (rawDocument && rawDocument.title && (rawDocument.content || rawDocument.title))
+    let finalDocument = (rawDocument && rawDocument.title && (rawDocument.content || rawDocument.title))
         ? (userWantsAnyCreation && !userWantsDocument ? undefined : rawDocument)
         : undefined;
 
@@ -752,6 +775,19 @@ function processAiChatResponse(
     }
 
     if (finalDocument) {
+        if (userWantsXlsx) {
+            finalDocument.type = "xlsx";
+            if (finalDocument.fileName) {
+                finalDocument.fileName = finalDocument.fileName.replace(/\.(docx|pdf)$/i, "") + ".xlsx";
+            } else {
+                const baseName = (finalDocument.title || "tabel_data").toLowerCase().replace(/[^a-z0-9]+/g, "_").slice(0, 50);
+                finalDocument.fileName = `${baseName}.xlsx`;
+            }
+            if (!finalDocument.fileName.endsWith(".xlsx")) {
+                finalDocument.fileName += ".xlsx";
+            }
+            finalDocument.description = finalDocument.description || "Spreadsheet Excel (.xlsx) siap diunduh.";
+        }
         if (finalDocument.title) finalDocument.title = cleanLatexMath(finalDocument.title);
         if (finalDocument.subject) finalDocument.subject = cleanLatexMath(finalDocument.subject);
         if (finalDocument.content) finalDocument.content = cleanLatexMath(finalDocument.content);
@@ -783,6 +819,21 @@ function processAiChatResponse(
         resultData.reply ||
         (typeof responseText === "string" && !responseText.startsWith("{") ? responseText : "Tugas berhasil diproses.");
     const cleanReply = cleanLatexMath(rawReplyText);
+
+    if (!finalDocument && userWantsXlsx && cleanReply.includes("|")) {
+        const tableLines = cleanReply.split("\n").filter(l => l.trim().startsWith("|"));
+        if (tableLines.length >= 3) {
+            const baseName = (taskContext?.title || "tabel_data").toLowerCase().replace(/[^a-z0-9]+/g, "_").slice(0, 40);
+            finalDocument = {
+                type: "xlsx",
+                title: cleanLatexMath((taskContext?.title || "Tabel Data Analisis").slice(0, 50)),
+                content: tableLines.join("\n"),
+                fileName: `${baseName || "tabel_data"}.xlsx`,
+                description: "Spreadsheet Excel (.xlsx) siap diunduh dan dikustomisasi.",
+                subject: taskContext?.courseName || "Tabel Data",
+            };
+        }
+    }
 
     return {
         reply: cleanReply,
@@ -903,14 +954,22 @@ ${personalizationInstruction}
 
 1. 📝 **DOKUMEN FORMAL WORD (.DOCX) / PDF (.PDF) / SPREADSHEET EXCEL (.XLSX)**:
    *Pemicu: Ketika pengguna meminta dokumen, makalah, laporan, esai, file word/pdf, atau tabel spreadsheet excel/xlsx.*
+   🚨 ATURAN MUTLAK FORMAT DOKUMEN (createdDocument):
+   - **JIKA PENGGUNA MEMINTA EXCEL / SPREADSHEET / XLSX / TABEL DATA / LEMBAR KERJA**:
+     * Field \`type\` WAJIB DIISI \`"xlsx"\` (DILARANG KERAS MENGISI "docx" ATAU "pdf"!).
+     * \`fileName\` WAJIB berakhiran \`.xlsx\` (contoh: \`analisis_komparasi_spesifikasi.xlsx\` atau \`anggaran_biaya_proyek.xlsx\`).
+     * \`content\` WAJIB berisi tabel data Markdown yang kaya, rapi, dan realistis (minimal 5-15 baris dengan 4-8 kolom terstruktur, menyertakan kolom metrik angka, kategori, dan deskripsi terukur).
+   - **JIKA PENGGUNA MEMINTA WORD (.DOCX) / MAKALAH / LAPORAN / DOKUMEN KARYA TULIS**:
+     * Field \`type\` WAJIB DIISI \`"docx"\`, dan \`fileName\` berakhiran \`.docx\`.
+   - **JIKA PENGGUNA MEMINTA PDF (.PDF)**:
+     * Field \`type\` WAJIB DIISI \`"pdf"\`, dan \`fileName\` berakhiran \`.pdf\`.
    Isi field \`createdDocument\` dengan objek:
-   - \`type\`: \`"docx"\` (dokumen Word), \`"pdf"\` (dokumen PDF), atau \`"xlsx"\` (spreadsheet Excel).
+   - \`type\`: \`"xlsx"\`, \`"docx"\`, atau \`"pdf"\`.
    - \`title\`: Judul resmi dokumen atau lembar kerja (ringkas, berbobot, maks 8-10 kata).
    - \`subject\`: Mata pelajaran / mata kuliah relevan.
-   - \`fileName\`: Nama file rapi berakhiran \`.docx\`, \`.pdf\`, atau \`.xlsx\` (contoh: \`makalah_kecerdasan_buatan.docx\` atau \`analisis_keuangan_proyek.xlsx\`).
-   - \`description\`: Ringkasan 1-2 kalimat mengenai cakupan isi dokumen.
+   - \`fileName\`: Nama file rapi berakhiran \`.xlsx\`, \`.docx\`, atau \`.pdf\`.
+   - \`description\`: Ringkasan 1-2 kalimat mengenai cakupan isi dokumen atau lembar kerja.
    - \`content\`:
-     * **Jika \`docx\` / \`pdf\`**: Tuliskan naskah lengkap, kaya, dan tuntas berformat Markdown:
      🚨 ATURAN MUTLAK KONTEN FILE: DILARANG KERAS HANYA MENGISI DENGAN PESAN BASA-BASI/PENGANTAR/TEMPLATE SEPERTI "Tentu saja saya telah menyusun dokumen...", "Berikut adalah file...", "Dokumen siap diunduh". ITU BUKAN DOKUMEN!
      Field 'content' HARUS BERISI NASKAH JAWABAN / LAPORAN / KARYA TULIS TUNTAS YANG SESUNGGUHNYA SECARA LENGKAP DARI AWAL HINGGA AKHIR:
      * **Jika \`docx\` / \`pdf\`**: Tuliskan naskah lengkap, kaya, dan tuntas berformat Markdown (minimal 500 - 1500 kata):
@@ -920,12 +979,8 @@ ${personalizationInstruction}
        - \`## Pembahasan Komprehensif\` (pecah menjadi sub-bab \`###\`, sertakan studi kasus atau contoh konkret)
        - \`## Tabel Analisis / Komparasi\`
        - \`## Kesimpulan & Rekomendasi Aksi\`
-       - \`## Langkah Praktikum / Pembahasan Komprehensif\` (uraikan langkah demi langkah secara nyata dengan baris perintah/prosedur teknis terinci)
-       - \`## Tabel Analisis / Komparasi Data\`
-       - \`## Hasil & Analisis Pengujian\`
-       - \`## Kesimpulan & Rekomendasi\`
        - \`## Referensi / Daftar Rujukan Akademik\`
-     * **Jika \`xlsx\`**: Tuliskan tabel data Markdown yang kaya data, rapi, dan realistis (minimal 5-10 baris dengan 3-6 kolom terstruktur). Sertakan kolom metrik angka yang jelas sehingga saat dikonversi menjadi file Excel siap dianalisis dan diolah.
+     * **Jika \`xlsx\`**: Tuliskan tabel data Markdown yang kaya data, rapi, dan realistis (minimal 5-15 baris dengan 4-8 kolom terstruktur). Sertakan kolom metrik angka yang jelas sehingga saat dikonversi menjadi file Excel siap dianalisis dan diolah.
      * PADA FIELD \`reply\`: Tuliskan ringkasan materi atau ulasan eksekutif dari isi dokumen tersebut, JANGAN hanya 1 baris kalimat template!
 
 2. 📊 **SLIDE PRESENTASI PROFESIONAL POWERPOINT (.PPTX)**:
@@ -943,16 +998,22 @@ ${personalizationInstruction}
      * Slide Terakhir: Rangkuman Kunci & Kesimpulan / Call-to-Action (gunakan juga format "**Poin Kunci**: Ringkasan...").
      * \`notes\`: Catatan pemateri (*speaker notes*) berisi arahan narasi presenter saat membawakan slide tersebut.
 
-3. 🎨 **GENERATOR GAMBAR & DIAGRAM VISUAL AI (\`createdImage\`)**:
-   *Pemicu: Ketika pengguna meminta ilustrasi, gambar visual, gambarkan konsep, lukiskan, diagram, atau infografis.*
-   🚨 ATURAN MUTLAK PROMPT GAMBAR: Field \`prompt\` WAJIB ditulis dalam bahasa Inggris yang SANGAT KAYA DETAIL, VISUAL, dan SPESIFIK (minimal 35-60 kata) untuk model generator FLUX.1.
-   Sertakan struktur lengkap:
-   - Subjek utama & anatomi/komponen ilmiah yang jelas dan akurat (misal: cross-section view with clearly visible internal structures).
-   - Gaya visual premium: (pilih sesuai topik: 'crisp 3D scientific octane render' / 'hyper-realistic National Geographic photography' / 'futuristic isometric 3D render').
-   - Pencahayaan & atmosfer: ('volumetric studio lighting, raytraced subsurface scattering, vivid natural color grading').
-   - Ketajaman & render: ('8k UHD, ultra-sharp focus, masterpiece composition, clean educational aesthetic').
-   DILARANG KERAS hanya menuliskan prompt pendek 2-5 kata!
-   - \`prompt\`: Detailed descriptive English prompt (contoh: *"Detailed cross-section diagram of a green plant leaf illustrating the cellular process of photosynthesis, featuring a microscopic view of chloroplasts with thylakoid stacks, sunlight rays penetrating the epidermis, carbon dioxide absorption, crisp 3D scientific octane render, educational infographic style, bright natural volumetric lighting, vivid natural colors, accurate botanical anatomy, 8k UHD, ultra-sharp focus"*).
+3. 🎨 **GENERATOR GAMBAR & ILUSTRASI VISUAL AI (\`createdImage\`)**:
+   *Pemicu: Ketika pengguna meminta foto, ilustrasi visual, lukisan, atau gambaran visual nyata.*
+   🚨 ATURAN MUTLAK ANTI-HALUSINASI, DIAGRAM ALUR (FLOWCHART), & TABEL DATA:
+   - **JIKA PENGGUNA MEMINTA "ALUR", "DIAGRAM ALUR", "FLOWCHART", ATAU "PROSES"**:
+     1. WAJIB TULISKAN DIAGRAM ALUR TERSEBUT SECARA LENGKAP & VISUAL DI DALAM TEKS 'reply' menggunakan pemformatan visual Markdown yang rapi (misal: bagan kotak-kotak bertingkat dengan panah ⬇ atau ➔, atau tabel tahapan proses). Jelaskan setiap langkah dengan tuntas! DILARANG HANYA MENJANJIKAN ALUR DI GAMBAR!
+     2. DILARANG KERAS membuat prompt 'createdImage' yang meminta "flowchart", "diagram teks", "peta konsep berteks", atau "bagan kotak-kotak bertuliskan kalimat"! Model gambar AI (difusi) TIDAK MAMPU menulis kalimat atau membuat flowchart yang terbaca dan PASTI AKAN BERHALUSINASI (menghasilkan coretan kabur/lingkaran abstrak rusak)!
+     3. Jika menghasilkan 'createdImage', ubah konsep menjadi VISUALISASI ADEGAN NYATA / OBJEK FISIK KONKRET yang relevan dan dapat digambarkan dengan indah (contoh untuk topik edukasi kesehatan remaja: "A realistic empathetic health counselor discussing adolescent wellness with a high school student in a modern educational clinic, warm lighting, natural photography, 8k"), BUKAN teks flowchart!
+   - **JIKA PENGGUNA MEMINTA "TABEL", "TABEL DATA", "DATA STATISTIK", "GRAFIK TABEL", ATAU "GAMBAR TABEL DATA"**:
+     1. WAJIB TULISKAN TABEL DATA LENGKAP SECARA TUNTAS DI DALAM TEKS 'reply' menggunakan tabel Markdown komprehensif (minimal 5-10 baris dengan 4-7 kolom detail: misal No, Variabel Penelitian, Kategori/Kelompok, Indikator Kuantitatif, Persentase/Skala, Dampak Teramati, Keterangan). Ulas data tersebut secara kritis dan ilmiah! DILARANG KERAS HANYA MENGHASILKAN GAMBAR TANPA MENYAJIKAN ISI TABEL DATA RIIL!
+     2. WAJIB ISI FIELD 'createdDocument' DENGAN TIPE "xlsx" yang memuat tabel data tersebut agar pengguna dapat langsung mengunduh dan mengeditnya sebagai file Excel (.xlsx)!
+     3. DILARANG MEMBUAT PROMPT GAMBAR BERUPA "foto monitor komputer kosong" atau "tabel teks mikro" yang tidak terbaca! Jika menghasilkan 'createdImage', ubah prompt menjadi VISUALISASI DATA 3D / DASHBOARD ANALITIK HOLOGRAFIS MODERN (contoh: "A futuristic 3D holographic data analytics visualization floating in space, glowing neon bar graphs, charts, clean glowing metrics, high tech educational laboratory, octane render, 8k UHD").
+   - Field 'prompt' WAJIB menggambarkan **objek fisik nyata, manusia konkret, suasana, atau mikroskopis/anatomi nyata** yang dapat difoto atau dilukis (minimal 35-60 kata).
+     * Subjek utama & komponen konkret nyata (orang, ruangan, instrumen, mikroskop, organ biologis).
+     * Gaya visual: 'hyper-realistic National Geographic photography' atau 'crisp 3D scientific octane render'.
+     * Pencahayaan & atmosfer: 'volumetric studio lighting, raytraced subsurface scattering, natural color grading'.
+     * Ketajaman: '8k UHD, ultra-sharp focus, masterpiece composition'.
    - \`caption\`: Keterangan gambar ringkas dan informatif dalam bahasa Indonesia.
    - \`aspectRatio\`: \`"16:9"\` (default lanskap), \`"1:1"\` (persegi), atau \`"4:3"\` (diagram standar).
 
@@ -967,9 +1028,20 @@ ${personalizationInstruction}
    *Pemicu: Ketika pengguna meminta "jadikan to-do", "buat jadwal belajar", atau "buat checklist tugas".*
    - Buat 1 rencana terpadu dengan 3-7 \`subtasks\` yang realistis dan dapat dieksekusi secara terurut.
 
+6. 🎬 **ANALISIS VIDEO YOUTUBE & PEMBELAJARAN AUDIO-VISUAL**:
+   *Pemicu: Ketika pengguna melampirkan tautan/video YouTube untuk ditonton, dianalisis, atau dirangkum.*
+   - Anda memiliki kemampuan memahami dan menganalisis video YouTube secara mendalam (alur narasi, konsep visual, transkrip, maupun poin-poin penjelasan penting di dalamnya).
+   - Sajikan analisis terstruktur, elegan, dan siap dipelajari siswa:
+     • **🎯 Ringkasan Inti**: Gambaran umum topik bahasan, urgensi materi, dan simpulan utama yang disampaikan video.
+     • **⏱️ Poin-Poin Kunci & Garis Waktu (Timestamps)**: Petakan konsep-konsep krusial beserta penanda waktu format \`[MM:SS]\` atau \`[HH:MM:SS]\` (contoh: \`[02:15] Pembahasan Rumus Tekanan Hidrostatis\`) agar siswa dapat langsung melompat ke momen spesifik dalam video tersebut.
+     • **💡 Penjelasan Konseptual Mendalam**: Kupas tuntas penjelasan materi, logika kerja, analogi, atau formula yang diajarkan dalam video.
+     • **❓ Kuis & Pertanyaan Evaluasi Pemahaman**: Buat 1-2 pertanyaan reflektif atau kuis pilihan ganda interaktif dari materi video untuk menguji pemahaman siswa.
+   - Jika siswa meminta untuk merangkum ke dokumen (Word/PDF/Slides) atau membuat catatan/to-do dari video, sertakan juga field \`createdDocument\`, \`createdSlides\`, \`createdNote\`, atau \`createdTodo\` secara lengkap sesuai pedoman di atas.
+
 *PENTING: Jangan membuat atau menyertakan field objek pembuatan (document/slides/image/note/todo) jika pengguna tidak memintanya secara eksplisit. Jawablah pesan biasa dengan percakapan yang cerdas, suportif, dan kaya wawasan.*`;
 
         const provider = aiConfig?.provider || process.env.AI_PROVIDER?.toLowerCase() || "gemini";
+        const geminiApiKey = provider === "gemini_custom" ? aiConfig?.apiKey : (aiConfig?.apiKey || process.env.GEMINI_API_KEY);
         let responseText = "";
         let groundingSources: { title: string; url: string }[] = [];
         let groundingQueries: string[] = [];
@@ -997,13 +1069,18 @@ ${personalizationInstruction}
                     role: "system",
                     content:
                         systemInstruction +
-                        '\n\nKEMBALIKAN OUTPUT HARUS HANYA DALAM BENTUK JSON OBJECT YANG VALID SESUAI SKEMA BERIKUT:\n{\n  "thoughtProcess": "Penalaran kritis, verifikasi keabsahan data/rumus, langkah kalkulasi step-by-step, dan evaluasi anti-halusinasi sebelum menulis jawaban",\n  "reply": "Jawaban Markdown",\n  "suggestedPrompts": ["Pertanyaan 1", "Pertanyaan 2"],\n  "createdNote": { "title": "Judul Singkat", "content": "Isi Markdown", "subject": "Nama Mata Kuliah", "tags": ["Label"] },\n  "createdTodo": { "title": "Judul Rencana", "description": "Deskripsi", "priority": "medium", "category": "Materi", "subtasks": [{ "title": "Langkah 1" }] },\n  "createdDocument": { "type": "docx" | "pdf", "title": "Judul Dokumen", "content": "Isi Markdown", "fileName": "dokumen.docx" },\n  "createdSlides": { "title": "Judul Presentasi", "theme": "indigo", "slides": [{ "title": "Slide 1", "bullets": ["Poin 1"], "notes": "Catatan" }], "fileName": "presentasi.pptx" },\n  "createdImage": { "prompt": "English detailed prompt", "caption": "Keterangan Indonesia", "aspectRatio": "16:9" }\n}',
+                        '\n\nKEMBALIKAN OUTPUT HARUS HANYA DALAM BENTUK JSON OBJECT YANG VALID SESUAI SKEMA BERIKUT:\n{\n  "thoughtProcess": "Penalaran kritis, verifikasi keabsahan data/rumus, langkah kalkulasi step-by-step, dan evaluasi anti-halusinasi sebelum menulis jawaban",\n  "reply": "Jawaban Markdown",\n  "suggestedPrompts": ["Pertanyaan 1", "Pertanyaan 2"],\n  "createdNote": { "title": "Judul Singkat", "content": "Isi Markdown", "subject": "Nama Mata Kuliah", "tags": ["Label"] },\n  "createdTodo": { "title": "Judul Rencana", "description": "Deskripsi", "priority": "medium", "category": "Materi", "subtasks": [{ "title": "Langkah 1" }] },\n  "createdDocument": { "type": "docx" | "pdf" | "xlsx", "title": "Judul Dokumen", "content": "Isi Markdown / Tabel Data Markdown", "fileName": "dokumen.docx/dokumen.pdf/tabel.xlsx" },\n  "createdSlides": { "title": "Judul Presentasi", "theme": "indigo", "slides": [{ "title": "Slide 1", "bullets": ["Poin 1"], "notes": "Catatan" }], "fileName": "presentasi.pptx" },\n  "createdImage": { "prompt": "Exquisite detailed English visual prompt (40-60 words) for FLUX/3D", "caption": "Keterangan Indonesia", "aspectRatio": "16:9" }\n}',
                 },
                 ...messages.map((m: any) => {
                     if (m.attachments && Array.isArray(m.attachments) && m.attachments.length > 0) {
                         const contentParts: any[] = [{ type: "text", text: m.content || "Analisis lampiran ini:" }];
                         for (const att of m.attachments) {
-                            if (att.dataUrl && att.dataUrl.startsWith("data:image")) {
+                            if (att.type === "youtube" && att.youtubeInfo) {
+                                contentParts.push({
+                                    type: "text",
+                                    text: `\n\n[Video YouTube Terlampir: "${att.youtubeInfo.title || att.name}"]\nTautan: ${att.youtubeInfo.canonicalUrl || att.name}\n${att.extractedText ? `Transkrip/Isi:\n${att.extractedText}` : "Tolong analisis materi dan konsep yang diajarkan dalam video pembelajaran ini."}`,
+                                });
+                            } else if (att.dataUrl && att.dataUrl.startsWith("data:image")) {
                                 contentParts.push({
                                     type: "image_url",
                                     image_url: { url: att.dataUrl },
@@ -1050,10 +1127,7 @@ ${personalizationInstruction}
             responseText = data.choices[0].message.content;
         } else {
             // Google Gemini Provider (Custom Key or Default Server Key)
-            const apiKey =
-                provider === "gemini_custom"
-                    ? aiConfig?.apiKey
-                    : process.env.GEMINI_API_KEY;
+            const apiKey = geminiApiKey;
 
             if (!apiKey) {
                 return NextResponse.json(
@@ -1093,7 +1167,19 @@ TUGAS ANDA:
                     const parts: any[] = [{ text: userText }];
                     if (m.attachments && Array.isArray(m.attachments)) {
                         for (const att of m.attachments) {
-                            if (att.dataUrl && att.dataUrl.startsWith("data:")) {
+                            if (att.type === "youtube" && att.youtubeInfo?.canonicalUrl) {
+                                // Google Gemini natively supports public YouTube URLs via fileData: { fileUri }
+                                parts.push({
+                                    fileData: {
+                                        fileUri: att.youtubeInfo.canonicalUrl,
+                                    },
+                                });
+                                if (att.extractedText) {
+                                    parts.push({
+                                        text: `\n\n--- [Transkrip & Catatan Video YouTube: "${att.youtubeInfo.title || att.name}"] ---\n${att.extractedText}`,
+                                    });
+                                }
+                            } else if (att.dataUrl && att.dataUrl.startsWith("data:")) {
                                 const commaIdx = att.dataUrl.indexOf(",");
                                 const header = att.dataUrl.slice(0, commaIdx);
                                 const base64Data = att.dataUrl.slice(commaIdx + 1);
@@ -1109,6 +1195,25 @@ TUGAS ANDA:
                                     text: `\n\n--- [Dokumen Lampiran: ${att.name}] ---\n${att.extractedText}`,
                                 });
                             }
+                        }
+                    }
+
+                    // Check for inline YouTube URLs in user message if not already attached
+                    const inlineYtUrls = extractYouTubeUrls(userText);
+                    for (const ytUrl of inlineYtUrls) {
+                        const parsedYt = parseYouTubeUrl(ytUrl);
+                        const alreadyAttached = m.attachments?.some(
+                            (a: any) =>
+                                a.type === "youtube" &&
+                                (a.youtubeInfo?.videoId === parsedYt?.videoId ||
+                                 a.youtubeInfo?.canonicalUrl === parsedYt?.canonicalUrl)
+                        );
+                        if (parsedYt && !alreadyAttached) {
+                            parts.push({
+                                fileData: {
+                                    fileUri: parsedYt.canonicalUrl,
+                                },
+                            });
                         }
                     }
                     return {
@@ -1178,7 +1283,7 @@ TUGAS ANDA:
                             type: Type.OBJECT,
                             description: "HANYA isi jika pengguna SECARA EKSPLISIT meminta dokumen/word/docx/pdf/excel/xlsx/spreadsheet. JANGAN isi jika pengguna hanya minta penjelasan biasa, slide, atau gambar.",
                             properties: {
-                                type: { type: Type.STRING, description: "Format dokumen: docx, pdf, atau xlsx" },
+                                type: { type: Type.STRING, enum: ["docx", "pdf", "xlsx"], description: "Format dokumen: WAJIB 'xlsx' jika pengguna meminta spreadsheet/excel/tabel data/xlsx, 'docx' untuk word, atau 'pdf' untuk pdf" },
                                 title: { type: Type.STRING, description: "Judul dokumen atau lembar kerja" },
                                 content: { type: Type.STRING, description: "Isi dokumen Markdown lengkap terstruktur. Untuk format xlsx sertakan tabel Markdown rapi dengan data relevan." },
                                 fileName: { type: Type.STRING, description: "Nama file dengan ekstensi .docx, .pdf, atau .xlsx" },
@@ -1215,7 +1320,7 @@ TUGAS ANDA:
                             type: Type.OBJECT,
                             description: "HANYA isi jika pengguna SECARA EKSPLISIT meminta gambar/ilustrasi/diagram/generate image. JANGAN isi jika pengguna minta dokumen, slide, atau penjelasan biasa.",
                             properties: {
-                                prompt: { type: Type.STRING, description: "Prompt bahasa Inggris sangat kaya visual, detail, dan deskriptif (minimal 15-30 kata) untuk FLUX image generator" },
+                                prompt: { type: Type.STRING, description: "Prompt visual bahasa Inggris ultra-deskriptif (40-60 kata) dengan subjek presisi, pencahayaan sinematik/volumetric studio, tekstur material nyata, dan resolusi 8K UHD untuk FLUX/3D image generator. DILARANG menggunakan bahasa Indonesia pada prompt ini." },
                                 caption: { type: Type.STRING, description: "Keterangan gambar dalam bahasa Indonesia" },
                                 aspectRatio: { type: Type.STRING, description: "Rasio aspek: 16:9, 1:1, atau 4:3" },
                             },
@@ -1374,6 +1479,17 @@ TUGAS ANDA:
                                 collectedGroundingQueries
                             );
 
+                            if (finalResult.createdImage && apiKey) {
+                                try {
+                                    const imagenUrl = await generateGoogleImagenImage(apiKey, finalResult.createdImage.prompt, finalResult.createdImage.aspectRatio);
+                                    if (imagenUrl) {
+                                        finalResult.createdImage.url = imagenUrl;
+                                    }
+                                } catch (imgErr) {
+                                    console.warn("Google Imagen 3 in chat stream error, using fallback URL:", imgErr);
+                                }
+                            }
+
                             if (!finalResult.thoughtProcess && extractor.thoughtText) {
                                 finalResult.thoughtProcess = cleanLatexMath(extractor.thoughtText.trim());
                             }
@@ -1465,6 +1581,17 @@ TUGAS ANDA:
             groundingQueries
         );
 
+        if (finalResult.createdImage && geminiApiKey) {
+            try {
+                const imagenUrl = await generateGoogleImagenImage(geminiApiKey, finalResult.createdImage.prompt, finalResult.createdImage.aspectRatio);
+                if (imagenUrl) {
+                    finalResult.createdImage.url = imagenUrl;
+                }
+            } catch (imgErr) {
+                console.warn("Google Imagen 3 in chat fallback error, using fallback URL:", imgErr);
+            }
+        }
+
         return NextResponse.json({ ...finalResult, groundingAvailable });
     } catch (error: any) {
         console.error("Error in AI Chat:", error);
@@ -1486,9 +1613,10 @@ export async function GET(req: Request) {
                 return NextResponse.json({ available: false, reason: "no_api_key" });
             }
             const ai = new GoogleGenAI({ apiKey });
+            const testModel = process.env.NEXT_PUBLIC_GEMINI_MODEL || "gemini-3.6-flash";
             // Quick 1-token test with search to verify quota without latency
             await ai.models.generateContent({
-                model: "gemini-2.5-flash",
+                model: testModel.startsWith("gemini-2.5") ? "gemini-3.6-flash" : testModel,
                 contents: "test",
                 config: {
                     maxOutputTokens: 1,

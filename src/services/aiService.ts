@@ -11,6 +11,7 @@ import {
 } from "../types";
 import { ClassroomService } from "./classroomService";
 import { isGoogleWorkspaceUrl, parseGoogleWorkspaceUrl } from "../lib/workspaceUtils";
+import { extractYouTubeUrls, isYouTubeUrl, parseYouTubeUrl } from "../lib/youtubeUtils";
 
 export async function readDriveFileContent(
     token: string | null,
@@ -179,6 +180,7 @@ export async function sendChatMessageToAIStream(
             const token = ClassroomService.getStoredToken();
             const uniqueUrls = Array.from(new Set(urlMatches)).slice(0, 3);
             for (const urlStr of uniqueUrls) {
+                if (isYouTubeUrl(urlStr)) continue;
                 const parsedWorkspace = parseGoogleWorkspaceUrl(urlStr);
                 const fileId = parsedWorkspace?.fileId || extractDriveFileId(urlStr);
                 const text = await readDriveFileContent(token, fileId, urlStr);
@@ -187,6 +189,15 @@ export async function sendChatMessageToAIStream(
                         ? `Google ${parsedWorkspace.type.charAt(0).toUpperCase() + parsedWorkspace.type.slice(1)}`
                         : "Dokumen Link";
                     extractedMessageLinkText += `\n\n[Isi ${typeLabel} dari ${urlStr}]:\n${text.substring(0, 10000)}`;
+                }
+            }
+
+            // Detect YouTube URLs in user message
+            const ytUrls = extractYouTubeUrls(lastUserMessage.content);
+            for (const ytUrl of ytUrls) {
+                const parsedYt = parseYouTubeUrl(ytUrl);
+                if (parsedYt) {
+                    extractedMessageLinkText += `\n\n[Materi Video YouTube Terkait: ${parsedYt.canonicalUrl}]`;
                 }
             }
         }

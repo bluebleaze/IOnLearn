@@ -116,12 +116,25 @@ export interface TodoTask {
   userEmail?: string;
 }
 
+export interface YouTubeVideoInfo {
+  videoId: string;
+  url: string;
+  canonicalUrl: string;
+  embedUrl: string;
+  thumbnailUrl: string;
+  title?: string;
+  authorName?: string;
+  authorUrl?: string;
+  description?: string;
+}
+
 export interface ChatAttachment {
   name: string;
   size: number;
-  type?: 'pdf' | 'image' | 'code' | 'doc';
+  type?: 'pdf' | 'image' | 'code' | 'doc' | 'youtube';
   dataUrl?: string;
   extractedText?: string;
+  youtubeInfo?: YouTubeVideoInfo;
 }
 
 export interface ChatMessage {
@@ -210,6 +223,12 @@ export interface DocumentStyleOptions {
   logoPosition?: 'left' | 'center' | 'right'; // Posisi penempatan logo pada kop
   watermark?: boolean; // Default true
   watermarkText?: string; // Default "IOnLearn Study Copilot"
+  // Excel / Spreadsheet specific customization options
+  sheetName?: string; // Nama Sheet / Lembar Kerja (maks 31 karakter)
+  tableTitle?: string; // Judul Tabel Utama di Excel
+  excelTheme?: 'emerald' | 'teal' | 'indigo' | 'blue' | 'slate' | 'amber'; // Tema Warna Excel
+  autoFitColumns?: boolean; // Auto-fit lebar kolom (default true)
+  showGridLines?: boolean; // Tampilkan garis kisi gridlines (default true)
 }
 
 export interface CreatedSlides {
@@ -323,6 +342,14 @@ export interface AIConfig {
   apiKey?: string;
   baseUrl?: string;
   model?: string;
+}
+
+export interface ClassroomSyncProgress {
+  current: number;
+  total: number;
+  percent: number;
+  message: string;
+  courseName?: string;
 }
 
 export interface SyncStats {

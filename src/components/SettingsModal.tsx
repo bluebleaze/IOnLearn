@@ -40,7 +40,7 @@ interface SettingsModalProps {
 const GEMINI_MODELS = [
   { value: 'gemini-3.1-flash-lite', label: 'Gemini 3.1 Flash Lite (Default)' },
   { value: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash Lite' },
-  { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite' },
+  { value: 'gemini-3.6-flash', label: 'Gemini 3.6 Flash (Rekomendasi)' },
   { value: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash' },
   { value: '__CUSTOM__', label: 'Tulis Nama Model Kustom...' },
 ];

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useMemo } from "react";
+import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   Send,
@@ -52,6 +52,9 @@ import {
   Square,
   Sliders,
   MoreHorizontal,
+  Youtube,
+  Play,
+  Pause,
 } from "lucide-react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -68,6 +71,7 @@ import {
   UserPreferences,
   StudyNote,
   PersonalTodo,
+  YouTubeVideoInfo,
 } from "../types";
 import { sendChatMessageToAI, sendChatMessageToAIStream } from "../services/aiService";
 import {
@@ -86,6 +90,11 @@ import {
   parseGoogleWorkspaceUrl,
   getWorkspaceBadge,
 } from "@/lib/workspaceUtils";
+import {
+  isYouTubeUrl,
+  parseYouTubeUrl,
+  extractYouTubeUrls,
+} from "@/lib/youtubeUtils";
 import {
   addNote,
   addTodo,
@@ -118,9 +127,10 @@ interface ChatSession {
 interface AttachedFile {
   name: string;
   size: number;
-  type: "pdf" | "image" | "code" | "doc";
+  type: "pdf" | "image" | "code" | "doc" | "youtube";
   dataUrl?: string;
   extractedText?: string;
+  youtubeInfo?: YouTubeVideoInfo;
 }
 
 const compressImageIfNeeded = async (
@@ -189,6 +199,14 @@ const formatFileSize = (bytes: number): string => {
 };
 
 const getFileFormatBadge = (name: string, type?: string) => {
+  if (type === "youtube" || isYouTubeUrl(name)) {
+    return {
+      label: "YOUTUBE",
+      badgeClass: "bg-red-600 dark:bg-red-500 text-white",
+      borderClass: "border-red-200 dark:border-red-900/50",
+      bgLight: "bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300",
+    };
+  }
   if (type === "pdf" || name.toLowerCase().endsWith(".pdf")) {
     return {
       label: "PDF",
@@ -545,6 +563,13 @@ export const AIChat: React.FC<AIChatProps> = ({
   // Google Workspace link modal
   const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false);
   const [workspaceUrlInput, setWorkspaceUrlInput] = useState("");
+  // YouTube Video link & player modal
+  const [isYouTubeModalOpen, setIsYouTubeModalOpen] = useState(false);
+  const [youtubeUrlInput, setYoutubeUrlInput] = useState("");
+  const [isLoadingYouTubeMeta, setIsLoadingYouTubeMeta] = useState(false);
+  const [youtubeMetaPreview, setYoutubeMetaPreview] = useState<YouTubeVideoInfo | null>(null);
+  const [youtubeAnalysisPreset, setYoutubeAnalysisPreset] = useState<"summary" | "timestamps" | "quiz" | "notes">("summary");
+  const [activePlayingVideoId, setActivePlayingVideoId] = useState<string | null>(null);
   // Message export menu state
   const [activeExportMenuMsgId, setActiveExportMenuMsgId] = useState<string | null>(null);
   const [exportingFormat, setExportingFormat] = useState<string | null>(null);
@@ -1338,6 +1363,100 @@ export const AIChat: React.FC<AIChatProps> = ({
     }
   };
 
+  // Open customizer modal directly for message export in any format (pdf, docx, xlsx, pptx)
+  const handleCustomizeExport = (msg: ChatMessage, format: "pdf" | "docx" | "xlsx" | "pptx") => {
+    setActiveExportMenuMsgId(null);
+    if (format === "pptx") {
+      if (msg.createdSlides) {
+        setCustomizingSlides(msg.createdSlides);
+        return;
+      }
+
+      const cleanContent = msg.content.replace(/```json[\s\S]*?```/g, "").trim();
+      const lines = cleanContent.split("\n").map((l) => l.trim()).filter(Boolean);
+      const title =
+        activeTask?.title ||
+        lines.find((l) => l.startsWith("#"))?.replace(/^[#\s*]+/, "").trim() ||
+        "Materi Presentasi AI";
+
+      const sections = cleanContent.split(/(?:^|\n)(?=#+\s*)/);
+      const slides: { title: string; bullets: string[] }[] = [];
+
+      for (const sec of sections) {
+        const secLines = sec.trim().split("\n").map((l) => l.trim()).filter(Boolean);
+        if (secLines.length === 0) continue;
+        const slideTitle = secLines[0].replace(/^[#\s*]+/, "").slice(0, 70);
+        const bullets: string[] = [];
+        for (let i = 1; i < secLines.length; i++) {
+          const l = secLines[i];
+          if (/^[-*•\d\.]\s+/.test(l)) {
+            bullets.push(l.replace(/^[-*•\d\.]\s+/, ""));
+          } else if (bullets.length < 5 && l.length > 5 && !l.startsWith("#")) {
+            bullets.push(l);
+          }
+        }
+        if (slideTitle && bullets.length > 0) {
+          slides.push({ title: slideTitle, bullets: bullets.slice(0, 5) });
+        }
+      }
+
+      if (slides.length === 0) {
+        slides.push({
+          title: "Ringkasan Materi",
+          bullets: lines.filter((l) => l.length > 10).slice(0, 5),
+        });
+      }
+
+      setCustomizingSlides({
+        title,
+        slides,
+        subject: activeTask?.courseName || "Presentasi Materi",
+      });
+      return;
+    }
+
+    const isFiller = (t?: string) => {
+      if (!t || t.trim().length < 200) return true;
+      const l = t.toLowerCase().trim();
+      return (
+        (l.startsWith("tentu saja") || l.startsWith("halo") || l.startsWith("hai") || l.startsWith("berikut adalah") || l.startsWith("saya telah") || l.startsWith("aku telah")) &&
+        !t.includes("\n#") &&
+        t.length < 400
+      );
+    };
+
+    let finalContent = msg.content.replace(/```json[\s\S]*?```/g, "").trim();
+    if (msg.createdDocument?.content && !isFiller(msg.createdDocument.content)) {
+      finalContent = msg.createdDocument.content;
+    } else if (isFiller(finalContent)) {
+      const currentIdx = messages.findIndex((mItem: ChatMessage) => mItem.id === msg.id);
+      const searchRange = currentIdx >= 0 ? messages.slice(0, currentIdx) : messages;
+      const prevRich = [...searchRange].reverse().find(
+        (mItem: ChatMessage) => mItem.role === "assistant" && mItem.content && !isFiller(mItem.content) && mItem.content.length > 250
+      );
+      if (prevRich) {
+        finalContent = prevRich.content.replace(/```json[\s\S]*?```/g, "").trim();
+      }
+    }
+
+    const contentLines = finalContent.split("\n").map((l: string) => l.trim()).filter(Boolean);
+    const heading = contentLines.find((l: string) => l.startsWith("#"));
+    const title =
+      heading ? heading.replace(/^[#\s*]+/, "").trim().slice(0, 80) : activeTask?.title || msg.createdDocument?.title || (format === "xlsx" ? "Tabel Data AI" : "Dokumen Materi AI");
+    const fileName = `${title.toLowerCase().replace(/[^a-z0-9]+/g, "_")}.${format}`;
+
+    setCustomizingDoc({
+      doc: {
+        type: format,
+        title,
+        content: finalContent,
+        subject: msg.createdDocument?.subject || activeTask?.courseName,
+        fileName,
+      },
+      fallbackText: finalContent,
+    });
+  };
+
   const handleGenerateImageForMessage = (msg: ChatMessage) => {
     setActiveExportMenuMsgId(null);
     const cleanContent = msg.content.replace(/```json[\s\S]*?```/g, "").trim();
@@ -1370,6 +1489,99 @@ export const AIChat: React.FC<AIChatProps> = ({
       }
       toast.success(`Link ${badge.label} berhasil disisipkan ke pesan!`, {
         description: "AI akan otomatis mengunduh & membaca isi dokumen ini saat dikirim.",
+      });
+    }
+  };
+
+  // Fetch YouTube metadata preview when input changes
+  useEffect(() => {
+    const trimmed = youtubeUrlInput.trim();
+    if (!trimmed) {
+      setYoutubeMetaPreview(null);
+      setIsLoadingYouTubeMeta(false);
+      return;
+    }
+    const parsed = parseYouTubeUrl(trimmed);
+    if (!parsed) {
+      setYoutubeMetaPreview(null);
+      setIsLoadingYouTubeMeta(false);
+      return;
+    }
+
+    setYoutubeMetaPreview(parsed);
+    setIsLoadingYouTubeMeta(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch("/api/youtube/info", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: parsed.canonicalUrl, includeTranscript: false }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setYoutubeMetaPreview(data);
+        }
+      } catch (err) {
+        console.warn("Could not fetch YouTube info:", err);
+      } finally {
+        setIsLoadingYouTubeMeta(false);
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [youtubeUrlInput]);
+
+  const handleInsertYouTubeVideo = (autoSend: boolean = false) => {
+    const trimmed = youtubeUrlInput.trim();
+    if (!trimmed) {
+      toast.error("Masukkan URL video YouTube terlebih dahulu.");
+      return;
+    }
+
+    const parsed = parseYouTubeUrl(trimmed);
+    if (!parsed) {
+      toast.error("Format tautan YouTube tidak valid.");
+      return;
+    }
+
+    const videoInfo: YouTubeVideoInfo = youtubeMetaPreview || parsed;
+    const attachment: AttachedFile = {
+      name: videoInfo.title || `Video YouTube (${videoInfo.videoId})`,
+      size: 0,
+      type: "youtube",
+      youtubeInfo: videoInfo,
+    };
+
+    setIsYouTubeModalOpen(false);
+    setYoutubeUrlInput("");
+    setYoutubeMetaPreview(null);
+
+    let promptText = "";
+    if (youtubeAnalysisPreset === "summary") {
+      promptText = `Tolong tonton dan analisa video YouTube "${videoInfo.title || videoInfo.canonicalUrl}". Uraikan ringkasan materi, konsep kunci yang diajarkan, dan pesan utamanya.`;
+    } else if (youtubeAnalysisPreset === "timestamps") {
+      promptText = `Tolong bedah video YouTube "${videoInfo.title || videoInfo.canonicalUrl}" berdasarkan garis waktu (timestamps). Petakan alur materi penting dalam format [MM:SS].`;
+    } else if (youtubeAnalysisPreset === "quiz") {
+      promptText = `Tolong buatkan 3-5 latihan soal / kuis pemahaman konsep berdasarkan materi video YouTube "${videoInfo.title || videoInfo.canonicalUrl}", lengkap dengan opsi dan pembahasan.`;
+    } else if (youtubeAnalysisPreset === "notes") {
+      promptText = `Tolong susun catatan materi belajar terstruktur dari video YouTube "${videoInfo.title || videoInfo.canonicalUrl}" dan simpan ke catatan materi.`;
+    }
+
+    const nextAttachments = [...attachedFiles, attachment];
+    if (autoSend) {
+      setAttachedFiles(nextAttachments);
+      handleSendMessage(promptText, nextAttachments);
+    } else {
+      setAttachedFiles(nextAttachments);
+      setInputPrompt((prev) => {
+        const prefix = prev.trim() ? `${prev.trim()}\n` : "";
+        return `${prefix}${promptText || videoInfo.canonicalUrl} `;
+      });
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+      }
+      toast.success("Video YouTube berhasil dilampirkan!", {
+        description: "AI siap membuka dan menganalisis video pembelajaran ini.",
       });
     }
   };
@@ -1520,9 +1732,133 @@ export const AIChat: React.FC<AIChatProps> = ({
     }
   };
 
+  const dismissedYouTubeIds = useRef<Set<string>>(new Set());
+
   const handleRemoveAttachment = (index: number) => {
+    const file = attachedFiles[index];
+    if (file?.type === "youtube" && file.youtubeInfo?.videoId) {
+      dismissedYouTubeIds.current.add(file.youtubeInfo.videoId);
+    }
     setAttachedFiles((prev) => prev.filter((_, i) => i !== index));
   };
+
+  const autoDetectAndAttachYouTube = useCallback(
+    (urlOrText: string) => {
+      const urls = extractYouTubeUrls(urlOrText);
+      if (urls.length === 0) return false;
+
+      const targetUrl = urls[0];
+      const parsed = parseYouTubeUrl(targetUrl);
+      if (!parsed) return false;
+
+      if (dismissedYouTubeIds.current.has(parsed.videoId)) return false;
+      const isAlreadyAttached = attachedFiles.some(
+        (f) => f.type === "youtube" && f.youtubeInfo?.videoId === parsed.videoId
+      );
+      if (isAlreadyAttached) return false;
+
+      const newAttachment: AttachedFile = {
+        name: `Video YouTube (${parsed.videoId})`,
+        size: 0,
+        type: "youtube",
+        youtubeInfo: parsed,
+      };
+
+      setAttachedFiles((prev) => {
+        if (prev.some((f) => f.type === "youtube" && f.youtubeInfo?.videoId === parsed.videoId)) {
+          return prev;
+        }
+        return [...prev, newAttachment];
+      });
+
+      toast.success("Video YouTube Terdeteksi!", {
+        description: "Video otomatis dilampirkan dan siap dianalisis oleh AI.",
+      });
+
+      fetch("/api/youtube/info", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: parsed.canonicalUrl, includeTranscript: false }),
+      })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data && data.title) {
+            setAttachedFiles((prev) =>
+              prev.map((f) => {
+                if (f.type === "youtube" && f.youtubeInfo?.videoId === parsed.videoId) {
+                  return {
+                    ...f,
+                    name: data.title,
+                    youtubeInfo: {
+                      ...f.youtubeInfo,
+                      title: data.title,
+                      authorName: data.authorName,
+                      thumbnailUrl: data.thumbnailUrl,
+                    },
+                  };
+                }
+                return f;
+              })
+            );
+          }
+        })
+        .catch((err) => console.warn("Failed fetching auto-detected YouTube metadata:", err));
+
+      return true;
+    },
+    [attachedFiles]
+  );
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const text = e.clipboardData.getData("text");
+    if (!text) return;
+
+    const urls = extractYouTubeUrls(text);
+    if (urls.length > 0) {
+      const parsed = parseYouTubeUrl(urls[0]);
+      if (parsed) {
+        dismissedYouTubeIds.current.delete(parsed.videoId);
+
+        // If pasted content is solely a YouTube link, attach cleanly without cluttering textarea
+        if (text.trim() === urls[0].trim()) {
+          e.preventDefault();
+          autoDetectAndAttachYouTube(urls[0]);
+          return;
+        }
+
+        autoDetectAndAttachYouTube(urls[0]);
+      }
+    }
+  };
+
+  // Auto-detect YouTube URLs when typing or editing textarea input
+  useEffect(() => {
+    if (!inputPrompt.trim()) return;
+
+    const urls = extractYouTubeUrls(inputPrompt);
+    if (urls.length === 0) return;
+
+    const firstUrl = urls[0];
+    const parsed = parseYouTubeUrl(firstUrl);
+    if (!parsed) return;
+
+    if (dismissedYouTubeIds.current.has(parsed.videoId)) return;
+    if (attachedFiles.some((f) => f.type === "youtube" && f.youtubeInfo?.videoId === parsed.videoId)) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      const attached = autoDetectAndAttachYouTube(firstUrl);
+      if (attached && inputPrompt.trim() === firstUrl.trim()) {
+        setInputPrompt("");
+        if (textareaRef.current) {
+          textareaRef.current.style.height = "auto";
+        }
+      }
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [inputPrompt, attachedFiles, autoDetectAndAttachYouTube]);
 
   // Textarea input and @mention detector
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -1534,23 +1870,27 @@ export const AIChat: React.FC<AIChatProps> = ({
     e.target.style.height = `${Math.min(e.target.scrollHeight, 160)}px`;
   };
 
-  const handleSendMessage = async (customPrompt?: string) => {
+  const handleSendMessage = async (customPrompt?: string, overrideAttachments?: AttachedFile[]) => {
+    const activeAttachedFiles = overrideAttachments !== undefined ? overrideAttachments : attachedFiles;
     let userPromptText = (customPrompt || inputPrompt).trim();
-    if (!userPromptText && attachedFiles.length === 0) return;
+    if (!userPromptText && activeAttachedFiles.length === 0) return;
     if (isLoading) return;
 
     // Build the AI prompt with attached file context safely
     let defaultPrompt = "Tolong analisa dokumen/materi yang saya lampirkan ini.";
-    if (attachedFiles.some((f) => f.type === "image")) {
+    if (activeAttachedFiles.some((f) => f.type === "youtube")) {
+      const yt = activeAttachedFiles.find((f) => f.type === "youtube");
+      defaultPrompt = `Tolong buka dan analisa video YouTube "${yt?.youtubeInfo?.title || yt?.name}":\nLink: ${yt?.youtubeInfo?.canonicalUrl || yt?.name}\n\nBerikan analisis materi mendalam, rangkuman konsep kunci, garis waktu (timestamps), dan pertanyaan kuis evaluasi pemahaman.`;
+    } else if (activeAttachedFiles.some((f) => f.type === "image")) {
       defaultPrompt =
         "Tolong analisa dan jelaskan foto/gambar yang saya lampirkan ini.";
-    } else if (attachedFiles.some((f) => f.type === "pdf")) {
+    } else if (activeAttachedFiles.some((f) => f.type === "pdf")) {
       defaultPrompt =
         "Tolong analisa dan jelaskan isi materi dari file PDF yang saya lampirkan ini.";
     }
 
     let aiPromptPayload = userPromptText || defaultPrompt;
-    const textDocs = attachedFiles.filter((f) => f.extractedText);
+    const textDocs = activeAttachedFiles.filter((f) => f.extractedText);
     if (textDocs.length > 0) {
       const fileContext = textDocs
         .map(
@@ -1581,13 +1921,28 @@ export const AIChat: React.FC<AIChatProps> = ({
       };
     }
 
-    const currentAttachments: ChatAttachment[] = attachedFiles.map((f) => ({
+    const currentAttachments: ChatAttachment[] = activeAttachedFiles.map((f) => ({
       name: f.name,
       size: f.size,
       type: f.type,
       dataUrl: f.dataUrl,
       extractedText: f.extractedText,
+      youtubeInfo: f.youtubeInfo,
     }));
+
+    // Auto-detect inline YouTube links typed or pasted in prompt
+    const inlineYt = extractYouTubeUrls(userPromptText);
+    if (inlineYt.length > 0 && !currentAttachments.some((a) => a.type === "youtube")) {
+      const parsedInline = parseYouTubeUrl(inlineYt[0]);
+      if (parsedInline) {
+        currentAttachments.push({
+          name: `Video YouTube (${parsedInline.videoId})`,
+          size: 0,
+          type: "youtube",
+          youtubeInfo: parsedInline,
+        });
+      }
+    }
 
     setInputPrompt("");
     setAttachedFiles([]);
@@ -1601,7 +1956,9 @@ export const AIChat: React.FC<AIChatProps> = ({
       role: "user",
       content:
         userPromptText ||
-        (attachedFiles.some((f) => f.type === "image")
+        (currentAttachments.some((f) => f.type === "youtube")
+          ? `Analisis Video YouTube: ${currentAttachments.find((f) => f.type === "youtube")?.youtubeInfo?.title || "Video Pembelajaran"}`
+          : currentAttachments.some((f) => f.type === "image")
           ? "Analisis Foto/Gambar"
           : "Analisis Dokumen Terlampir"),
       attachments: currentAttachments.map((a) => ({
@@ -1610,6 +1967,7 @@ export const AIChat: React.FC<AIChatProps> = ({
         type: a.type,
         dataUrl: a.dataUrl,
         extractedText: a.extractedText,
+        youtubeInfo: a.youtubeInfo,
       })),
       timestamp: Date.now(),
     };
@@ -1638,6 +1996,53 @@ export const AIChat: React.FC<AIChatProps> = ({
 
     setIsLoading(true);
     abortControllerRef.current = new AbortController();
+
+    // If inline YouTube URLs were present in user prompt, fetch metadata to enrich the message card in UI
+    if (inlineYt.length > 0) {
+      const parsedInline = parseYouTubeUrl(inlineYt[0]);
+      if (parsedInline) {
+        fetch("/api/youtube/info", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: parsedInline.canonicalUrl, includeTranscript: false }),
+        })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((data) => {
+            if (data?.title) {
+              setSessions((prev) =>
+                prev.map((s) => {
+                  if (s.id !== currentId) return s;
+                  return {
+                    ...s,
+                    messages: s.messages.map((msg) => {
+                      if (msg.id !== userMessage.id || !msg.attachments) return msg;
+                      return {
+                        ...msg,
+                        attachments: msg.attachments.map((att) => {
+                          if (att.type === "youtube" && att.youtubeInfo?.videoId === parsedInline.videoId) {
+                            return {
+                              ...att,
+                              name: data.title,
+                              youtubeInfo: {
+                                ...att.youtubeInfo,
+                                title: data.title,
+                                authorName: data.authorName,
+                                thumbnailUrl: data.thumbnailUrl,
+                              },
+                            };
+                          }
+                          return att;
+                        }),
+                      };
+                    }),
+                  };
+                })
+              );
+            }
+          })
+          .catch(() => {});
+      }
+    }
 
     try {
       const chatHistory = nextMessages.map((m, idx) => ({
@@ -2394,6 +2799,34 @@ export const AIChat: React.FC<AIChatProps> = ({
             {attachedFiles.length > 0 && (
               <div className="flex flex-wrap items-center gap-2 pb-2">
                 {attachedFiles.map((file, idx) => {
+                  if (file.type === "youtube") {
+                    return (
+                      <div
+                        key={idx}
+                        className="inline-flex items-center gap-2.5 p-1.5 pr-2 rounded-xl text-xs bg-red-50/90 dark:bg-red-950/40 border border-red-200/80 dark:border-red-900/50 shadow-2xs group animate-in fade-in"
+                      >
+                        <div className="w-7 h-7 rounded-lg bg-red-600 flex items-center justify-center shrink-0 text-white shadow-xs">
+                          <Youtube className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0 max-w-[150px] sm:max-w-[220px]">
+                          <p className="font-semibold truncate text-slate-800 dark:text-[#eee]">
+                            {file.youtubeInfo?.title || file.name}
+                          </p>
+                          <p className="text-[10px] text-red-600 dark:text-red-400 font-medium truncate">
+                            {file.youtubeInfo?.authorName || "Video YouTube"}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveAttachment(idx)}
+                          className="text-slate-400 hover:text-rose-600 p-1 rounded-md hover:bg-red-100 dark:hover:bg-red-950/50 cursor-pointer transition"
+                          title="Hapus video YouTube ini"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    );
+                  }
                   const badgeInfo = getFileFormatBadge(file.name, file.type);
                   return (
                     <div
@@ -2445,6 +2878,44 @@ export const AIChat: React.FC<AIChatProps> = ({
                     </div>
                   );
                 })}
+
+                {/* Quick YouTube Action Pills when a YouTube video is attached */}
+                {attachedFiles.some((f) => f.type === "youtube") && (
+                  <div className="w-full flex flex-wrap items-center gap-1.5 pt-1.5 animate-in fade-in duration-200">
+                    <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1 mr-1">
+                      <Sparkles className="w-3 h-3 text-red-500" />
+                      Analisis Cepat:
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleSendMessage("Tolong tonton dan rangkum inti materi serta konsep kunci dari video YouTube ini.")}
+                      className="px-2.5 py-1 rounded-lg text-xs font-medium bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/60 border border-red-200/80 dark:border-red-900/50 transition cursor-pointer flex items-center gap-1"
+                    >
+                      <span>📝 Rangkum Materi</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSendMessage("Tolong bedah video YouTube ini berdasarkan garis waktu (timestamps [MM:SS]) per topik.")}
+                      className="px-2.5 py-1 rounded-lg text-xs font-medium bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/60 border border-red-200/80 dark:border-red-900/50 transition cursor-pointer flex items-center gap-1"
+                    >
+                      <span>⏱️ Garis Waktu</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSendMessage("Tolong buatkan 3-5 latihan soal / kuis pemahaman konsep berdasarkan materi video YouTube ini.")}
+                      className="px-2.5 py-1 rounded-lg text-xs font-medium bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/60 border border-red-200/80 dark:border-red-900/50 transition cursor-pointer flex items-center gap-1"
+                    >
+                      <span>❓ Buat Kuis</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSendMessage("Tolong susun catatan materi terstruktur dari video YouTube ini dan simpan ke catatan belajar.")}
+                      className="px-2.5 py-1 rounded-lg text-xs font-medium bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/60 border border-red-200/80 dark:border-red-900/50 transition cursor-pointer flex items-center gap-1"
+                    >
+                      <span>📄 Buat Catatan</span>
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -2458,12 +2929,15 @@ export const AIChat: React.FC<AIChatProps> = ({
             value={inputPrompt}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
             placeholder={
-              activeTask
+              attachedFiles.some((f) => f.type === "youtube")
+                ? `Tanyakan materi tentang "${attachedFiles.find((f) => f.type === "youtube")?.youtubeInfo?.title || "Video YouTube"}"… (atau tekan Enter untuk analisis lengkap)`
+                : activeTask
                 ? `Tanyakan tentang tugas "${activeTask.title}"…`
                 : activeNote
                   ? `Tanyakan tentang catatan "${activeNote.title}"…`
-                  : "Tanyakan konsep, rumus, lampirkan berkas, atau diskusikan tugas… (Enter untuk kirim)"
+                  : "Tanyakan konsep, rumus, lampirkan berkas, atau tempel link YouTube… (Enter untuk kirim)"
             }
             className="w-full bg-transparent border-0 focus:outline-none text-xs sm:text-sm text-slate-900 dark:text-[#ececec] placeholder:text-slate-400 dark:placeholder:text-[#666] pt-3.5 px-3.5 resize-none max-h-40 min-h-[24px] leading-relaxed"
           />
@@ -2526,7 +3000,23 @@ export const AIChat: React.FC<AIChatProps> = ({
                         <span>Add from Drive</span>
                       </button>
 
-                      {/* 3. More uploads > */}
+                      {/* 3. Analisis Video YouTube */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsToolsMenuOpen(false);
+                          setActiveSubmenu("none");
+                          setIsYouTubeModalOpen(true);
+                        }}
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-[#ededed] hover:bg-[#262626] transition cursor-pointer text-left"
+                      >
+                        <div className="w-4 h-4 rounded-md bg-red-600 flex items-center justify-center shrink-0">
+                          <Youtube className="w-3 h-3 text-white" />
+                        </div>
+                        <span>Analisis Video YouTube</span>
+                      </button>
+
+                      {/* 4. More uploads > */}
                       <div className="relative">
                         <button
                           type="button"
@@ -2861,6 +3351,19 @@ export const AIChat: React.FC<AIChatProps> = ({
                 <Link2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 <span className="text-xs font-semibold text-slate-700 dark:text-[#ccc] hidden sm:inline">
                   Google Link
+                </span>
+              </button>
+
+              {/* YouTube Video Link Quick Button */}
+              <button
+                type="button"
+                onClick={() => setIsYouTubeModalOpen(true)}
+                className="p-1.5 rounded-lg text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-slate-100 dark:hover:bg-[#202020] transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
+                title="Tautkan & Analisis Video YouTube"
+              >
+                <Youtube className="w-4 h-4 text-red-600 dark:text-red-500" />
+                <span className="text-xs font-semibold text-slate-700 dark:text-[#ccc] hidden sm:inline">
+                  YouTube
                 </span>
               </button>
 
@@ -3281,6 +3784,102 @@ export const AIChat: React.FC<AIChatProps> = ({
                           {m.attachments && m.attachments.length > 0 && (
                             <div className="space-y-2 pt-2">
                               {m.attachments.map((att, attIdx) => {
+                                if (att.type === "youtube" || att.youtubeInfo) {
+                                  const yt = att.youtubeInfo || parseYouTubeUrl(att.name);
+                                  const videoId = yt?.videoId;
+                                  const isPlaying = activePlayingVideoId === videoId;
+
+                                  return (
+                                    <div
+                                      key={attIdx}
+                                      className="w-full rounded-2xl overflow-hidden border border-white/20 dark:border-black/10 bg-black/30 dark:bg-black/5 backdrop-blur-sm shadow-md transition-all text-left"
+                                    >
+                                      {isPlaying && videoId ? (
+                                        <div className="relative w-full aspect-video bg-black">
+                                          <iframe
+                                            src={`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0`}
+                                            title={yt?.title || "YouTube Video Player"}
+                                            className="w-full h-full border-0"
+                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                            allowFullScreen
+                                          />
+                                        </div>
+                                      ) : (
+                                        <div className="relative w-full aspect-video bg-slate-900 overflow-hidden group/thumb">
+                                          {yt?.thumbnailUrl ? (
+                                            <img
+                                              src={yt.thumbnailUrl}
+                                              alt={yt.title || "Thumbnail Video"}
+                                              className="w-full h-full object-cover group-hover/thumb:scale-105 transition-transform duration-300"
+                                            />
+                                          ) : (
+                                            <div className="w-full h-full flex items-center justify-center bg-slate-800 text-slate-400">
+                                              <Youtube className="w-10 h-10 text-red-500" />
+                                            </div>
+                                          )}
+                                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent flex items-center justify-center">
+                                            <button
+                                              type="button"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setActivePlayingVideoId(videoId || null);
+                                              }}
+                                              className="w-12 h-12 rounded-full bg-red-600 hover:bg-red-700 text-white flex items-center justify-center shadow-lg transition-transform transform group-hover/thumb:scale-110 cursor-pointer"
+                                              title="Buka & Putar Video di Chat"
+                                            >
+                                              <Play className="w-5 h-5 ml-0.5 fill-white text-white" />
+                                            </button>
+                                          </div>
+                                          <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-red-600/90 text-white text-[10px] font-bold tracking-wider flex items-center gap-1 shadow-xs">
+                                            <Youtube className="w-3 h-3" />
+                                            <span>YOUTUBE</span>
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      <div className="p-3 bg-white/10 dark:bg-black/5">
+                                        <p className="text-xs sm:text-sm font-semibold truncate text-white dark:text-slate-900">
+                                          {yt?.title || att.name}
+                                        </p>
+                                        <div className="flex items-center justify-between mt-1 text-[11px] text-white/80 dark:text-slate-700">
+                                          <span className="truncate">{yt?.authorName || "YouTube Video"}</span>
+                                          <div className="flex items-center gap-2 shrink-0">
+                                            {isPlaying ? (
+                                              <button
+                                                type="button"
+                                                onClick={() => setActivePlayingVideoId(null)}
+                                                className="inline-flex items-center gap-1 text-xs font-semibold underline text-amber-300 dark:text-amber-700 hover:opacity-80 cursor-pointer"
+                                              >
+                                                Tutup Pemutar
+                                              </button>
+                                            ) : (
+                                              <button
+                                                type="button"
+                                                onClick={() => setActivePlayingVideoId(videoId || null)}
+                                                className="inline-flex items-center gap-1 text-xs font-semibold underline text-red-300 dark:text-red-700 hover:opacity-80 cursor-pointer"
+                                              >
+                                                <Play className="w-3 h-3 fill-current" />
+                                                Putar di Chat
+                                              </button>
+                                            )}
+                                            <a
+                                              href={yt?.canonicalUrl || yt?.url || `https://www.youtube.com/watch?v=${videoId}`}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="inline-flex items-center gap-0.5 hover:underline text-white/90 dark:text-slate-800 font-medium"
+                                              onClick={(e) => e.stopPropagation()}
+                                              title="Buka video di YouTube pada tab baru"
+                                            >
+                                              <span>Buka di YouTube</span>
+                                              <ExternalLink className="w-3 h-3" />
+                                            </a>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                }
+
                                 const badgeInfo = getFileFormatBadge(att.name, att.type);
                                 return (
                                   <button
@@ -3642,9 +4241,19 @@ export const AIChat: React.FC<AIChatProps> = ({
                                     setCustomizingDoc({ doc: m.createdDocument!, fallbackText });
                                   }}
                                   className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-[#202020] border border-slate-200 dark:border-[#333] hover:bg-slate-100 dark:hover:bg-[#2a2a2a] active:scale-95 shadow-2xs transition-all cursor-pointer"
-                                  title="Kustomisasi nama siswa, pilihan font, ukuran teks, dan watermark IOnLearn"
+                                  title={
+                                    m.createdDocument.type === "xlsx"
+                                      ? "Kustomisasi nama sheet, tema warna header, dan layout kolom Excel"
+                                      : "Kustomisasi nama siswa, pilihan font, ukuran teks, dan watermark IOnLearn"
+                                  }
                                 >
-                                  <Sliders className="w-3.5 h-3.5 text-indigo-500" />
+                                  <Sliders className={`w-3.5 h-3.5 ${
+                                    m.createdDocument.type === "xlsx"
+                                      ? "text-emerald-500"
+                                      : m.createdDocument.type === "pdf"
+                                      ? "text-rose-500"
+                                      : "text-blue-500"
+                                  }`} />
                                   <span>Kustomisasi</span>
                                 </button>
                                 <button
@@ -3951,62 +4560,107 @@ export const AIChat: React.FC<AIChatProps> = ({
                             </button>
 
                             {activeExportMenuMsgId === m.id && (
-                              <div className="absolute left-0 bottom-full mb-1.5 w-52 bg-white dark:bg-[#1a1a1a] rounded-xl shadow-xl border border-slate-200/80 dark:border-[#2a2a2a] p-1.5 z-40 animate-in fade-in slide-in-from-bottom-2">
-                                <div className="px-2 py-1 text-[10px] font-bold text-slate-400 dark:text-[#777] border-b border-slate-100 dark:border-[#252525] mb-1">
-                                  PILIH FORMAT EKSPOR:
+                              <div className="absolute left-0 bottom-full mb-1.5 w-60 bg-white dark:bg-[#1a1a1a] rounded-xl shadow-xl border border-slate-200/80 dark:border-[#2a2a2a] p-1.5 z-40 animate-in fade-in slide-in-from-bottom-2">
+                                <div className="px-2 py-1 text-[10px] font-bold text-slate-400 dark:text-[#777] border-b border-slate-100 dark:border-[#252525] mb-1 flex items-center justify-between">
+                                  <span>UNDUH / KUSTOMISASI</span>
+                                  <Sliders className="w-3 h-3 text-slate-400" />
                                 </div>
 
-                                <button
-                                  type="button"
-                                  onClick={() => handleExportDocument(m, "pdf")}
-                                  disabled={exportingFormat === `${m.id}-pdf`}
-                                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs font-medium text-slate-700 dark:text-[#ddd] hover:bg-slate-100 dark:hover:bg-[#252525] transition cursor-pointer text-left"
-                                >
-                                  <div className="w-5 h-5 rounded bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 flex items-center justify-center font-bold text-[10px]">
-                                    PDF
-                                  </div>
-                                  <span className="flex-1">Dokumen PDF (.pdf)</span>
-                                  {exportingFormat === `${m.id}-pdf` && <Loader2 className="w-3 h-3 animate-spin text-rose-600" />}
-                                </button>
+                                {/* PDF Export & Customize */}
+                                <div className="flex items-center w-full group/item hover:bg-slate-100 dark:hover:bg-[#252525] rounded-lg transition">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleExportDocument(m, "pdf")}
+                                    disabled={exportingFormat === `${m.id}-pdf`}
+                                    className="flex-1 flex items-center gap-2 px-2 py-1.5 text-xs font-medium text-slate-700 dark:text-[#ddd] transition cursor-pointer text-left"
+                                  >
+                                    <div className="w-5 h-5 rounded bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 flex items-center justify-center font-bold text-[10px]">
+                                      PDF
+                                    </div>
+                                    <span className="flex-1">Dokumen PDF (.pdf)</span>
+                                    {exportingFormat === `${m.id}-pdf` && <Loader2 className="w-3 h-3 animate-spin text-rose-600" />}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCustomizeExport(m, "pdf")}
+                                    className="p-1.5 mr-1 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 rounded-md hover:bg-slate-200/60 dark:hover:bg-[#333] transition cursor-pointer"
+                                    title="Kustomisasi identitas, font & kop surat PDF"
+                                  >
+                                    <Sliders className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
 
-                                <button
-                                  type="button"
-                                  onClick={() => handleExportDocument(m, "docx")}
-                                  disabled={exportingFormat === `${m.id}-docx`}
-                                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs font-medium text-slate-700 dark:text-[#ddd] hover:bg-slate-100 dark:hover:bg-[#252525] transition cursor-pointer text-left"
-                                >
-                                  <div className="w-5 h-5 rounded bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-[10px]">
-                                    DOC
-                                  </div>
-                                  <span className="flex-1">Dokumen Word (.docx)</span>
-                                  {exportingFormat === `${m.id}-docx` && <Loader2 className="w-3 h-3 animate-spin text-blue-600" />}
-                                </button>
+                                {/* Word DOCX Export & Customize */}
+                                <div className="flex items-center w-full group/item hover:bg-slate-100 dark:hover:bg-[#252525] rounded-lg transition">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleExportDocument(m, "docx")}
+                                    disabled={exportingFormat === `${m.id}-docx`}
+                                    className="flex-1 flex items-center gap-2 px-2 py-1.5 text-xs font-medium text-slate-700 dark:text-[#ddd] transition cursor-pointer text-left"
+                                  >
+                                    <div className="w-5 h-5 rounded bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-[10px]">
+                                      DOC
+                                    </div>
+                                    <span className="flex-1">Dokumen Word (.docx)</span>
+                                    {exportingFormat === `${m.id}-docx` && <Loader2 className="w-3 h-3 animate-spin text-blue-600" />}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCustomizeExport(m, "docx")}
+                                    className="p-1.5 mr-1 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-md hover:bg-slate-200/60 dark:hover:bg-[#333] transition cursor-pointer"
+                                    title="Kustomisasi identitas, font & kop surat Word"
+                                  >
+                                    <Sliders className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
 
-                                <button
-                                  type="button"
-                                  onClick={() => handleExportDocument(m, "xlsx")}
-                                  disabled={exportingFormat === `${m.id}-xlsx`}
-                                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs font-medium text-slate-700 dark:text-[#ddd] hover:bg-slate-100 dark:hover:bg-[#252525] transition cursor-pointer text-left"
-                                >
-                                  <div className="w-5 h-5 rounded bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-[10px]">
-                                    XLS
-                                  </div>
-                                  <span className="flex-1">Spreadsheet Excel (.xlsx)</span>
-                                  {exportingFormat === `${m.id}-xlsx` && <Loader2 className="w-3 h-3 animate-spin text-emerald-600" />}
-                                </button>
+                                {/* Excel XLSX Export & Customize */}
+                                <div className="flex items-center w-full group/item hover:bg-slate-100 dark:hover:bg-[#252525] rounded-lg transition">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleExportDocument(m, "xlsx")}
+                                    disabled={exportingFormat === `${m.id}-xlsx`}
+                                    className="flex-1 flex items-center gap-2 px-2 py-1.5 text-xs font-medium text-slate-700 dark:text-[#ddd] transition cursor-pointer text-left"
+                                  >
+                                    <div className="w-5 h-5 rounded bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-[10px]">
+                                      XLS
+                                    </div>
+                                    <span className="flex-1">Spreadsheet Excel (.xlsx)</span>
+                                    {exportingFormat === `${m.id}-xlsx` && <Loader2 className="w-3 h-3 animate-spin text-emerald-600" />}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCustomizeExport(m, "xlsx")}
+                                    className="p-1.5 mr-1 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 rounded-md hover:bg-slate-200/60 dark:hover:bg-[#333] transition cursor-pointer"
+                                    title="Kustomisasi tema warna, sheet & layout tabel Excel"
+                                  >
+                                    <Sliders className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                                  </button>
+                                </div>
 
-                                <button
-                                  type="button"
-                                  onClick={() => handleExportSlides(m)}
-                                  disabled={exportingFormat === `${m.id}-pptx`}
-                                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs font-medium text-slate-700 dark:text-[#ddd] hover:bg-slate-100 dark:hover:bg-[#252525] transition cursor-pointer text-left"
-                                >
-                                  <div className="w-5 h-5 rounded bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold text-[10px]">
-                                    PPT
-                                  </div>
-                                  <span className="flex-1">Slide Presentasi (.pptx)</span>
-                                  {exportingFormat === `${m.id}-pptx` && <Loader2 className="w-3 h-3 animate-spin text-amber-600" />}
-                                </button>
+                                {/* PPTX Export & Customize */}
+                                <div className="flex items-center w-full group/item hover:bg-slate-100 dark:hover:bg-[#252525] rounded-lg transition">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleExportSlides(m)}
+                                    disabled={exportingFormat === `${m.id}-pptx`}
+                                    className="flex-1 flex items-center gap-2 px-2 py-1.5 text-xs font-medium text-slate-700 dark:text-[#ddd] transition cursor-pointer text-left"
+                                  >
+                                    <div className="w-5 h-5 rounded bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold text-[10px]">
+                                      PPT
+                                    </div>
+                                    <span className="flex-1">Slide Presentasi (.pptx)</span>
+                                    {exportingFormat === `${m.id}-pptx` && <Loader2 className="w-3 h-3 animate-spin text-amber-600" />}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCustomizeExport(m, "pptx")}
+                                    className="p-1.5 mr-1 text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 rounded-md hover:bg-slate-200/60 dark:hover:bg-[#333] transition cursor-pointer"
+                                    title="Kustomisasi tema & presenter slide presentasi"
+                                  >
+                                    <Sliders className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
 
                                 <button
                                   type="button"
@@ -4422,6 +5076,221 @@ export const AIChat: React.FC<AIChatProps> = ({
                 >
                   <Sparkles className="w-3.5 h-3.5" />
                   <span>Analisis Langsung</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── 6.5 YouTube Video Link & Analysis Modal ── */}
+      {isYouTubeModalOpen && (() => {
+        const parsed = youtubeUrlInput.trim() ? parseYouTubeUrl(youtubeUrlInput.trim()) : null;
+        const currentMeta = youtubeMetaPreview || parsed;
+
+        return (
+          <div
+            className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200"
+            onClick={() => setIsYouTubeModalOpen(false)}
+          >
+            <div
+              className="w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl bg-white dark:bg-[#151515] border border-slate-200/80 dark:border-[#2a2a2a] flex flex-col animate-in zoom-in-95 duration-200"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-[#242424]">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-400 flex items-center justify-center shadow-2xs">
+                    <Youtube className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                      Buka & Analisis Video YouTube
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-[#888]">
+                      AI akan menonton, merangkum, dan menganalisis materi video
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsYouTubeModalOpen(false)}
+                  className="w-7 h-7 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-[#eee] hover:bg-slate-100 dark:hover:bg-[#202020] flex items-center justify-center transition cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-[#ccc] flex items-center justify-between">
+                    <span>URL / Tautan Video YouTube</span>
+                    {isLoadingYouTubeMeta && (
+                      <span className="text-[11px] text-red-500 flex items-center gap-1 font-normal">
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        Mengambil info video...
+                      </span>
+                    )}
+                  </label>
+                  <input
+                    type="url"
+                    value={youtubeUrlInput}
+                    onChange={(e) => setYoutubeUrlInput(e.target.value)}
+                    placeholder="https://www.youtube.com/watch?v=... atau https://youtu.be/..."
+                    className="w-full px-3.5 py-2.5 rounded-xl text-xs bg-slate-50 dark:bg-[#1e1e1e] border border-slate-200 dark:border-[#333] text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-red-500 transition"
+                    autoFocus
+                  />
+                </div>
+
+                {/* Video Preview Card when URL is recognized */}
+                {currentMeta && (
+                  <div className="rounded-2xl border border-red-200/80 dark:border-red-950/60 bg-red-50/40 dark:bg-red-950/20 p-3 space-y-2.5 animate-in fade-in">
+                    <div className="flex items-start gap-3">
+                      <div className="w-24 aspect-video rounded-xl bg-slate-900 overflow-hidden shrink-0 relative border border-slate-200/40 dark:border-[#333]">
+                        {currentMeta.thumbnailUrl ? (
+                          <img
+                            src={currentMeta.thumbnailUrl}
+                            alt={currentMeta.title || "Thumbnail"}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-red-500">
+                            <Youtube className="w-6 h-6" />
+                          </div>
+                        )}
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                          <Play className="w-5 h-5 text-white/90 fill-white" />
+                        </div>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-red-600 text-white inline-block mb-1">
+                          Video Siap
+                        </span>
+                        <h4 className="text-xs font-bold text-slate-900 dark:text-white line-clamp-2">
+                          {currentMeta.title || `YouTube Video (${currentMeta.videoId})`}
+                        </h4>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                          {currentMeta.authorName || "YouTube Channel"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Analysis Preset Selection */}
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-[#ccc]">
+                    Tujuan Analisis Video AI
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setYoutubeAnalysisPreset("summary")}
+                      className={`p-2.5 rounded-xl border text-left text-xs transition cursor-pointer flex flex-col gap-1 ${
+                        youtubeAnalysisPreset === "summary"
+                          ? "bg-red-50 dark:bg-red-950/40 border-red-500 dark:border-red-500 text-red-900 dark:text-red-200 font-semibold"
+                          : "bg-slate-50 dark:bg-[#1c1c1c] border-slate-200 dark:border-[#333] text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-[#444]"
+                      }`}
+                    >
+                      <div className="font-bold flex items-center gap-1.5">
+                        <span>📝 Rangkum Materi</span>
+                      </div>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                        Konsep inti & pesan utama
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setYoutubeAnalysisPreset("timestamps")}
+                      className={`p-2.5 rounded-xl border text-left text-xs transition cursor-pointer flex flex-col gap-1 ${
+                        youtubeAnalysisPreset === "timestamps"
+                          ? "bg-red-50 dark:bg-red-950/40 border-red-500 dark:border-red-500 text-red-900 dark:text-red-200 font-semibold"
+                          : "bg-slate-50 dark:bg-[#1c1c1c] border-slate-200 dark:border-[#333] text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-[#444]"
+                      }`}
+                    >
+                      <div className="font-bold flex items-center gap-1.5">
+                        <span>⏱️ Garis Waktu</span>
+                      </div>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                        Poin penting & timeline [MM:SS]
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setYoutubeAnalysisPreset("quiz")}
+                      className={`p-2.5 rounded-xl border text-left text-xs transition cursor-pointer flex flex-col gap-1 ${
+                        youtubeAnalysisPreset === "quiz"
+                          ? "bg-red-50 dark:bg-red-950/40 border-red-500 dark:border-red-500 text-red-900 dark:text-red-200 font-semibold"
+                          : "bg-slate-50 dark:bg-[#1c1c1c] border-slate-200 dark:border-[#333] text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-[#444]"
+                      }`}
+                    >
+                      <div className="font-bold flex items-center gap-1.5">
+                        <span>❓ Kuis Pemahaman</span>
+                      </div>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                        Soal latihan dari video
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setYoutubeAnalysisPreset("notes")}
+                      className={`p-2.5 rounded-xl border text-left text-xs transition cursor-pointer flex flex-col gap-1 ${
+                        youtubeAnalysisPreset === "notes"
+                          ? "bg-red-50 dark:bg-red-950/40 border-red-500 dark:border-red-500 text-red-900 dark:text-red-200 font-semibold"
+                          : "bg-slate-50 dark:bg-[#1c1c1c] border-slate-200 dark:border-[#333] text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-[#444]"
+                      }`}
+                    >
+                      <div className="font-bold flex items-center gap-1.5">
+                        <span>📄 Catatan Materi</span>
+                      </div>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                        Simpan otomatis ke catatan
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Info Note */}
+                <div className="p-3 rounded-xl bg-slate-100 dark:bg-[#1e1e1e] border border-slate-200/80 dark:border-[#2a2a2a] text-xs text-slate-600 dark:text-slate-400 space-y-1">
+                  <p className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-red-500" />
+                    <span>Kemampuan Gemini Multimodal Video:</span>
+                  </p>
+                  <p className="leading-relaxed text-[11px]">
+                    Gemini secara native menonton video publik YouTube (konten visual & percakapan). Video dapat langsung diputar di dalam bubble chat saat analisis selesai.
+                  </p>
+                </div>
+              </div>
+
+              {/* Footer Actions */}
+              <div className="flex items-center justify-end gap-2 px-5 py-3.5 bg-slate-50/80 dark:bg-[#181818] border-t border-slate-100 dark:border-[#242424]">
+                <button
+                  type="button"
+                  onClick={() => setIsYouTubeModalOpen(false)}
+                  className="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-[#aaa] hover:bg-slate-200/70 dark:hover:bg-[#252525] transition cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleInsertYouTubeVideo(false)}
+                  disabled={!youtubeUrlInput.trim()}
+                  className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-200 dark:bg-[#282828] text-slate-800 dark:text-white hover:bg-slate-300 dark:hover:bg-[#333] transition cursor-pointer disabled:opacity-40"
+                >
+                  Sisipkan ke Chat
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleInsertYouTubeVideo(true)}
+                  disabled={!youtubeUrlInput.trim()}
+                  className="px-4 py-2 rounded-xl text-xs font-bold bg-red-600 hover:bg-red-700 text-white shadow-xs transition cursor-pointer disabled:opacity-40 flex items-center gap-1.5"
+                >
+                  <Play className="w-3.5 h-3.5 fill-white" />
+                  <span>Analisis Video Langsung</span>
                 </button>
               </div>
             </div>

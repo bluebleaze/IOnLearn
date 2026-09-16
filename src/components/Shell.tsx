@@ -8,7 +8,8 @@ import { OnboardingModal } from "./OnboardingModal";
 import { toast } from "@/components/ui/sonner";
 import { ClassroomService, UserProfile } from "../services/classroomService";
 import { DBService } from "../services/dbService";
-import { TodoTask, UserPreferences, DEFAULT_DATE_RANGE_MONTHS } from "../types";
+import { TodoTask, UserPreferences, DEFAULT_DATE_RANGE_MONTHS, ClassroomSyncProgress } from "../types";
+import { SyncManager, useSyncManager } from "../services/syncManager";
 import {
   TASKS_STORAGE_KEY,
   ONBOARDING_DONE_KEY,
@@ -41,6 +42,7 @@ interface ShellContextValue {
   isConnected: boolean;
   isSyncing: boolean;
   lastSyncedAt: Date | null;
+  syncProgress: ClassroomSyncProgress | null;
   syncClassroom: () => Promise<void>;
 }
 
@@ -63,8 +65,10 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
   const [hydrated, setHydrated] = useState(false);
   const [token, setToken] = useState<string | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
+  const syncState = useSyncManager();
+  const isSyncing = syncState.isSyncing;
+  const lastSyncedAt = syncState.lastSyncedAt;
+  const syncProgress = syncState.syncProgress;
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -78,10 +82,6 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
 
     if (typeof window !== "undefined") {
       setIsDark(document.documentElement.classList.contains("dark"));
-      const savedSync = localStorage.getItem("last_classroom_sync");
-      if (savedSync) {
-        setLastSyncedAt(new Date(savedSync));
-      }
     }
 
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
@@ -120,99 +120,11 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
     }
   }, [token]);
 
-  const syncWithToken = async (
-    activeToken: string,
-    overrideTasks?: TodoTask[],
-    overrideEmail?: string
-  ) => {
-    setIsSyncing(true);
-    try {
-      const rangeMonths =
-        loadPreferences()?.classroomDateRangeMonths ??
-        DEFAULT_DATE_RANGE_MONTHS;
-      let currentTasks = overrideTasks ?? loadTasks();
-      const email = overrideEmail || userProfile?.email;
-
-      if (email && !overrideTasks) {
-        try {
-          const cloudData = await DBService.loadUserData(email);
-          if (cloudData?.tasks && cloudData.tasks.length > 0) {
-            const cloudTasks = cloudData.tasks.filter(
-              (t) =>
-                (!t.userEmail || t.userEmail === email) &&
-                !t.id.startsWith("seed-")
-            );
-            if (cloudTasks.length > 0) {
-              const cloudMap = new Map(cloudTasks.map((t) => [t.id, t]));
-              currentTasks = currentTasks.map((t) => {
-                const ct = cloudMap.get(t.id);
-                if (ct) {
-                  return {
-                    ...t,
-                    isCompleted: ct.isCompleted || t.isCompleted,
-                    completedAt: ct.completedAt || t.completedAt,
-                    customNotes: ct.customNotes || t.customNotes,
-                    aiAnalysis: ct.aiAnalysis || t.aiAnalysis,
-                  };
-                }
-                return t;
-              });
-              const existingIds = new Set(currentTasks.map((t) => t.id));
-              for (const ct of cloudTasks) {
-                if (!existingIds.has(ct.id)) currentTasks.push(ct);
-              }
-            }
-          }
-        } catch {}
-      }
-
-      const { updatedTasks, newCount } =
-        await ClassroomService.syncAllClassrooms(
-          activeToken,
-          currentTasks,
-          rangeMonths,
-          email
-        );
-      persist(updatedTasks);
-      const now = new Date();
-      setLastSyncedAt(now);
-      if (typeof window !== "undefined") {
-        localStorage.setItem("last_classroom_sync", now.toISOString());
-      }
-
-      if (newCount > 0) {
-        toast.success("Sinkronisasi Selesai", {
-          description: `Ditemukan ${newCount} tugas baru dari Google Classroom.`,
-        });
-      } else {
-        toast.info("Classroom Sudah Terkini", {
-          description: "Semua tugas Google Classroom Anda sudah sinkron.",
-        });
-      }
-    } catch (error: any) {
-      const is401 =
-        error.message?.includes("401") ||
-        error.message?.includes("kadaluwarsa");
-      if (is401) {
-        toast.warning("Akses Classroom Perlu Diperbarui", {
-          description:
-            "Sesi Google Classroom telah berakhir. Klik avatar profil atau tombol sinkronisasi untuk masuk kembali.",
-        });
-      } else {
-        toast.warning("Sinkronisasi Offline", {
-          description:
-            error.message ||
-            "Gagal terhubung ke API Classroom. Menggunakan data lokal.",
-        });
-      }
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
   const syncClassroom = async () => {
-    if (!token || isSyncing) return;
-    await syncWithToken(token);
+    if (!token) return;
+    await SyncManager.sync(token, {
+      overrideEmail: userProfile?.email,
+    });
   };
 
   const handleConnectGoogle = async () => {
@@ -278,7 +190,10 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
 
         localStorage.setItem(key, JSON.stringify(newTasks));
         persist(newTasks);
-        await syncWithToken(result.token, newTasks, result.profile.email);
+        await SyncManager.sync(result.token, {
+          overrideTasks: newTasks,
+          overrideEmail: result.profile.email,
+        });
       } else {
         setLoginError("Gagal mendapatkan akses dari Google.");
       }
@@ -367,6 +282,7 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
         isConnected: true,
         isSyncing,
         lastSyncedAt,
+        syncProgress,
         syncClassroom,
       }}
     >
@@ -441,7 +357,9 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
                 onClick={syncClassroom}
                 disabled={isSyncing}
                 title={
-                  lastSyncedAt
+                  isSyncing
+                    ? syncProgress?.message || "Sedang menyinkronkan data Google Classroom..."
+                    : lastSyncedAt
                     ? `Terakhir disinkronkan: ${new Date(lastSyncedAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })} (Klik untuk update)`
                     : "Sinkronkan data Google Classroom"
                 }
@@ -453,7 +371,11 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
                   }`}
                 />
                 <span className="hidden sm:inline">
-                  {isSyncing ? "Sinkronisasi..." : "Sinkron Classroom"}
+                  {isSyncing
+                    ? syncProgress?.percent
+                      ? `Sinkron (${syncProgress.percent}%)`
+                      : "Sinkronisasi..."
+                    : "Sinkron Classroom"}
                 </span>
               </button>
 

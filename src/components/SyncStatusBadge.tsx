@@ -25,7 +25,7 @@ export const SyncStatusBadge: React.FC<SyncStatusBadgeProps> = ({
   className = "",
   showRefreshButton = true,
 }) => {
-  const { isSyncing, lastSyncedAt, syncClassroom } = useShell();
+  const { isSyncing, lastSyncedAt, syncClassroom, syncProgress } = useShell();
   const [timeAgoText, setTimeAgoText] = useState<string>("Sinkron Otomatis");
 
   useEffect(() => {
@@ -49,7 +49,11 @@ export const SyncStatusBadge: React.FC<SyncStatusBadgeProps> = ({
           }`}
         />
         <span className="truncate">
-          {isSyncing ? "Menyinkronkan Classroom..." : `Sinkron: ${timeAgoText}`}
+          {isSyncing
+            ? syncProgress?.percent
+              ? `Menyinkronkan (${syncProgress.percent}%)...`
+              : "Menyinkronkan Classroom..."
+            : `Sinkron: ${timeAgoText}`}
         </span>
       </div>
 

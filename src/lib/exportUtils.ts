@@ -95,6 +95,10 @@ export const DEFAULT_DOCUMENT_STYLE: DocumentStyleOptions = {
   logoBase64: undefined,
   customHeaderText: "",
   logoPosition: "left",
+  sheetName: "Sheet1",
+  excelTheme: "emerald",
+  autoFitColumns: true,
+  showGridLines: true,
 };
 
 export const DOC_STYLE_STORAGE_KEY = "ionlearn_doc_style_prefs";
@@ -2458,12 +2462,13 @@ export async function generateXlsxDocument(
   const cleanTitle = cleanLatexMath(doc.title);
   const cleanSubject = doc.subject ? cleanLatexMath(doc.subject) : undefined;
   const cleanContent = cleanLatexMath(doc.content);
+  const displayTitle = options?.tableTitle?.trim() || cleanTitle || "Lembar Kerja Data";
   const lines = cleanContent.split("\n");
   const rows: (string | number)[][] = [];
 
   // Header meta rows
-  if (cleanTitle) {
-    rows.push([cleanTitle]);
+  if (displayTitle) {
+    rows.push([displayTitle]);
     if (cleanSubject) {
       rows.push([`Mata Pelajaran / Topik: ${cleanSubject}`]);
     }
@@ -2471,39 +2476,72 @@ export async function generateXlsxDocument(
       const studentParts: string[] = [];
       if (options.userName) studentParts.push(`Penyusun: ${options.userName}`);
       if (options.studentId) studentParts.push(`NIM/NIS: ${options.studentId}`);
-      if (options.institution) studentParts.push(options.institution);
-      rows.push([studentParts.join("  |  ")]);
+      if (options.institution) studentParts.push(`Instansi: ${options.institution}`);
+      if (studentParts.length > 0) {
+        rows.push([studentParts.join("  |  ")]);
+      }
     }
     rows.push([]); // empty spacer row
   }
 
-  let foundTable = false;
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (trimmed.startsWith("|") && trimmed.endsWith("|")) {
-      const cells = trimmed
-        .slice(1, -1)
-        .split("|")
-        .map((c) => c.trim());
+  let tableStarted = false;
+  for (let i = 0; i < lines.length; i++) {
+    const trimmed = lines[i].trim();
+    if (!trimmed) {
+      if (tableStarted && rows.length > 0 && rows[rows.length - 1].length > 0) {
+        rows.push([]);
+        tableStarted = false;
+      }
+      continue;
+    }
+
+    // Check for markdown headings e.g. ## Tabel Komparasi
+    if (trimmed.startsWith("#")) {
+      const headingText = trimmed.replace(/^[#\s*]+/, "").trim();
+      if (headingText && headingText !== displayTitle) {
+        if (rows.length > 0 && rows[rows.length - 1].length > 0) {
+          rows.push([]);
+        }
+        rows.push([headingText]);
+        tableStarted = false;
+      }
+      continue;
+    }
+
+    // Check for markdown table line
+    if (trimmed.startsWith("|") && trimmed.includes("|")) {
+      const inner = trimmed.startsWith("|") && trimmed.endsWith("|") ? trimmed.slice(1, -1) : trimmed.replace(/^\||\|$/g, "");
+      const cells = inner.split("|").map((c) => c.trim());
 
       // Skip markdown separator row like |:---|:---|
       if (cells.every((c) => /^[:\-\s]+$/.test(c))) {
         continue;
       }
 
-      foundTable = true;
+      tableStarted = true;
       rows.push(
         cells.map((cell) => {
-          const clean = cell.replace(/[*_`]/g, "").trim();
-          const num = Number(clean.replace(/,/g, ""));
-          return !isNaN(num) && clean !== "" && /^-?\d+(\.\d+)?$/.test(clean) ? num : clean;
+          // Clean markdown bold, italic, inline code, links
+          const clean = cell
+            .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+            .replace(/[*_`]/g, "")
+            .trim();
+
+          // Check if it is a pure number
+          const numCandidate = clean.replace(/,/g, "");
+          const num = Number(numCandidate);
+          if (!isNaN(num) && clean !== "" && /^-?\d+(\.\d+)?$/.test(numCandidate)) {
+            return num;
+          }
+          return clean;
         })
       );
-    } else if (trimmed.includes(",") || trimmed.includes("\t")) {
+    } else if (trimmed.includes("\t") || (trimmed.includes(",") && !trimmed.includes(" "))) {
+      // Tab or CSV delimited
       const delim = trimmed.includes("\t") ? "\t" : ",";
       const cells = trimmed.split(delim).map((c) => c.trim().replace(/^["']|["']$/g, ""));
       if (cells.length > 1) {
-        foundTable = true;
+        tableStarted = true;
         rows.push(
           cells.map((c) => {
             const num = Number(c);
@@ -2511,13 +2549,15 @@ export async function generateXlsxDocument(
           })
         );
       }
-    } else if (!foundTable && trimmed.length > 0 && !trimmed.startsWith("#")) {
+    } else if (trimmed.match(/^[-*•\d\.]*\s*([^:]+):\s*(.+)$/)) {
+      // Key-value pairs
       const kv = trimmed.match(/^[-*•\d\.]*\s*([^:]+):\s*(.+)$/);
       if (kv) {
-        rows.push([kv[1].trim(), kv[2].trim()]);
-      } else {
-        rows.push([trimmed.replace(/^[#\-*•\d\.]+\s*/, "")]);
+        rows.push([kv[1].trim().replace(/[*_`]/g, ""), kv[2].trim().replace(/[*_`]/g, "")]);
       }
+    } else if (!tableStarted && trimmed.length > 0) {
+      // Descriptive paragraph / notes
+      rows.push([trimmed.replace(/^[#\-*•\d\.]+\s*/, "").replace(/[*_`]/g, "")]);
     }
   }
 
@@ -2527,28 +2567,38 @@ export async function generateXlsxDocument(
 
   const wb = XLSX.utils.book_new();
   wb.Props = {
-    Title: cleanTitle,
+    Title: displayTitle,
     Subject: cleanSubject || "IOnLearn Study Copilot",
-    Author: options?.author?.trim() || "IOnLearn",
+    Author: options?.author?.trim() || options?.userName?.trim() || "IOnLearn",
     Company: options?.institution?.trim() || "IOnLearn",
     CreatedDate: new Date(),
   };
+
   const ws = XLSX.utils.aoa_to_sheet(rows);
 
-  // Auto-fit column widths
-  const maxCols = Math.max(...rows.map((r) => r.length), 1);
-  const colWidths: { wch: number }[] = [];
-  for (let c = 0; c < maxCols; c++) {
-    let maxLen = 12;
-    for (const r of rows) {
-      const val = r[c] != null ? String(r[c]) : "";
-      if (val.length > maxLen) maxLen = Math.min(val.length + 3, 60);
+  // Auto-fit column widths (if autoFitColumns !== false)
+  if (options?.autoFitColumns !== false) {
+    const maxCols = Math.max(...rows.map((r) => r.length), 1);
+    const colWidths: { wch: number }[] = [];
+    for (let c = 0; c < maxCols; c++) {
+      let maxLen = 14;
+      for (const r of rows) {
+        const val = r[c] != null ? String(r[c]) : "";
+        if (val.length > maxLen) maxLen = Math.min(val.length + 4, 65);
+      }
+      colWidths.push({ wch: maxLen });
     }
-    colWidths.push({ wch: maxLen });
+    ws["!cols"] = colWidths;
   }
-  ws["!cols"] = colWidths;
 
-  XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+  // Safe sheet name (Excel limits sheet names to 31 chars, no \ / ? * [ ] :)
+  const rawSheet = options?.sheetName || cleanTitle || "Data";
+  const safeSheetName = rawSheet
+    .replace(/[\\/?*[\]:]/g, "")
+    .trim()
+    .slice(0, 31) || "Sheet1";
+
+  XLSX.utils.book_append_sheet(wb, ws, safeSheetName);
   const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
   return new Blob([wbout], {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

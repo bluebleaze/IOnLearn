@@ -1,4 +1,4 @@
-import { ClassroomCourse, ClassroomCourseWork, ClassroomMaterial, TodoTask, isCourseWorkWithinDateRange, DEFAULT_DATE_RANGE_MONTHS } from '../types';
+import { ClassroomCourse, ClassroomCourseWork, ClassroomMaterial, TodoTask, isCourseWorkWithinDateRange, DEFAULT_DATE_RANGE_MONTHS, ClassroomSyncProgress } from '../types';
 import { signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
 import { auth, googleProvider as provider } from '@/lib/firebase';
 
@@ -258,10 +258,19 @@ export class ClassroomService {
     token: string,
     existingTasks: TodoTask[],
     dateRangeMonths: number = DEFAULT_DATE_RANGE_MONTHS,
-    userEmail?: string
+    userEmail?: string,
+    onProgress?: (progress: ClassroomSyncProgress) => void
   ): Promise<{ updatedTasks: TodoTask[]; newCount: number }> {
+    onProgress?.({
+      current: 0,
+      total: 0,
+      percent: 10,
+      message: "Mengambil daftar kelas Google Classroom...",
+    });
+
     const courses = await this.fetchCourses(token);
     const validCourseIds = new Set(courses.map(c => c.id));
+    const totalCourses = courses.length;
 
     // Filter existing tasks: only keep manual tasks or tasks belonging to this account's active courses
     const updatedTasks = existingTasks.filter(t => {
@@ -280,8 +289,19 @@ export class ClassroomService {
     });
 
     let newCount = 0;
+    let courseIndex = 0;
 
     for (const course of courses) {
+      courseIndex++;
+      const percent = Math.min(95, Math.round(15 + (courseIndex / Math.max(totalCourses, 1)) * 80));
+      onProgress?.({
+        current: courseIndex,
+        total: totalCourses,
+        percent,
+        message: `Menyinkronkan kelas (${courseIndex}/${totalCourses}): ${course.name}`,
+        courseName: course.name,
+      });
+
       const [courseWorks, submissionsMap] = await Promise.all([
         this.fetchCourseWork(token, course.id),
         this.fetchSubmissions(token, course.id),
@@ -356,6 +376,13 @@ export class ClassroomService {
         }
       }
     }
+
+    onProgress?.({
+      current: totalCourses,
+      total: totalCourses,
+      percent: 100,
+      message: "Sinkronisasi selesai!",
+    });
 
     return { updatedTasks, newCount };
   }
