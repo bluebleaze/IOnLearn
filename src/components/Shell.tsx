@@ -101,6 +101,67 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
     return () => unsubscribe();
   }, []);
 
+  // Listen to global session expiration events (e.g. 401 Unauthorized or expiry) and auto-redirect to Landing Page
+  useEffect(() => {
+    const onSessionExpired = (e: any) => {
+      const reason =
+        e.detail?.reason || "Sesi Google Classroom Anda telah berakhir. Silakan masuk kembali.";
+      setToken(null);
+      setUserProfile(null);
+      router.replace("/");
+      toast.warning("Sesi Berakhir", {
+        description: reason,
+      });
+    };
+
+    window.addEventListener("ionlearn:session-expired", onSessionExpired as EventListener);
+    return () => window.removeEventListener("ionlearn:session-expired", onSessionExpired as EventListener);
+  }, [router]);
+
+  // Proactive periodic heartbeat & visibility check to detect expired sessions automatically
+  useEffect(() => {
+    if (!hydrated || !token || token === "DEMO_TOKEN") return;
+
+    const checkSession = () => {
+      if (ClassroomService.isTokenExpired()) {
+        ClassroomService.handleSessionExpired(
+          "Sesi Google Classroom Anda telah berakhir. Silakan masuk kembali."
+        );
+      }
+    };
+
+    // Periodic check every 30 seconds
+    const interval = setInterval(checkSession, 30000);
+
+    // Check immediately when user switches back to tab or focuses window
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        checkSession();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", checkSession);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", checkSession);
+    };
+  }, [hydrated, token]);
+
+  // Proactive background sync on initial load to verify token validity against Google Classroom API immediately
+  useEffect(() => {
+    if (!hydrated || !token || token === "DEMO_TOKEN") return;
+
+    SyncManager.sync(token, {
+      silent: true,
+      overrideEmail: userProfile?.email,
+    }).catch((err) => {
+      console.warn("Initial silent sync check error:", err);
+    });
+  }, [hydrated, token]);
+
   const handleToggleTheme = (e: React.MouseEvent) => {
     const nextTheme = toggleThemeWithCircularAnimation(e);
     setIsDark(nextTheme === "dark");
@@ -122,6 +183,12 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
 
   const syncClassroom = async () => {
     if (!token) return;
+    if (ClassroomService.isTokenExpired()) {
+      ClassroomService.handleSessionExpired(
+        "Sesi Google Classroom Anda telah berakhir. Silakan masuk kembali."
+      );
+      return;
+    }
     await SyncManager.sync(token, {
       overrideEmail: userProfile?.email,
     });
@@ -219,6 +286,7 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
   const handleDemoMode = () => {
     setToken("DEMO_TOKEN");
     localStorage.setItem("classroom_access_token", "DEMO_TOKEN");
+    localStorage.setItem("classroom_token_expiry", (Date.now() + 365 * 24 * 3600 * 1000).toString());
     setUserProfile({
       name: "Pelajar Simulasi",
       email: "pelajar@contoh.com",

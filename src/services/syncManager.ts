@@ -183,19 +183,17 @@ class SyncManagerClass {
         const is401 =
           error.message?.includes("401") ||
           error.message?.includes("kadaluwarsa");
-        if (!options?.silent) {
-          if (is401) {
-            toast.warning("Akses Classroom Perlu Diperbarui", {
-              description:
-                "Sesi Google Classroom telah berakhir. Klik avatar profil atau tombol sinkronisasi untuk masuk kembali.",
-            });
-          } else {
-            toast.warning("Sinkronisasi Offline", {
-              description:
-                error.message ||
-                "Gagal terhubung ke API Classroom. Menggunakan data lokal.",
-            });
-          }
+        if (is401) {
+          // Immediately notify application that session is expired, trigger redirect to landing page
+          ClassroomService.handleSessionExpired(
+            "Sesi Google Classroom Anda telah berakhir. Silakan masuk kembali."
+          );
+        } else if (!options?.silent) {
+          toast.warning("Sinkronisasi Offline", {
+            description:
+              error.message ||
+              "Gagal terhubung ke API Classroom. Menggunakan data lokal.",
+          });
         }
       } finally {
         this.activeSyncPromise = null;
