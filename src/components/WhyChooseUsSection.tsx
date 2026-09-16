@@ -1,6 +1,8 @@
 "use client";
 
 import React from "react";
+import { DrawablyHighlight } from "drawably/react"
+// import "drawably/style.css"
 
 interface WhyChooseUsSectionProps {
   language?: "ENG" | "IND";
@@ -10,25 +12,25 @@ export function WhyChooseUsSection({ language = "ENG" }: WhyChooseUsSectionProps
   const copy =
     language === "IND"
       ? {
-          eyebrow: "mengapa memilih kami",
-          heading: ["Mengapa", "IOnLearn", "Adalah", "Pilihan", "Tepat", "Untukmu?"],
-          cards: [
-            { title: "Chatbot AI Cerdas", text: "Tanya apa saja tentang pelajaran Anda dan dapatkan jawaban cepat seperti berbicara dengan tutor ramah." },
-            { title: "Generator Catatan Otomatis", text: "Mengubah materi panjang dan PDF menjadi catatan singkat yang rapi agar Anda bisa review dalam hitungan detik." },
-            { title: "Kehilangan Kebingungan Belajar", text: "Memberikan langkah yang jelas dan terstruktur untuk memahami topik sulit dengan mudah, menghemat waktu dan tenaga." },
-            { title: "Daftar To-Do Terintegrasi", text: "Membantu Anda mengatur tugas harian dan rencana belajar agar tidak pernah melewatkan tenggat." },
-          ],
-        }
+        eyebrow: "mengapa memilih kami",
+        heading: ["Mengapa", "IOnLearn", "Adalah", "Pilihan", "Tepat", "Untukmu?"],
+        cards: [
+          { title: "Chatbot AI Cerdas", text: "Tanya apa saja tentang pelajaran Anda dan dapatkan jawaban cepat seperti berbicara dengan tutor ramah." },
+          { title: "Generator Catatan Otomatis", text: "Mengubah materi panjang dan PDF menjadi catatan singkat yang rapi agar Anda bisa review dalam hitungan detik." },
+          { title: "Belajar Bebas Kebingungan", text: "Memberikan panduan yang jelas dan terstruktur untuk memahami topik sulit dengan mudah, menghemat waktu dan tenaga." },
+          { title: "Daftar To-Do Terintegrasi", text: "Membantu Anda mengatur tugas harian dan rencana belajar agar tidak pernah melewatkan tenggat." },
+        ],
+      }
       : {
-          eyebrow: "why choose us",
-          heading: ["Why", "IOnLearn", "is", "The Right Choice", "for You?"],
-          cards: [
-            { title: "Smart AI Study Chatbot", text: "Ask anything about your lessons and get quick, easy answers like talking to a friendly tutor." },
-            { title: "Auto-Notes Generator", text: "Instantly turns long lessons and PDFs into neat, short notes so you can review in seconds." },
-            { title: "Zero Study Confusion", text: "Gives you a clear, step-by-step path to understand tough topics easily, saving you time and effort." },
-            { title: "Built-in To-Do List", text: "Helps you organize your daily tasks and study plans so you never miss a deadline." },
-          ],
-        };
+        eyebrow: "why choose us",
+        heading: ["Why", "IOnLearn", "is", "The Right Choice", "for You?"],
+        cards: [
+          { title: "Smart AI Study Chatbot", text: "Ask anything about your lessons and get quick, easy answers like talking to a friendly tutor." },
+          { title: "Auto-Notes Generator", text: "Instantly turns long lessons and PDFs into neat, short notes so you can review in seconds." },
+          { title: "Zero Study Confusion", text: "Gives you a clear, step-by-step path to understand tough topics easily, saving you time and effort." },
+          { title: "Built-in To-Do List", text: "Helps you organize your daily tasks and study plans so you never miss a deadline." },
+        ],
+      };
   return (
     <section className="w-full max-w-6xl mx-auto px-4 sm:px-6 pt-20 sm:pt-28 pb-20">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-[0.9fr_1fr_1fr] md:gap-5">
@@ -40,7 +42,7 @@ export function WhyChooseUsSection({ language = "ENG" }: WhyChooseUsSectionProps
             {copy.heading.map((part, index) => (
               <React.Fragment key={part + index}>
                 {index === 1 ? (
-                  <span className="text-[#4838cc] dark:text-[#818cf8]">{part}</span>
+                  <><DrawablyHighlight seed={633236430} roughness={0.8} boil={1} color="purple">{part}</DrawablyHighlight>{" "}</>
                 ) : (
                   <>{part}{" "}</>
                 )}

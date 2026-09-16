@@ -89,10 +89,10 @@ export function FeatureShowcase({ language = "ENG" }: FeatureShowcaseProps) {
 
   // Dynamic interactive state for To-Do tab
   const [todos, setTodos] = useState([
-    { id: 1, text: "Tonton 1 video YouTube kurasi tentang Vektor", done: true },
-    { id: 2, text: "Bahas 3 soal latihan Kinematika bersama AI", done: true },
-    { id: 3, text: "Buat flashcard otomatis dari rangkuman Bab 2", done: false },
-    { id: 4, text: "Kirim draf tugas akhir ke Google Classroom", done: false },
+    { id: 1, textInd: "Tonton 1 video kurasi tentang Vektor", textEng: "Watch 1 curated video on Vector Physics", done: true },
+    { id: 2, textInd: "Bahas 3 soal latihan Kinematika bersama AI", textEng: "Solve 3 Kinematics practice problems with AI", done: true },
+    { id: 3, textInd: "Buat flashcard otomatis dari rangkuman Bab 2", textEng: "Generate flashcards from Chapter 2 notes", done: false },
+    { id: 4, textInd: "Kirim draf tugas akhir ke Google Classroom", textEng: "Submit assignment draft to Google Classroom", done: false },
   ]);
 
   const toggleTodo = (id: number) => {
@@ -246,35 +246,43 @@ export function FeatureShowcase({ language = "ENG" }: FeatureShowcaseProps) {
                   </div>
 
                   <h4 className="font-cal text-base sm:text-xl md:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-                    Belajar Mandiri, Terarah, dan Hemat Data
+                    {language === "IND"
+                      ? "Belajar Mandiri, Terarah, dan Hemat Data"
+                      : "Self-Directed, Focused, and Low-Data Learning"}
                   </h4>
 
                   <div className="grid grid-cols-3 gap-2 sm:gap-2.5 w-full mt-1">
                     <div className={`p-2 sm:p-2.5 rounded-xl border text-left transition-all duration-300 ${demoStep === 0
-                        ? "bg-indigo-50/90 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-700 shadow-xs"
-                        : "bg-white/80 dark:bg-white/5 border-slate-200/80 dark:border-white/10"
+                      ? "bg-indigo-50/90 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-700 shadow-xs"
+                      : "bg-white/80 dark:bg-white/5 border-slate-200/80 dark:border-white/10"
                       }`}>
                       <Calendar className="w-3.5 h-3.5 text-sky-500 mb-1" />
                       <div className="text-[10px] sm:text-[11px] font-semibold text-slate-800 dark:text-white">Classroom Sync</div>
-                      <div className="text-[8px] sm:text-[9px] text-slate-500 dark:text-slate-400 truncate">Otomatis Sinkron</div>
+                      <div className="text-[8px] sm:text-[9px] text-slate-500 dark:text-slate-400 truncate">
+                        {language === "IND" ? "Otomatis Sinkron" : "Auto-Synced"}
+                      </div>
                     </div>
 
                     <div className={`p-2 sm:p-2.5 rounded-xl border text-left transition-all duration-300 ${demoStep === 1
-                        ? "bg-indigo-50/90 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-700 shadow-xs"
-                        : "bg-white/80 dark:bg-white/5 border-slate-200/80 dark:border-white/10"
+                      ? "bg-indigo-50/90 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-700 shadow-xs"
+                      : "bg-white/80 dark:bg-white/5 border-slate-200/80 dark:border-white/10"
                       }`}>
                       <Bot className="w-3.5 h-3.5 text-indigo-500 mb-1" />
                       <div className="text-[10px] sm:text-[11px] font-semibold text-slate-800 dark:text-white">Socratic AI</div>
-                      <div className="text-[8px] sm:text-[9px] text-slate-500 dark:text-slate-400 truncate">Tutor Interaktif</div>
+                      <div className="text-[8px] sm:text-[9px] text-slate-500 dark:text-slate-400 truncate">
+                        {language === "IND" ? "Tutor Interaktif" : "Interactive Tutor"}
+                      </div>
                     </div>
 
                     <div className={`p-2 sm:p-2.5 rounded-xl border text-left transition-all duration-300 ${demoStep === 2
-                        ? "bg-indigo-50/90 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-700 shadow-xs"
-                        : "bg-white/80 dark:bg-white/5 border-slate-200/80 dark:border-white/10"
+                      ? "bg-indigo-50/90 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-700 shadow-xs"
+                      : "bg-white/80 dark:bg-white/5 border-slate-200/80 dark:border-white/10"
                       }`}>
                       <Zap className="w-3.5 h-3.5 text-amber-500 mb-1" />
                       <div className="text-[10px] sm:text-[11px] font-semibold text-slate-800 dark:text-white">Low-Data Notes</div>
-                      <div className="text-[8px] sm:text-[9px] text-slate-500 dark:text-slate-400 truncate">Hemat 85% Kuota</div>
+                      <div className="text-[8px] sm:text-[9px] text-slate-500 dark:text-slate-400 truncate">
+                        {language === "IND" ? "Hemat 85% Kuota" : "Save 85% Bandwidth"}
+                      </div>
                     </div>
                   </div>
 
@@ -300,7 +308,9 @@ export function FeatureShowcase({ language = "ENG" }: FeatureShowcaseProps) {
                         IOnLearn Academic Tutor
                       </div>
                       <div className="text-[9px] text-slate-500 dark:text-indigo-300">
-                        Membedah rumus & konsep secara Sokratik
+                        {language === "IND"
+                          ? "Membedah rumus & konsep secara Sokratik"
+                          : "Deconstructs formulas & concepts socratically"}
                       </div>
                     </div>
                   </div>
@@ -309,23 +319,29 @@ export function FeatureShowcase({ language = "ENG" }: FeatureShowcaseProps) {
                   <div className="space-y-1.5 text-[11px] sm:text-xs">
                     <div className="flex justify-end">
                       <div className="bg-[#4b43c6] text-white px-3 py-1.5 rounded-2xl rounded-tr-xs max-w-[85%] text-left">
-                        Bagaimana konsep kerja Hukum Newton II?
+                        {language === "IND"
+                          ? "Bagaimana konsep kerja Hukum Newton II?"
+                          : "How does Newton's Second Law actually work?"}
                       </div>
                     </div>
 
                     <div className="flex justify-start">
                       <div className="bg-slate-100 dark:bg-white/10 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-slate-200 px-3 py-2 rounded-2xl rounded-tl-xs max-w-[90%] text-left leading-relaxed">
                         <span className="font-semibold text-[#4b43c6] dark:text-indigo-300 block text-[10px] mb-0.5">
-                          💡 Inti Formula: ΣF = m · a
+                          {language === "IND" ? "💡 Inti Formula: ΣF = m · a" : "💡 Core Formula: ΣF = m · a"}
                         </span>
-                        Gaya dorong (F) sebanding dengan percepatan (a). Semakin berat massa benda (m), semakin besar gaya dorong yang dibutuhkan.
+                        {language === "IND"
+                          ? "Gaya dorong (F) sebanding dengan percepatan (a). Semakin berat massa benda (m), semakin besar gaya dorong yang dibutuhkan."
+                          : "Net force (F) is directly proportional to acceleration (a). The heavier an object's mass (m), the more force is needed to accelerate it."}
                       </div>
                     </div>
                   </div>
 
                   {/* Input Mock */}
                   <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-2.5 py-1 text-[10px] text-slate-400">
-                    <span className="flex-1 text-left">Tanyakan soal tugas kelasmu...</span>
+                    <span className="flex-1 text-left">
+                      {language === "IND" ? "Tanyakan soal tugas kelasmu..." : "Ask about your course concepts or assignments..."}
+                    </span>
                     <Send className="w-3 h-3 text-[#4b43c6] dark:text-indigo-400" />
                   </div>
                 </div>
@@ -339,23 +355,30 @@ export function FeatureShowcase({ language = "ENG" }: FeatureShowcaseProps) {
                       Google Classroom Tasks
                     </span>
                     <span className="text-[9px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/15 px-2 py-0.5 rounded-full">
-                      Tersinkron Otomatis
+                      {language === "IND" ? "Tersinkron Otomatis" : "Auto-Synced"}
                     </span>
                   </div>
 
                   <div className="space-y-1.5">
-                    {[
-                      { title: "Tugas Fisika: Kinematika Gerak Lurus", class: "Fisika Dasar X-1", due: "Besok, 23:59", tag: "Tinggi", color: "bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-300 border-rose-200 dark:border-rose-900" },
-                      { title: "Analisis Puisi Chairil Anwar", class: "Bahasa Indonesia", due: "Kamis, 15:00", tag: "Sedang", color: "bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-300 border-amber-200 dark:border-amber-900" },
-                      { title: "Praktikum Kimia Asam Basa", class: "Kimia Terapan", due: "Jumat, 12:00", tag: "Normal", color: "bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-300 border-sky-200 dark:border-sky-900" },
-                    ].map((t, idx) => (
+                    {(language === "IND"
+                      ? [
+                          { title: "Tugas Fisika: Kinematika Gerak Lurus", class: "Fisika Dasar X-1", due: "Besok, 23:59", tag: "Tinggi", color: "bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-300 border-rose-200 dark:border-rose-900" },
+                          { title: "Analisis Puisi Chairil Anwar", class: "Bahasa Indonesia", due: "Kamis, 15:00", tag: "Sedang", color: "bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-300 border-amber-200 dark:border-amber-900" },
+                          { title: "Praktikum Kimia Asam Basa", class: "Kimia Terapan", due: "Jumat, 12:00", tag: "Normal", color: "bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-300 border-sky-200 dark:border-sky-900" },
+                        ]
+                      : [
+                          { title: "Physics: Linear Kinematics Motion", class: "Intro Physics 101", due: "Tomorrow, 23:59", tag: "High", color: "bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-300 border-rose-200 dark:border-rose-900" },
+                          { title: "Literature Essay: Modern Poetry", class: "English Literature", due: "Thursday, 15:00", tag: "Medium", color: "bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-300 border-amber-200 dark:border-amber-900" },
+                          { title: "Chemistry Lab: Acid-Base Analysis", class: "Applied Chemistry", due: "Friday, 12:00", tag: "Normal", color: "bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-300 border-sky-200 dark:border-sky-900" },
+                        ]
+                    ).map((t, idx) => (
                       <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-left hover:border-indigo-400 transition-colors">
                         <div>
                           <div className="text-[11px] font-semibold text-slate-900 dark:text-white truncate max-w-[200px] sm:max-w-[260px]">
                             {t.title}
                           </div>
                           <div className="text-[9px] text-slate-500 dark:text-slate-400">
-                            {t.class} • Tenggat: {t.due}
+                            {t.class} • {language === "IND" ? "Tenggat:" : "Due:"} {t.due}
                           </div>
                         </div>
                         <span className={`text-[9px] px-1.5 py-0.5 rounded border font-medium ${t.color}`}>
@@ -373,10 +396,12 @@ export function FeatureShowcase({ language = "ENG" }: FeatureShowcaseProps) {
                   <div className="flex items-center justify-between pb-1 border-b border-slate-200 dark:border-white/10 text-[11px]">
                     <span className="font-montserrat font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
                       <ListTodo className="w-3.5 h-3.5 text-[#4b43c6] dark:text-indigo-400" />
-                      Target Belajar Harian (Klik untuk coba!)
+                      {language === "IND" ? "Target Belajar Harian (Klik untuk coba!)" : "Daily Study Goals (Click to interact!)"}
                     </span>
                     <span className="text-[9px] font-semibold text-[#4b43c6] dark:text-indigo-300">
-                      {todos.filter((t) => t.done).length} dari {todos.length} selesai
+                      {language === "IND"
+                        ? `${todos.filter((t) => t.done).length} dari ${todos.length} selesai`
+                        : `${todos.filter((t) => t.done).length} of ${todos.length} completed`}
                     </span>
                   </div>
 
@@ -386,8 +411,8 @@ export function FeatureShowcase({ language = "ENG" }: FeatureShowcaseProps) {
                         key={item.id}
                         onClick={() => toggleTodo(item.id)}
                         className={`flex items-center gap-2 p-1.5 rounded-lg border transition-all cursor-pointer select-none ${item.done
-                            ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/40 text-slate-400 dark:text-slate-400 line-through"
-                            : "bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-800 dark:text-white hover:border-[#4b43c6]"
+                          ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/40 text-slate-400 dark:text-slate-400 line-through"
+                          : "bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-800 dark:text-white hover:border-[#4b43c6]"
                           }`}
                       >
                         {item.done ? (
@@ -395,7 +420,9 @@ export function FeatureShowcase({ language = "ENG" }: FeatureShowcaseProps) {
                         ) : (
                           <Circle className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                         )}
-                        <span className="text-[11px] truncate">{item.text}</span>
+                        <span className="text-[11px] truncate">
+                          {language === "IND" ? item.textInd : item.textEng}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -411,31 +438,41 @@ export function FeatureShowcase({ language = "ENG" }: FeatureShowcaseProps) {
                       Low-Data AI Note Generator
                     </span>
                     <span className="text-[9px] text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/15 px-2 py-0.5 rounded-full font-medium">
-                      Hemat 85% Bandwidth
+                      {language === "IND" ? "Hemat 85% Bandwidth" : "Save 85% Bandwidth"}
                     </span>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 text-left">
                     <div className="p-2 sm:p-2.5 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10">
                       <div className="text-[9px] uppercase font-bold text-[#4b43c6] dark:text-indigo-400 mb-0.5">
-                        Ringkasan Poin Kunci
+                        {language === "IND" ? "Ringkasan Poin Kunci" : "Key Concept Summary"}
                       </div>
                       <div className="text-[11px] font-semibold text-slate-800 dark:text-white mb-1 truncate">
-                        Termodinamika Dasar
+                        {language === "IND" ? "Termodinamika Dasar" : "Basic Thermodynamics"}
                       </div>
                       <p className="text-[9px] text-slate-600 dark:text-slate-400 leading-relaxed line-clamp-3">
-                        • Hukum 0: Kesetimbangan termal.<br />
-                        • Hukum 1: Konservasi energi (ΔU = Q - W).<br />
-                        • Hukum 2: Entropi sistem tertutup meningkat.
+                        {language === "IND" ? (
+                          <>
+                            • Hukum 0: Kesetimbangan termal.<br />
+                            • Hukum 1: Konservasi energi (ΔU = Q - W).<br />
+                            • Hukum 2: Entropi sistem tertutup meningkat.
+                          </>
+                        ) : (
+                          <>
+                            • 0th Law: Thermal equilibrium.<br />
+                            • 1st Law: Energy conservation (ΔU = Q - W).<br />
+                            • 2nd Law: Closed-system entropy increases.
+                          </>
+                        )}
                       </p>
                     </div>
 
                     <div className="p-2 sm:p-2.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800">
                       <div className="text-[9px] uppercase font-bold text-emerald-600 dark:text-emerald-400 mb-0.5">
-                        Flashcard Interaktif
+                        {language === "IND" ? "Flashcard Interaktif" : "Interactive Flashcard"}
                       </div>
                       <div className="text-[11px] font-semibold text-slate-800 dark:text-white mb-1">
-                        Rumus Usaha Isobarik?
+                        {language === "IND" ? "Rumus Usaha Isobarik?" : "Isobaric Work Formula?"}
                       </div>
                       <div className="text-[9px] text-indigo-900 dark:text-indigo-200 bg-white/80 dark:bg-indigo-900/60 p-1 rounded border border-indigo-200 dark:border-indigo-700">
                         W = P · ΔV = P(V₂ - V₁)
@@ -475,7 +512,7 @@ export function FeatureShowcase({ language = "ENG" }: FeatureShowcaseProps) {
       </div>
 
       {/* Bottom Feature Tabs Selector (Single Selection Only) */}
-      <div className="mt-8 sm:mt-10 flex flex-wrap items-center justify-center gap-2 sm:gap-3 w-full max-w-2xl mx-auto">
+      <div className="mt-8 sm:mt-10 p-1 flex flex-wrap items-center justify-center gap-2 sm:gap-3 w-full max-w-2xl mx-auto">
         {(
           ["Demo", "AI Chatbot", "Tasks Menu", "To-Do", "Auto-Notes"] as FeatureTab[]
         ).map((tab) => {
@@ -486,8 +523,8 @@ export function FeatureShowcase({ language = "ENG" }: FeatureShowcaseProps) {
               type="button"
               onClick={() => setActiveTab(tab)}
               className={`font-montserrat text-xs sm:text-sm font-semibold transition-all duration-200 cursor-pointer ${isActive
-                  ? "bg-[#4b43c6] text-white px-5 sm:px-6 py-2 sm:py-2.5 rounded-full shadow-md scale-105"
-                  : "bg-transparent hover:bg-slate-100 dark:hover:bg-zinc-800/80 text-slate-700 dark:text-zinc-300 px-3.5 sm:px-4 py-2 rounded-full"
+                ? "bg-[#4b43c6] text-white px-5 sm:px-6 py-2 sm:py-2.5 rounded-full shadow-md scale-105"
+                : "bg-transparent hover:bg-slate-100 dark:hover:bg-zinc-800/80 text-slate-700 dark:text-zinc-300 px-3.5 sm:px-4 py-2 rounded-full"
                 }`}
             >
               {tabLabels[tab]}

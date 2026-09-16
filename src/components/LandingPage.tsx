@@ -56,9 +56,10 @@ export function LandingPage({
     hero: {
       tagline: selectedLanguage === "IND" ? "tempat belajar yang tepat\nuntukmu" : "a perfect place for you\nto study",
       demoButton: selectedLanguage === "IND" ? "Mode Demo" : "Demo Mode",
-      syncButton: selectedLanguage === "IND" ? "Sinkron Sekarang" : "Sync Now",
+      syncButton: selectedLanguage === "IND" ? "Masuk dengan Google" : "Sign In with Google",
+      syncButtonMobile: selectedLanguage === "IND" ? "Masuk Google" : "Google Sign-In",
       loading: selectedLanguage === "IND" ? "Menghubungkan..." : "Connecting...",
-      signIn: selectedLanguage === "IND" ? "Sync" : "Sync",
+      signIn: selectedLanguage === "IND" ? "Masuk" : "Sign In",
       simulation: selectedLanguage === "IND" ? "Mode Simulasi" : "Simulation Mode",
       scroll: selectedLanguage === "IND" ? "Gulir" : "Scroll",
       loginErrorTitle: selectedLanguage === "IND" ? "Gagal Masuk Google" : "Google Sign-In Failed",
@@ -92,7 +93,7 @@ export function LandingPage({
       description:
         selectedLanguage === "IND"
           ? "Mulai perjalanan belajar Anda dengan pengalaman yang lebih ringkas, lebih cepat, dan lebih terarah."
-          : "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ut a mollis turpis. Mauris hendrerit laoreet arcu, in hendrerit enim vestibulum ut.",
+          : "Begin your learning journey with a faster, lighter, and AI-powered study companion designed for students everywhere.",
       button: selectedLanguage === "IND" ? "Mulai Sekarang" : "Start Now",
     },
   };
@@ -169,7 +170,12 @@ export function LandingPage({
       }
     };
 
+    const handleThemeStart = () => lenis.stop();
+    const handleThemeEnd = () => lenis.start();
+
     document.addEventListener("click", handleAnchorClick);
+    window.addEventListener("theme-transition-start", handleThemeStart);
+    window.addEventListener("theme-transition-end", handleThemeEnd);
 
     // Run initial scroll update
     updateHeroParallax();
@@ -177,6 +183,8 @@ export function LandingPage({
     return () => {
       cancelAnimationFrame(rafId);
       document.removeEventListener("click", handleAnchorClick);
+      window.removeEventListener("theme-transition-start", handleThemeStart);
+      window.removeEventListener("theme-transition-end", handleThemeEnd);
       lenis.off("scroll", onLenisScroll);
       lenis.destroy();
       lenisRef.current = null;
@@ -243,8 +251,9 @@ export function LandingPage({
   }, []);
 
   const handleToggleTheme = (e: React.MouseEvent) => {
-    const nextTheme = toggleThemeWithCircularAnimation(e);
-    setIsDark(nextTheme === "dark");
+    toggleThemeWithCircularAnimation(e, (theme) => {
+      setIsDark(theme === "dark");
+    });
   };
 
   const handleHeroPointerMove = (event: React.MouseEvent<HTMLElement>) => {
@@ -305,13 +314,14 @@ export function LandingPage({
 
       {/* Navbar */}
       <header
-        className={`fixed left-1/2 top-0 z-30 w-[calc(100%-0.75rem)] sm:w-[calc(100%-2rem)] -translate-x-1/2 transition-all duration-300 ease-out ${isScrolled
-          ? "mt-2 sm:mt-3 max-w-6xl rounded-[22px] sm:rounded-[30px] border border-white/60 bg-white/50 shadow-[0_10px_30px_rgba(15,23,42,0.08)] backdrop-blur-[50px] dark:border-white/10 dark:bg-[#0c0c0c]/50"
-          : "mt-0 max-w-none rounded-none border-b border-slate-200/70 bg-white/50 dark:border-[#2b2b2b] dark:bg-[#0c0c0c]/50 backdrop-blur-[50px]"
+        className={`landing-navbar fixed left-1/2 top-0 z-30 -translate-x-1/2 transition-all duration-300 ease-out ${isScrolled
+          ? "w-[calc(100%-0.75rem)] sm:w-[calc(100%-2rem)] max-w-6xl mt-2 sm:mt-3 rounded-[22px] sm:rounded-[30px] border border-white/60 bg-white/50 shadow-[0_10px_30px_rgba(15,23,42,0.08)] backdrop-blur-[50px] dark:border-white/10 dark:bg-[#0c0c0c]/50"
+          : "w-full max-w-none mt-0 rounded-none border-b border-slate-200/70 bg-white/50 dark:border-[#2b2b2b] dark:bg-[#0c0c0c]/50 backdrop-blur-[50px]"
           }`}
       >
-        <div className={`mx-auto flex items-center justify-between gap-2 px-3 sm:px-8 transition-all duration-300 ease-out ${isScrolled ? "max-w-6xl py-2.5" : "max-w-6xl py-2.5 sm:py-3.5"}`}>
-          <div className="flex min-w-0 items-center gap-2 sm:gap-3 shrink-0">
+        <div className={`mx-auto relative flex items-center justify-between gap-2 px-3 sm:px-8 transition-all duration-300 ease-out ${isScrolled ? "max-w-6xl py-2.5" : "max-w-6xl py-2.5 sm:py-3.5"}`}>
+          {/* Left: Brand Logo & Language Switcher */}
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3 shrink-0 z-10">
             <a href="#home" className="flex items-center gap-2 sm:gap-3 min-w-0">
               <img
                 src="/logos/logoionlearnfulltext.png"
@@ -370,26 +380,26 @@ export function LandingPage({
             </div>
           </div>
 
-          <div className="flex-1 flex justify-center">
-            <nav className="hidden md:flex items-center justify-center gap-2 sm:gap-3">
-              {[
-                { label: uiText.nav.home, href: "#home" },
-                { label: uiText.nav.features, href: "#features" },
-                { label: uiText.nav.demo, href: "#demo" },
-                { label: uiText.nav.qna, href: "#faq" },
-              ].map((item) => (
-                <a
-                  key={item.label}
-                  href={item.href}
-                  className="px-2 py-1.5 text-xs sm:text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-[#b8b8b8] dark:hover:text-white transition-colors"
-                >
-                  {item.label}
-                </a>
-              ))}
-            </nav>
-          </div>
+          {/* Center: Navigation Links Perfectly Centered */}
+          <nav className="hidden md:flex items-center justify-center gap-1 sm:gap-2 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-auto">
+            {[
+              { label: uiText.nav.home, href: "#home" },
+              { label: uiText.nav.features, href: "#features" },
+              { label: uiText.nav.demo, href: "#demo" },
+              { label: uiText.nav.qna, href: "#faq" },
+            ].map((item) => (
+              <a
+                key={item.label}
+                href={item.href}
+                className="px-3 py-1.5 text-xs sm:text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-[#b8b8b8] dark:hover:text-white transition-colors rounded-lg hover:bg-slate-100/80 dark:hover:bg-white/5"
+              >
+                {item.label}
+              </a>
+            ))}
+          </nav>
 
-          <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 shrink-0 ml-auto sm:ml-0">
+          {/* Right: Actions (Theme Toggle & Sign In) */}
+          <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 shrink-0 z-10 ml-auto sm:ml-0">
             {/* Theme Toggle */}
             <button
               type="button"
@@ -405,7 +415,7 @@ export function LandingPage({
             </button>
 
             {/* Mode Simulasi CTA */}
-            <div className="group relative flex items-center justify-center hidden sm:flex">
+            {/* <div className="group relative flex items-center justify-center hidden sm:flex">
               <button
                 type="button"
                 onClick={onDemoMode}
@@ -418,7 +428,7 @@ export function LandingPage({
                   {uiText.hero.simulation}
                 </span>
               </button>
-            </div>
+            </div> */}
 
             {/* Masuk Google CTA */}
             <button
@@ -609,32 +619,48 @@ export function LandingPage({
             </div>
           )}
 
-          {/* Hero Actions (Demo Mode & Sync Now) with Bounce-Up Entrance */}
-          <div className="animate-hero-btn font-montserrat flex flex-col sm:flex-row items-center justify-center gap-3.5 w-full sm:w-auto">
+          {/* Hero Actions (Demo Mode & Masuk dengan Google) */}
+          <div className="animate-hero-btn font-montserrat flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 w-full max-w-[290px] sm:max-w-none mx-auto">
             {/* Demo Mode Button (Secondary) */}
             <button
               type="button"
               onClick={onDemoMode}
-              className="group relative overflow-hidden rounded-2xl border border-slate-300 bg-white px-5 sm:px-6 py-2.5 sm:py-3 text-slate-800 shadow-[0_4px_14px_rgba(15,23,42,0.05)] transition-all duration-300 ease-out hover:border-slate-400 hover:shadow-[0_12px_30px_rgba(79,70,229,0.12)] hover:px-6 sm:hover:px-7 dark:border-[#333333] dark:bg-[#121212] dark:text-[#e5e5e5] dark:hover:border-[#555555] dark:hover:text-white cursor-pointer active:scale-95 w-full sm:w-auto"
+              className="group relative overflow-hidden rounded-2xl border border-slate-300 dark:border-[#333333] bg-white dark:bg-[#121212] px-5 sm:px-6 py-3 sm:py-3.5 text-slate-800 dark:text-[#e5e5e5] shadow-[0_4px_14px_rgba(15,23,42,0.05)] transition-all duration-300 ease-out hover:border-slate-400 dark:hover:border-[#555555] hover:shadow-[0_12px_30px_rgba(79,70,229,0.12)] hover:px-6 sm:hover:px-7 dark:hover:text-white cursor-pointer active:scale-95 w-full sm:w-auto"
             >
-              <span className="absolute inset-y-0 left-0 w-0 origin-left scale-x-0 rounded-full bg-gradient-to-r from-indigo-100 to-indigo-50 transition-all duration-300 ease-out group-hover:w-full group-hover:scale-x-100 dark:from-indigo-500/10 dark:to-indigo-400/10" />
-              <span className="relative flex items-center justify-center gap-0 text-sm sm:text-base font-medium transition-all duration-300 ease-out group-hover:gap-2">
+              <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-indigo-100 to-indigo-50 dark:from-indigo-500/10 dark:to-indigo-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-out pointer-events-none" />
+              <span className="relative flex items-center justify-center gap-1.5 text-sm sm:text-base font-semibold transition-all duration-300 ease-out group-hover:gap-2">
                 <span>{uiText.hero.demoButton}</span>
-                <ArrowUpRight className="h-0 w-0 opacity-0 overflow-hidden transition-all duration-300 ease-out group-hover:h-4 group-hover:w-4 group-hover:opacity-100" />
+                <ArrowUpRight className="h-4 w-4 opacity-70 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:opacity-100" />
               </span>
             </button>
 
-            {/* Sync Now Button (Primary) */}
+            {/* Masuk dengan Google Button (Primary) */}
             <button
               type="button"
               onClick={onConnectGoogle}
               disabled={isAuthenticating}
-              className="group relative overflow-hidden rounded-2xl bg-[#4b43c6] px-5 sm:px-6 py-2.5 sm:py-3 text-white shadow-[0_10px_28px_rgba(79,70,229,0.28)] transition-all duration-300 ease-out hover:bg-[#3e36b8] hover:px-6 sm:hover:px-7 hover:shadow-[0_18px_36px_rgba(79,70,229,0.35)] dark:bg-[#5b52e0] dark:hover:bg-[#4d44d0] cursor-pointer disabled:opacity-50 active:scale-95 w-full sm:w-auto"
+              className="group relative overflow-hidden rounded-2xl bg-[#4b43c6] hover:bg-[#3e36b8] dark:bg-[#5b52e0] dark:hover:bg-[#4d44d0] px-5 sm:px-7 py-3 sm:py-3.5 text-white shadow-[0_10px_28px_rgba(79,70,229,0.28)] hover:shadow-[0_18px_36px_rgba(79,70,229,0.35)] hover:px-6 sm:hover:px-8 transition-all duration-300 ease-out cursor-pointer disabled:opacity-50 active:scale-95 w-full sm:w-auto"
             >
-              <span className="absolute inset-y-0 left-0 w-0 origin-left scale-x-0 rounded-full bg-white/10 transition-all duration-300 ease-out group-hover:w-full group-hover:scale-x-100" />
-              <span className="relative flex items-center justify-center gap-0 text-sm sm:text-base font-medium transition-all duration-300 ease-out group-hover:gap-2">
-                <span>{isAuthenticating ? uiText.hero.loading : uiText.hero.syncButton}</span>
-                <ArrowUpRight className="h-0 w-0 opacity-0 overflow-hidden transition-all duration-300 ease-out group-hover:h-4 group-hover:w-4 group-hover:opacity-100" />
+              <span className="absolute inset-0 w-full h-full bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-out pointer-events-none" />
+              <span className="relative flex items-center justify-center gap-2 text-sm sm:text-base font-semibold transition-all duration-300 ease-out group-hover:gap-2.5">
+                {/* Clean SVG Google icon */}
+                <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                  <path fill="#ffffff" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" opacity="0.9"/>
+                  <path fill="#ffffff" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" opacity="0.95"/>
+                  <path fill="#ffffff" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" opacity="0.9"/>
+                  <path fill="#ffffff" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" opacity="0.95"/>
+                </svg>
+                <span>
+                  {isAuthenticating ? (
+                    uiText.hero.loading
+                  ) : (
+                    <>
+                      <span className="inline sm:hidden">{uiText.hero.syncButtonMobile}</span>
+                      <span className="hidden sm:inline">{uiText.hero.syncButton}</span>
+                    </>
+                  )}
+                </span>
+                <ArrowUpRight className="h-4 w-4 opacity-80 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:opacity-100" />
               </span>
             </button>
           </div>

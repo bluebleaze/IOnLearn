@@ -22,21 +22,33 @@ export function DemoInviteSection({ onDemoMode, language = "ENG" }: DemoInviteSe
       ? {
         eyebrow: "halaman demo",
         headline: ["Masih Ragu", "Apakah", "Harus", "Coba", "atau", "Tidak?"],
+        mobileHeadline: "Masih Ragu? Coba Demo Interaktif Sekarang!",
         button: "Coba Dashboard Demo",
         note: "Tenang — Anda bisa merasakan fasilitas kami tanpa perlu masuk atau menyinkronkan akun terlebih dahulu! Kami menjamin Anda akan mendapatkan apa yang Anda butuhkan ;)",
       }
       : {
         eyebrow: "demo page",
         headline: ["Still Not", "Sure", "Whether", "to Try", "It or", "Not?"],
+        mobileHeadline: "Still Not Sure? Try The Interactive Demo!",
         button: "Try The Demo Dashboard",
         note: "Don't worry — you can experience our facilities without needing to log in or sync your account in the first place! We promise, you'll get what you need ;)",
       };
   return (
-    <section id="demo" className="w-full max-w-5xl mx-auto px-4 sm:px-6 pt-20 sm:pt-28 pb-10 scroll-mt-24">
-      <div className="grid grid-cols-1 lg:grid-cols-[auto_1fr] gap-10 lg:gap-14 items-center">
+    <section id="demo" className="w-full max-w-5xl mx-auto px-4 sm:px-6 pt-16 sm:pt-20 lg:pt-28 pb-10 scroll-mt-24">
+      <div className="grid grid-cols-1 lg:grid-cols-[auto_1fr] gap-6 sm:gap-8 lg:gap-14 items-center">
 
-        {/* LEFT COLUMN: Ultra-Bold "OH!" + Headline */}
-        <div className="w-full max-w-[340px] sm:max-w-[380px] flex flex-col justify-center">
+        {/* MOBILE-ONLY CATCHY HEADLINE (Hidden on Desktop) */}
+        <div className="block lg:hidden w-full text-left">
+          <span className="font-montserrat font-bold text-xs text-[#493fe4] dark:text-[#818cf8] tracking-wide lowercase mb-2 block">
+            {copy.eyebrow}
+          </span>
+          <h2 className="font-cal text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-snug">
+            {copy.mobileHeadline}
+          </h2>
+        </div>
+
+        {/* DESKTOP-ONLY LEFT COLUMN: Ultra-Bold "OH!" + Headline (Hidden on Mobile) */}
+        <div className="hidden lg:flex w-full max-w-[340px] sm:max-w-[380px] flex-col justify-center">
           <div className="flex items-stretch gap-5 sm:gap-6">
 
             {/* Authentic Condensed Heavy "OH!" SVG (Height ~265px) */}
@@ -73,15 +85,15 @@ export function DemoInviteSection({ onDemoMode, language = "ENG" }: DemoInviteSe
         {/* RIGHT COLUMN: Demo Page Preview + Full-Width CTA */}
         <div className="w-full flex flex-col gap-3 group">
 
-          {/* Eyebrow Tag */}
-          <div>
+          {/* Eyebrow Tag (Desktop only, mobile renders it with the headline) */}
+          <div className="hidden lg:block">
             <span className="font-montserrat font-bold text-xs sm:text-sm text-[#493fe4] dark:text-[#818cf8] tracking-wide lowercase">
               {copy.eyebrow}
             </span>
           </div>
 
           {/* Mock Dashboard Window Preview with Left Vertical Sidebar */}
-          <div className="w-full rounded-2xl border border-slate-300/80 dark:border-white/10 bg-white dark:bg-[#121216] shadow-sm flex overflow-hidden select-none transition-all duration-300 hover:shadow-md translate-y-9 scale-95 group-hover:translate-y-0 -z-1">
+          <div className="w-full rounded-2xl border border-slate-300/80 dark:border-white/10 bg-white dark:bg-[#121216] shadow-sm flex overflow-hidden select-none transition-all duration-300 hover:shadow-md translate-y-0 scale-100 lg:translate-y-9 lg:scale-95 lg:group-hover:translate-y-0 lg:group-hover:scale-100 relative z-0">
 
             {/* Left Vertical Sidebar (Authentic Mockup Detail) */}
             <div className="w-9 sm:w-10 bg-slate-50/70 dark:bg-[#16161c] border-r border-slate-200/80 dark:border-white/10 flex flex-col items-center py-4 gap-3 text-slate-400 dark:text-zinc-500 flex-shrink-0">
@@ -111,13 +123,13 @@ export function DemoInviteSection({ onDemoMode, language = "ENG" }: DemoInviteSe
                 {/* Action Tag Pills */}
                 <div className="flex items-center gap-1.5 text-[9px] font-montserrat">
                   <span className="px-2 py-0.5 rounded-full border border-slate-200 dark:border-white/10 text-slate-600 dark:text-zinc-300">
-                    @ Chatbot
+                    @ {language === "IND" ? "Chatbot AI" : "AI Chatbot"}
                   </span>
                   <span className="px-2 py-0.5 rounded-full border border-slate-200 dark:border-white/10 text-slate-600 dark:text-zinc-300">
-                    + Add New Task
+                    + {language === "IND" ? "Tambah Tugas" : "Add New Task"}
                   </span>
                   <span className="px-2.5 py-0.5 rounded-full bg-[#493fe4] text-white font-semibold shadow-xs">
-                    Sync Account
+                    {language === "IND" ? "Sinkron Akun" : "Sync Account"}
                   </span>
                 </div>
               </div>
@@ -125,13 +137,15 @@ export function DemoInviteSection({ onDemoMode, language = "ENG" }: DemoInviteSe
               {/* Greeting & Subtitle */}
               <div className="py-2">
                 <div className="font-montserrat text-xs sm:text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
-                  <span>Good Morning,</span>
+                  <span>{language === "IND" ? "Selamat Pagi," : "Good Morning,"}</span>
                   <span className="bg-[#493fe4] text-white px-2 py-0.5 rounded font-bold text-xs">
-                    Ubur Ubur.
+                    {language === "IND" ? "Pelajar Cerdas." : "Smart Learner."}
                   </span>
                 </div>
-                <p className="font-inter text-[10.5px] text-slate-400 dark:text-zinc-500 mt-1 leading-relaxed line-clamp-2">
-                  Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ut a mollis turpis. Mauris hendrerit laoreet arcu, in hendrerit enim vestibulum ut.
+                <p className="font-inter text-[10.5px] text-slate-500 dark:text-zinc-400 mt-1 leading-relaxed line-clamp-2">
+                  {language === "IND"
+                    ? "Kelola tugas Google Classroom, rangkum materi dengan AI, dan pantau prioritas belajar harian Anda."
+                    : "Manage Google Classroom assignments, summarize materials with AI, and track your daily study priorities."}
                 </p>
               </div>
 
@@ -141,7 +155,7 @@ export function DemoInviteSection({ onDemoMode, language = "ENG" }: DemoInviteSe
                 {/* Card 1: All Task (Solid Purple) */}
                 <div className="bg-[#493fe4] text-white rounded-xl p-2.5 sm:p-3 flex flex-col justify-between shadow-xs min-h-[64px]">
                   <span className="text-[9px] font-montserrat opacity-90">
-                    All Task
+                    {language === "IND" ? "Semua Tugas" : "All Tasks"}
                   </span>
                   <div className="my-0.5">
                     <span className="font-cal text-base sm:text-lg font-black leading-none">
@@ -149,35 +163,35 @@ export function DemoInviteSection({ onDemoMode, language = "ENG" }: DemoInviteSe
                     </span>
                   </div>
                   <span className="text-[7px] font-montserrat tracking-wider opacity-75 uppercase">
-                    TOTAL NUMBER
+                    {language === "IND" ? "TOTAL TUGAS" : "TOTAL NUMBER"}
                   </span>
                 </div>
 
                 {/* Card 2: AI Chatbot (White) */}
                 <div className="bg-white dark:bg-zinc-800/80 rounded-xl p-2.5 sm:p-3 border border-slate-200/80 dark:border-white/10 flex flex-col justify-between min-h-[64px]">
                   <span className="text-[9px] font-montserrat font-bold text-slate-800 dark:text-zinc-200">
-                    AI Chatbot
+                    {language === "IND" ? "Chatbot AI" : "AI Chatbot"}
                   </span>
                   <div className="my-0.5 flex items-center gap-1 text-[#493fe4] dark:text-indigo-400">
                     <Bot className="w-3.5 h-3.5" />
                   </div>
-                  <span className="text-[7.5px] font-inter text-slate-400 dark:text-zinc-400">
-                    chat your complex problem
+                  <span className="text-[7.5px] font-inter text-slate-400 dark:text-zinc-400 truncate">
+                    {language === "IND" ? "tanyakan soal sulit" : "chat your complex problem"}
                   </span>
                 </div>
 
-                {/* Card 3: uburubur Account (White) */}
+                {/* Card 3: Classes (White) */}
                 <div className="bg-white dark:bg-zinc-800/80 rounded-xl p-2.5 sm:p-3 border border-slate-200/80 dark:border-white/10 flex flex-col justify-between min-h-[64px]">
                   <span className="text-[9px] font-montserrat font-semibold text-slate-700 dark:text-zinc-300">
-                    UburUbur Account
+                    {language === "IND" ? "Kelas Aktif" : "Active Classes"}
                   </span>
                   <div className="my-0.5">
                     <span className="font-cal text-base sm:text-lg font-bold text-slate-900 dark:text-white leading-none">
-                      07
+                      05
                     </span>
                   </div>
                   <span className="text-[7px] font-montserrat tracking-wider text-slate-400 dark:text-zinc-400 uppercase">
-                    VIEW ACCOUNT
+                    {language === "IND" ? "LIHAT KELAS" : "VIEW CLASSES"}
                   </span>
                 </div>
 

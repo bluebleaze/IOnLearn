@@ -18,7 +18,7 @@ export function CTABanner({ onConnectGoogle, language = "ENG" }: CTABannerProps)
         }
       : {
           title: "Ready to Start Your New Experience?",
-          description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ut a mollis turpis. Mauris hendrerit laoreet arcu, in hendrerit enim vestibulum ut.",
+          description: "Begin your learning journey with a faster, lighter, and AI-powered study companion designed for students everywhere.",
           button: "Start Now",
         };
   return (

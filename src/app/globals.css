@@ -2,6 +2,7 @@
 @import url('https://cdn.jsdelivr.net/npm/cal-sans@1.0.1/dist/index.css');
 @import "tailwindcss";
 @import "lenis/dist/lenis.css";
+@import "drawably/style.css";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -14,6 +15,7 @@
 @layer base {
   html {
     scroll-behavior: smooth;
+    scrollbar-gutter: stable;
   }
 
   html.lenis {
@@ -73,7 +75,58 @@
   }
 }
 
-/* Disable element-level CSS transitions during theme transition to eliminate border and color flicker */
+/* Smooth transition between frosted glass and solid navbar states */
+header.landing-navbar,
+header.sticky,
+header.fixed {
+  transition:
+    background-color 220ms cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 220ms cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 220ms ease,
+    width 300ms ease,
+    border-radius 300ms ease,
+    margin-top 300ms ease,
+    transform 300ms ease;
+}
+
+/* Ensure inner nav elements stay transparent */
+header.landing-navbar nav,
+header nav {
+  background-color: transparent !important;
+}
+
+/* Phase 1 & 2: Smooth solid navbar background (outer header only) */
+html.theme-solid-nav header.landing-navbar,
+html.theme-solid-nav header {
+  background-color: #ffffff !important;
+  border-color: rgba(226, 232, 240, 0.9) !important;
+}
+
+html.dark.theme-solid-nav header.landing-navbar,
+html.dark.theme-solid-nav header,
+html.theme-solid-nav.dark header.landing-navbar,
+html.theme-solid-nav.dark header {
+  background-color: #0c0c0c !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Disable scrolling interactions and element-level CSS transitions during theme transition */
+html.theme-transitioning,
+html.theme-transitioning body {
+  touch-action: none !important;
+  overscroll-behavior: none !important;
+}
+
+html.theme-transitioning header.landing-navbar,
+html.theme-transitioning header {
+  background-color: #ffffff !important;
+}
+
+html.theme-transitioning.dark header.landing-navbar,
+html.theme-transitioning.dark header {
+  background-color: #0c0c0c !important;
+}
+
 html.theme-transitioning,
 html.theme-transitioning *,
 html.theme-transitioning *::before,
@@ -459,5 +512,23 @@ html.theme-transitioning *::after {
   .animate-hero-decor {
     animation: none !important;
   }
+}
+
+/* Drawably Theme & Dark Mode Optimization */
+:root {
+  --drawably-stroke: #4838cc;
+  --drawably-fill: #4838cc;
+}
+
+.dark {
+  --drawably-stroke: #818cf8;
+  --drawably-fill: #818cf8;
+}
+
+/* Fix mix-blend-mode for dark backgrounds */
+.dark .drawably-svg .drawably-wash {
+  mix-blend-mode: screen;
+  stroke-opacity: 0.55;
+  filter: drop-shadow(0 0 10px rgba(129, 140, 248, 0.35));
 }
 

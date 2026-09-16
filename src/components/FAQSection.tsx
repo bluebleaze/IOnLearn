@@ -72,7 +72,7 @@ export function FAQSection({ language = "ENG" }: FAQSectionProps) {
         {/* LEFT COLUMN: FAQ List */}
         <div className="lg:col-span-7 flex flex-col">
           <span className="font-montserrat font-bold text-xs sm:text-sm text-[#4838cc] dark:text-[#818cf8] tracking-wider lowercase mb-2">
-            {language === "IND" ? "mengapa memilih kami" : "why choose us"}
+            {language === "IND" ? "pertanyaan umum" : "frequently asked questions"}
           </span>
           <h2 className="font-cal text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white mb-6 sm:mb-8">
             {language === "IND" ? "Pertanyaan yang Sering Diajukan" : "Frequently Asked Questions"}
@@ -147,16 +147,16 @@ export function FAQSection({ language = "ENG" }: FAQSectionProps) {
 
             <div className="flex flex-col gap-1 mt-1">
               <a
-                href="mailto:IOnLearn@gmail.com"
+                href="mailto:support@ionlearn.app"
                 className="font-montserrat font-bold text-sm sm:text-base text-slate-900 dark:text-white hover:text-[#4838cc] dark:hover:text-[#818cf8] transition-colors"
               >
-                IOnLearn@gmail.com
+                support@ionlearn.app
               </a>
               <a
-                href="mailto:wangywangy9999@gmail.com"
+                href="mailto:contact@ionlearn.app"
                 className="font-montserrat font-bold text-sm sm:text-base text-slate-900 dark:text-white hover:text-[#4838cc] dark:hover:text-[#818cf8] transition-colors"
               >
-                wangywangy9999@gmail.com
+                contact@ionlearn.app
               </a>
             </div>
           </div>
