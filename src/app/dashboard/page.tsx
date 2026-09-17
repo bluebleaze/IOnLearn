@@ -17,21 +17,23 @@ export default function Page() {
         } as React.CSSProperties
       }
     >
-      <AppSidebar variant="inset" />
-      <SidebarInset>
-        <SiteHeader />
-        <div className="flex flex-1 flex-col">
-          <div className="@container/main flex flex-1 flex-col gap-2">
-            <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
+      <div className="min-h-screen w-full bg-[radial-gradient(circle_at_top_left,_rgba(99,102,241,0.22),_transparent_25%),radial-gradient(circle_at_top_right,_rgba(56,189,248,0.16),_transparent_30%),radial-gradient(circle_at_bottom_left,_rgba(168,85,247,0.14),_transparent_28%),linear-gradient(135deg,_#f8f9ff_0%,_#eef2ff_26%,_#f6f8ff_58%,_#f5f3ff_100%)] dark:bg-[radial-gradient(circle_at_top_left,_rgba(99,102,241,0.26),_transparent_24%),radial-gradient(circle_at_top_right,_rgba(168,85,247,0.18),_transparent_30%),radial-gradient(circle_at_bottom_left,_rgba(14,165,233,0.18),_transparent_28%),linear-gradient(135deg,_#0a1020_0%,_#111827_28%,_#0f172a_52%,_#111827_100%)]">
+        <AppSidebar variant="inset" />
+        <SidebarInset className="bg-transparent">
+          <SiteHeader />
+          <div className="flex flex-1 flex-col">
+            <div className="@container/main flex flex-1 flex-col gap-3 px-2 pb-6 pt-3 md:gap-5 md:px-4 md:pb-8">
               <SectionCards />
-              <div className="px-4 lg:px-6">
+              <div className="px-2 lg:px-2">
                 <ChartAreaInteractive />
               </div>
-              <DataTable data={data} />
+              <div className="px-2 lg:px-2">
+                <DataTable data={data} />
+              </div>
             </div>
           </div>
-        </div>
-      </SidebarInset>
+        </SidebarInset>
+      </div>
     </SidebarProvider>
   )
 }

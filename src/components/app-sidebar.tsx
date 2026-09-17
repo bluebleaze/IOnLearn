@@ -109,7 +109,7 @@ export function AppSidebar({
   return (
     <Sidebar
       collapsible="icon"
-      className="border-0 bg-white dark:bg-[#101010] shadow-[1px_0_12px_0_rgba(0,0,0,0.06)] dark:shadow-[1px_0_16px_0_rgba(0,0,0,0.4)]"
+      className="border-r border-indigo-100/80 bg-[linear-gradient(180deg,_rgba(255,255,255,0.96),_rgba(247,247,255,0.9))] backdrop-blur-xl dark:border-indigo-500/10 dark:bg-[linear-gradient(180deg,_rgba(15,23,42,0.94),_rgba(17,24,39,0.96))] shadow-[0_18px_45px_rgba(79,70,229,0.09)] dark:shadow-[0_18px_45px_rgba(2,6,23,0.7)]"
       {...props}
     >
       {/* Header with Brand */}
@@ -171,8 +171,8 @@ export function AppSidebar({
                       "rounded-xl font-medium transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] overflow-hidden whitespace-nowrap group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:justify-center cursor-pointer",
                       isMobile ? "h-11 text-xs" : "h-9 text-xs",
                       item.isActive
-                        ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 font-semibold [&_svg]:text-indigo-600 dark:[&_svg]:text-indigo-400"
-                        : "text-slate-600 dark:text-[#a3a3a3] hover:text-slate-900 dark:hover:text-[#f5f5f5] hover:bg-slate-100/80 dark:hover:bg-[#181818]"
+                        ? "bg-[linear-gradient(135deg,_rgba(99,102,241,0.13),_rgba(168,85,247,0.08))] text-indigo-700 shadow-[inset_0_0_0_1px_rgba(99,102,241,0.12)] dark:bg-[linear-gradient(135deg,_rgba(99,102,241,0.21),_rgba(59,130,246,0.08))] dark:text-indigo-200 font-semibold [&_svg]:text-indigo-600 dark:[&_svg]:text-indigo-300"
+                        : "text-slate-600 dark:text-[#a3a3a3] hover:text-slate-900 dark:hover:text-[#f5f5f5] hover:bg-[linear-gradient(135deg,_rgba(148,163,184,0.10),_rgba(99,102,241,0.08))] dark:hover:bg-[linear-gradient(135deg,_rgba(30,41,59,0.9),_rgba(67,56,202,0.12))]"
                     )}
                   >
                     <a

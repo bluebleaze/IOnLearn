@@ -412,7 +412,7 @@ export function DataTable({
       defaultValue="outline"
       className="w-full flex-col justify-start gap-6"
     >
-      <div className="flex items-center justify-between px-4 lg:px-6">
+      <div className="flex items-center justify-between rounded-[24px] border border-indigo-100 bg-[linear-gradient(180deg,_rgba(255,255,255,0.92),_rgba(248,250,255,0.86))] p-3 shadow-[0_12px_28px_rgba(79,70,229,0.06)] dark:border-indigo-500/10 dark:bg-[linear-gradient(180deg,_rgba(15,23,42,0.96),_rgba(19,27,45,0.9))] dark:shadow-[0_12px_28px_rgba(15,23,42,0.4)] px-4 lg:px-6">
         <Label htmlFor="view-selector" className="sr-only">
           View
         </Label>
@@ -433,7 +433,7 @@ export function DataTable({
             </SelectGroup>
           </SelectContent>
         </Select>
-        <TabsList className="hidden **:data-[slot=badge]:size-5 **:data-[slot=badge]:rounded-full **:data-[slot=badge]:bg-muted-foreground/30 **:data-[slot=badge]:px-1 @4xl/main:flex">
+        <TabsList className="hidden rounded-full border border-indigo-100 bg-white/70 p-1 shadow-sm **:data-[slot=badge]:size-5 **:data-[slot=badge]:rounded-full **:data-[slot=badge]:bg-indigo-100 **:data-[slot=badge]:text-indigo-700 **:data-[slot=badge]:px-1 @4xl/main:flex dark:border-indigo-500/10 dark:bg-slate-900/80 dark:**:data-[slot=badge]:bg-indigo-500/15 dark:**:data-[slot=badge]:text-indigo-200">
           <TabsTrigger value="outline">Outline</TabsTrigger>
           <TabsTrigger value="past-performance">
             Past Performance <Badge variant="secondary">3</Badge>
@@ -446,7 +446,7 @@ export function DataTable({
         <div className="flex items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" className="border-indigo-200 bg-white/80 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-500/20 dark:bg-slate-900/80 dark:text-indigo-100 dark:hover:bg-slate-800">
                 <Columns3Icon data-icon="inline-start" />
                 Columns
                 <ChevronDownIcon data-icon="inline-end" />
@@ -476,7 +476,7 @@ export function DataTable({
                 })}
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" className="border-indigo-200 bg-[linear-gradient(135deg,_rgba(99,102,241,0.10),_rgba(59,130,246,0.06))] text-indigo-700 shadow-sm hover:bg-indigo-50 dark:border-indigo-500/20 dark:bg-[linear-gradient(135deg,_rgba(99,102,241,0.18),_rgba(59,130,246,0.08))] dark:text-indigo-100 dark:hover:bg-indigo-500/10">
             <PlusIcon
             />
             <span className="hidden lg:inline">Add Section</span>
@@ -487,7 +487,7 @@ export function DataTable({
         value="outline"
         className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6"
       >
-        <div className="overflow-hidden rounded-lg border">
+        <div className="overflow-hidden rounded-[22px] border border-indigo-100 bg-[linear-gradient(180deg,_rgba(255,255,255,0.94),_rgba(248,250,255,0.9))] shadow-[0_18px_34px_rgba(79,70,229,0.05)] dark:border-indigo-500/10 dark:bg-[linear-gradient(180deg,_rgba(15,23,42,0.96),_rgba(17,24,39,0.9))] dark:shadow-[0_18px_34px_rgba(2,6,23,0.38)]">
           <DndContext
             collisionDetection={closestCenter}
             modifiers={[restrictToVerticalAxis]}
@@ -496,7 +496,7 @@ export function DataTable({
             id={sortableId}
           >
             <Table>
-              <TableHeader className="sticky top-0 z-10 bg-muted">
+              <TableHeader className="sticky top-0 z-10 bg-[linear-gradient(180deg,_rgba(99,102,241,0.06),_rgba(255,255,255,0.02))] dark:bg-[linear-gradient(180deg,_rgba(99,102,241,0.12),_rgba(15,23,42,0.04))]">
                 {table.getHeaderGroups().map((headerGroup) => (
                   <TableRow key={headerGroup.id}>
                     {headerGroup.headers.map((header) => {
