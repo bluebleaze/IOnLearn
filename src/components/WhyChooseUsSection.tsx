@@ -1,5 +1,6 @@
 "use client";
 
+import "drawably/style.css";
 import React from "react";
 import { DrawablyHighlight } from "drawably/react";
 
