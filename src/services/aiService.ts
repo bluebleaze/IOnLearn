@@ -4,7 +4,6 @@ import {
     ChatAttachment,
     ChatMessage,
     CreatedDocument,
-    CreatedImage,
     CreatedSlides,
     TodoTask,
     UserPreferences,
@@ -165,7 +164,6 @@ export async function sendChatMessageToAIStream(
     }[];
     createdDocument?: CreatedDocument;
     createdSlides?: CreatedSlides;
-    createdImage?: CreatedImage;
     groundingSources?: { title: string; url: string }[];
     groundingQueries?: string[];
 }> {

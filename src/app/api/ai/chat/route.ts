@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { GoogleGenAI, Type } from "@google/genai";
 import { AIConfig } from "@/types";
 import { cleanLatexMath } from "@/lib/mathUtils";
-import { buildPollinationsImageUrl, enhanceImagePrompt, generateGoogleImagenImage } from "@/lib/imageUtils";
 import { extractYouTubeUrls, parseYouTubeUrl } from "@/lib/youtubeUtils";
 const KNOWN_SUBJECTS = [
     "Fisika",
@@ -218,7 +217,7 @@ function extractFallbackActions(
     replyText: string,
     taskContext?: any,
     allMessages?: { role: string; content: string }[]
-): { createdNote?: any; createdTodo?: any; createdDocument?: any; createdSlides?: any; createdImage?: any } {
+): { createdNote?: any; createdTodo?: any; createdDocument?: any; createdSlides?: any } {
     if (!replyText || replyText.length < 15) return {};
 
     const lowerUser = (lastUserMessage || "").toLowerCase();
@@ -226,7 +225,6 @@ function extractFallbackActions(
     let createdTodo: any = undefined;
     let createdDocument: any = undefined;
     let createdSlides: any = undefined;
-    let createdImage: any = undefined;
 
     // Check Note intent: "catatan", "catat", "rangkum", "ringkas", "materi", "note", "simpan"
     const wantsNote =
@@ -441,34 +439,7 @@ function extractFallbackActions(
         }
     }
 
-    // Check Image intent: "gambarkan", "buatkan gambar", "ilustrasikan", "generate image", "lukiskan", "gambar", "visualisasikan"
-    const wantsImage =
-        lowerUser.includes("gambarkan") ||
-        lowerUser.includes("buatkan gambar") ||
-        lowerUser.includes("bikin gambar") ||
-        lowerUser.includes("ilustrasikan") ||
-        lowerUser.includes("generate image") ||
-        lowerUser.includes("lukiskan") ||
-        lowerUser.includes("visualisasikan") ||
-        lowerUser.includes("buatkan ilustrasi") ||
-        (lowerUser.includes("diagram") && !wantsSlides);
-
-    if (wantsImage) {
-        const cleanPrompt = lastUserMessage
-            .replace(/^(tolong\s+)?(buatkan\s+|bikin\s+)?(gambar(kan)?|ilustrasi(kan)?|diagram|foto|lukis(kan)?|visualisasikan|generate image)\s*(tentang|mengenai|dari|untuk)?\s*/i, "")
-            .trim();
-
-        if (cleanPrompt.length > 2) {
-            const enhanced = enhanceImagePrompt(cleanPrompt);
-            createdImage = {
-                prompt: enhanced,
-                caption: cleanPrompt.slice(0, 60),
-                aspectRatio: "16:9",
-            };
-        }
-    }
-
-    return { createdNote, createdTodo, createdDocument, createdSlides, createdImage };
+    return { createdNote, createdTodo, createdDocument, createdSlides };
 }
 
 /**
@@ -693,10 +664,6 @@ function processAiChatResponse(
     const isGeminiSlidesValid = geminiSlides && Array.isArray(geminiSlides.slides) && geminiSlides.slides.length > 0;
     const rawSlides = (isGeminiSlidesValid ? geminiSlides : fallback.createdSlides) || undefined;
 
-    const geminiImage = resultData.createdImage;
-    const isGeminiImageValid = geminiImage && geminiImage.prompt && geminiImage.prompt.trim().length > 0;
-    const rawImage = (isGeminiImageValid ? geminiImage : fallback.createdImage) || undefined;
-
     const lowerMsg = lastUserMsg.toLowerCase();
     const userWantsSlides =
         lowerMsg.includes("slide") ||
@@ -733,30 +700,7 @@ function processAiChatResponse(
         userWantsXlsx) &&
         !userWantsSlides;
 
-    const userWantsImage =
-        lowerMsg.includes("gambarkan") ||
-        lowerMsg.includes("buatkan gambar") ||
-        lowerMsg.includes("bikin gambar") ||
-        lowerMsg.includes("ilustrasikan") ||
-        lowerMsg.includes("generate image") ||
-        lowerMsg.includes("lukiskan") ||
-        lowerMsg.includes("visualisasikan") ||
-        lowerMsg.includes("buatkan ilustrasi") ||
-        lowerMsg.includes("bikin foto") ||
-        lowerMsg.includes("buat foto") ||
-        lowerMsg.includes("buatkan foto") ||
-        lowerMsg.includes("jadi foto") ||
-        lowerMsg.includes("jadikan foto") ||
-        lowerMsg.includes("fotonya") ||
-        lowerMsg.includes("foto nya") ||
-        lowerMsg.includes("gambarnya") ||
-        lowerMsg.includes("gambar nya") ||
-        lowerMsg.includes("bikin jadi foto") ||
-        lowerMsg.includes("jadi gambar") ||
-        /\b(foto|gambar|lukisan)\b/i.test(lowerMsg) ||
-        (lowerMsg.includes("diagram") && !userWantsSlides && !userWantsDocument);
-
-    const userWantsAnyCreation = userWantsDocument || userWantsSlides || userWantsImage;
+    const userWantsAnyCreation = userWantsDocument || userWantsSlides;
 
     let finalDocument = (rawDocument && rawDocument.title && (rawDocument.content || rawDocument.title))
         ? (userWantsAnyCreation && !userWantsDocument ? undefined : rawDocument)
@@ -765,14 +709,6 @@ function processAiChatResponse(
     const finalSlides = (rawSlides && Array.isArray(rawSlides.slides) && rawSlides.slides.length > 0)
         ? (userWantsAnyCreation && !userWantsSlides ? undefined : rawSlides)
         : undefined;
-
-    const finalImage = (rawImage && rawImage.prompt)
-        ? (userWantsAnyCreation && !userWantsImage ? undefined : rawImage)
-        : undefined;
-
-    if (finalImage && !finalImage.url && finalImage.prompt) {
-        finalImage.url = buildPollinationsImageUrl(finalImage.prompt, finalImage.aspectRatio);
-    }
 
     if (finalDocument) {
         if (userWantsXlsx) {
@@ -844,7 +780,6 @@ function processAiChatResponse(
         createdTodos: finalTodos,
         createdDocument: finalDocument,
         createdSlides: finalSlides,
-        createdImage: finalImage,
         groundingSources: groundingSources.length > 0 ? groundingSources : undefined,
         groundingQueries: groundingQueries.length > 0 ? groundingQueries : undefined,
         timestamp: Date.now(),
@@ -998,24 +933,12 @@ ${personalizationInstruction}
      * Slide Terakhir: Rangkuman Kunci & Kesimpulan / Call-to-Action (gunakan juga format "**Poin Kunci**: Ringkasan...").
      * \`notes\`: Catatan pemateri (*speaker notes*) berisi arahan narasi presenter saat membawakan slide tersebut.
 
-3. 🎨 **GENERATOR GAMBAR & ILUSTRASI VISUAL AI (\`createdImage\`)**:
-   *Pemicu: Ketika pengguna meminta foto, ilustrasi visual, lukisan, atau gambaran visual nyata.*
-   🚨 ATURAN MUTLAK ANTI-HALUSINASI, DIAGRAM ALUR (FLOWCHART), & TABEL DATA:
+3. 📊 **PANDUAN DIAGRAM ALUR (FLOWCHART) & TABEL DATA**:
    - **JIKA PENGGUNA MEMINTA "ALUR", "DIAGRAM ALUR", "FLOWCHART", ATAU "PROSES"**:
-     1. WAJIB TULISKAN DIAGRAM ALUR TERSEBUT SECARA LENGKAP & VISUAL DI DALAM TEKS 'reply' menggunakan pemformatan visual Markdown yang rapi (misal: bagan kotak-kotak bertingkat dengan panah ⬇ atau ➔, atau tabel tahapan proses). Jelaskan setiap langkah dengan tuntas! DILARANG HANYA MENJANJIKAN ALUR DI GAMBAR!
-     2. DILARANG KERAS membuat prompt 'createdImage' yang meminta "flowchart", "diagram teks", "peta konsep berteks", atau "bagan kotak-kotak bertuliskan kalimat"! Model gambar AI (difusi) TIDAK MAMPU menulis kalimat atau membuat flowchart yang terbaca dan PASTI AKAN BERHALUSINASI (menghasilkan coretan kabur/lingkaran abstrak rusak)!
-     3. Jika menghasilkan 'createdImage', ubah konsep menjadi VISUALISASI ADEGAN NYATA / OBJEK FISIK KONKRET yang relevan dan dapat digambarkan dengan indah (contoh untuk topik edukasi kesehatan remaja: "A realistic empathetic health counselor discussing adolescent wellness with a high school student in a modern educational clinic, warm lighting, natural photography, 8k"), BUKAN teks flowchart!
-   - **JIKA PENGGUNA MEMINTA "TABEL", "TABEL DATA", "DATA STATISTIK", "GRAFIK TABEL", ATAU "GAMBAR TABEL DATA"**:
-     1. WAJIB TULISKAN TABEL DATA LENGKAP SECARA TUNTAS DI DALAM TEKS 'reply' menggunakan tabel Markdown komprehensif (minimal 5-10 baris dengan 4-7 kolom detail: misal No, Variabel Penelitian, Kategori/Kelompok, Indikator Kuantitatif, Persentase/Skala, Dampak Teramati, Keterangan). Ulas data tersebut secara kritis dan ilmiah! DILARANG KERAS HANYA MENGHASILKAN GAMBAR TANPA MENYAJIKAN ISI TABEL DATA RIIL!
+     WAJIB TULISKAN DIAGRAM ALUR TERSEBUT SECARA LENGKAP & VISUAL DI DALAM TEKS 'reply' menggunakan pemformatan visual Markdown yang rapi (misal: bagan kotak-kotak bertingkat dengan panah ⬇ atau ➔, atau tabel tahapan proses). Jelaskan setiap langkah dengan tuntas!
+   - **JIKA PENGGUNA MEMINTA "TABEL", "TABEL DATA", "DATA STATISTIK", "GRAFIK TABEL"**:
+     1. WAJIB TULISKAN TABEL DATA LENGKAP SECARA TUNTAS DI DALAM TEKS 'reply' menggunakan tabel Markdown komprehensif (minimal 5-10 baris dengan 4-7 kolom detail: misal No, Variabel Penelitian, Kategori/Kelompok, Indikator Kuantitatif, Persentase/Skala, Dampak Teramati, Keterangan). Ulas data tersebut secara kritis dan ilmiah!
      2. WAJIB ISI FIELD 'createdDocument' DENGAN TIPE "xlsx" yang memuat tabel data tersebut agar pengguna dapat langsung mengunduh dan mengeditnya sebagai file Excel (.xlsx)!
-     3. DILARANG MEMBUAT PROMPT GAMBAR BERUPA "foto monitor komputer kosong" atau "tabel teks mikro" yang tidak terbaca! Jika menghasilkan 'createdImage', ubah prompt menjadi VISUALISASI DATA 3D / DASHBOARD ANALITIK HOLOGRAFIS MODERN (contoh: "A futuristic 3D holographic data analytics visualization floating in space, glowing neon bar graphs, charts, clean glowing metrics, high tech educational laboratory, octane render, 8k UHD").
-   - Field 'prompt' WAJIB menggambarkan **objek fisik nyata, manusia konkret, suasana, atau mikroskopis/anatomi nyata** yang dapat difoto atau dilukis (minimal 35-60 kata).
-     * Subjek utama & komponen konkret nyata (orang, ruangan, instrumen, mikroskop, organ biologis).
-     * Gaya visual: 'hyper-realistic National Geographic photography' atau 'crisp 3D scientific octane render'.
-     * Pencahayaan & atmosfer: 'volumetric studio lighting, raytraced subsurface scattering, natural color grading'.
-     * Ketajaman: '8k UHD, ultra-sharp focus, masterpiece composition'.
-   - \`caption\`: Keterangan gambar ringkas dan informatif dalam bahasa Indonesia.
-   - \`aspectRatio\`: \`"16:9"\` (default lanskap), \`"1:1"\` (persegi), atau \`"4:3"\` (diagram standar).
 
 4. 📌 **CATATAN MATERI BARU (\`createdNote\`)**:
    *Pemicu: Ketika pengguna meminta "simpan ke catatan", "catatkan materi ini", atau "buat catatan rangkuman".*
@@ -1038,7 +961,7 @@ ${personalizationInstruction}
      • **❓ Kuis & Pertanyaan Evaluasi Pemahaman**: Buat 1-2 pertanyaan reflektif atau kuis pilihan ganda interaktif dari materi video untuk menguji pemahaman siswa.
    - Jika siswa meminta untuk merangkum ke dokumen (Word/PDF/Slides) atau membuat catatan/to-do dari video, sertakan juga field \`createdDocument\`, \`createdSlides\`, \`createdNote\`, atau \`createdTodo\` secara lengkap sesuai pedoman di atas.
 
-*PENTING: Jangan membuat atau menyertakan field objek pembuatan (document/slides/image/note/todo) jika pengguna tidak memintanya secara eksplisit. Jawablah pesan biasa dengan percakapan yang cerdas, suportif, dan kaya wawasan.*`;
+*PENTING: Jangan membuat atau menyertakan field objek pembuatan (document/slides/note/todo) jika pengguna tidak memintanya secara eksplisit. Jawablah pesan biasa dengan percakapan yang cerdas, suportif, dan kaya wawasan.*`;
 
         const provider = aiConfig?.provider || process.env.AI_PROVIDER?.toLowerCase() || "gemini";
         const geminiApiKey = provider === "gemini_custom" ? aiConfig?.apiKey : (aiConfig?.apiKey || process.env.GEMINI_API_KEY);
@@ -1069,7 +992,7 @@ ${personalizationInstruction}
                     role: "system",
                     content:
                         systemInstruction +
-                        '\n\nKEMBALIKAN OUTPUT HARUS HANYA DALAM BENTUK JSON OBJECT YANG VALID SESUAI SKEMA BERIKUT:\n{\n  "thoughtProcess": "Penalaran kritis, verifikasi keabsahan data/rumus, langkah kalkulasi step-by-step, dan evaluasi anti-halusinasi sebelum menulis jawaban",\n  "reply": "Jawaban Markdown",\n  "suggestedPrompts": ["Pertanyaan 1", "Pertanyaan 2"],\n  "createdNote": { "title": "Judul Singkat", "content": "Isi Markdown", "subject": "Nama Mata Kuliah", "tags": ["Label"] },\n  "createdTodo": { "title": "Judul Rencana", "description": "Deskripsi", "priority": "medium", "category": "Materi", "subtasks": [{ "title": "Langkah 1" }] },\n  "createdDocument": { "type": "docx" | "pdf" | "xlsx", "title": "Judul Dokumen", "content": "Isi Markdown / Tabel Data Markdown", "fileName": "dokumen.docx/dokumen.pdf/tabel.xlsx" },\n  "createdSlides": { "title": "Judul Presentasi", "theme": "indigo", "slides": [{ "title": "Slide 1", "bullets": ["Poin 1"], "notes": "Catatan" }], "fileName": "presentasi.pptx" },\n  "createdImage": { "prompt": "Exquisite detailed English visual prompt (40-60 words) for FLUX/3D", "caption": "Keterangan Indonesia", "aspectRatio": "16:9" }\n}',
+                        '\n\nKEMBALIKAN OUTPUT HARUS HANYA DALAM BENTUK JSON OBJECT YANG VALID SESUAI SKEMA BERIKUT:\n{\n  "thoughtProcess": "Penalaran kritis, verifikasi keabsahan data/rumus, langkah kalkulasi step-by-step, dan evaluasi anti-halusinasi sebelum menulis jawaban",\n  "reply": "Jawaban Markdown",\n  "suggestedPrompts": ["Pertanyaan 1", "Pertanyaan 2"],\n  "createdNote": { "title": "Judul Singkat", "content": "Isi Markdown", "subject": "Nama Mata Kuliah", "tags": ["Label"] },\n  "createdTodo": { "title": "Judul Rencana", "description": "Deskripsi", "priority": "medium", "category": "Materi", "subtasks": [{ "title": "Langkah 1" }] },\n  "createdDocument": { "type": "docx" | "pdf" | "xlsx", "title": "Judul Dokumen", "content": "Isi Markdown / Tabel Data Markdown", "fileName": "dokumen.docx/dokumen.pdf/tabel.xlsx" },\n  "createdSlides": { "title": "Judul Presentasi", "theme": "indigo", "slides": [{ "title": "Slide 1", "bullets": ["Poin 1"], "notes": "Catatan" }], "fileName": "presentasi.pptx" }\n}',
                 },
                 ...messages.map((m: any) => {
                     if (m.attachments && Array.isArray(m.attachments) && m.attachments.length > 0) {
@@ -1316,16 +1239,6 @@ TUGAS ANDA:
                             },
                             required: ["title", "slides", "fileName"],
                         },
-                        createdImage: {
-                            type: Type.OBJECT,
-                            description: "HANYA isi jika pengguna SECARA EKSPLISIT meminta gambar/ilustrasi/diagram/generate image. JANGAN isi jika pengguna minta dokumen, slide, atau penjelasan biasa.",
-                            properties: {
-                                prompt: { type: Type.STRING, description: "Prompt visual bahasa Inggris ultra-deskriptif (40-60 kata) dengan subjek presisi, pencahayaan sinematik/volumetric studio, tekstur material nyata, dan resolusi 8K UHD untuk FLUX/3D image generator. DILARANG menggunakan bahasa Indonesia pada prompt ini." },
-                                caption: { type: Type.STRING, description: "Keterangan gambar dalam bahasa Indonesia" },
-                                aspectRatio: { type: Type.STRING, description: "Rasio aspek: 16:9, 1:1, atau 4:3" },
-                            },
-                            required: ["prompt", "caption"],
-                        },
                     },
                     required: ["reply", "suggestedPrompts"],
                 },
@@ -1479,17 +1392,6 @@ TUGAS ANDA:
                                 collectedGroundingQueries
                             );
 
-                            if (finalResult.createdImage && apiKey) {
-                                try {
-                                    const imagenUrl = await generateGoogleImagenImage(apiKey, finalResult.createdImage.prompt, finalResult.createdImage.aspectRatio);
-                                    if (imagenUrl) {
-                                        finalResult.createdImage.url = imagenUrl;
-                                    }
-                                } catch (imgErr) {
-                                    console.warn("Google Imagen 3 in chat stream error, using fallback URL:", imgErr);
-                                }
-                            }
-
                             if (!finalResult.thoughtProcess && extractor.thoughtText) {
                                 finalResult.thoughtProcess = cleanLatexMath(extractor.thoughtText.trim());
                             }
@@ -1580,17 +1482,6 @@ TUGAS ANDA:
             groundingSources,
             groundingQueries
         );
-
-        if (finalResult.createdImage && geminiApiKey) {
-            try {
-                const imagenUrl = await generateGoogleImagenImage(geminiApiKey, finalResult.createdImage.prompt, finalResult.createdImage.aspectRatio);
-                if (imagenUrl) {
-                    finalResult.createdImage.url = imagenUrl;
-                }
-            } catch (imgErr) {
-                console.warn("Google Imagen 3 in chat fallback error, using fallback URL:", imgErr);
-            }
-        }
 
         return NextResponse.json({ ...finalResult, groundingAvailable });
     } catch (error: any) {

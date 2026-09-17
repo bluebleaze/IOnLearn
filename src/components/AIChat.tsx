@@ -45,7 +45,6 @@ import {
   FileSpreadsheet,
   Layers,
   ChevronLeft,
-  Maximize2,
   Link2,
   FileDown,
   Globe,
@@ -558,8 +557,6 @@ export const AIChat: React.FC<AIChatProps> = ({
 
   // Slides Carousel index tracking per message
   const [activeSlideIndices, setActiveSlideIndices] = useState<Record<string, number>>({});
-  // Lightbox for generated image
-  const [lightboxImage, setLightboxImage] = useState<{ url: string; caption?: string; prompt?: string } | null>(null);
   // Google Workspace link modal
   const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false);
   const [workspaceUrlInput, setWorkspaceUrlInput] = useState("");
@@ -757,13 +754,6 @@ export const AIChat: React.FC<AIChatProps> = ({
   const [isDeepResearchEnabled, setIsDeepResearchEnabled] = useState(false);
   const [isPersonalizationActive, setIsPersonalizationActive] = useState(true);
 
-  // Quick Image Generation Dialog State
-  const [isImageGenModalOpen, setIsImageGenModalOpen] = useState(false);
-  const [imagePromptInput, setImagePromptInput] = useState("");
-  const [imageAspectRatio, setImageAspectRatio] = useState<"1:1" | "16:9" | "4:3" | "9:16">("16:9");
-  const [imageStyle, setImageStyle] = useState<"scientific" | "photorealistic" | "digital_art" | "isometric">("scientific");
-  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
-
   // Format Selector Popover State
   const [isFormatMenuOpen, setIsFormatMenuOpen] = useState(false);
   const [activeAcceptFilter, setActiveAcceptFilter] = useState<string>(
@@ -807,52 +797,6 @@ export const AIChat: React.FC<AIChatProps> = ({
       // Retain current state
     } finally {
       setIsCheckingGrounding(false);
-    }
-  };
-
-  const handleGenerateImageSubmit = async () => {
-    if (!imagePromptInput.trim()) return;
-    setIsGeneratingImage(true);
-    try {
-      const res = await fetch("/api/ai/image", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt: imagePromptInput.trim(),
-          aspectRatio: imageAspectRatio,
-          style: imageStyle,
-          aiConfig,
-        }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || "Gagal membuat gambar.");
-      }
-      const data = await res.json();
-      if (data.url) {
-        const targetId = currentId || sessions[0]?.id || SESSIONS_KEY;
-        const imgMsg: ChatMessage = {
-          id: `img-${Date.now()}`,
-          role: "assistant",
-          content: `Visualisasi gambar AI untuk: **"${imagePromptInput.trim()}"**`,
-          timestamp: Date.now(),
-          createdImage: {
-            url: data.url,
-            prompt: imagePromptInput.trim(),
-            caption: data.caption || imagePromptInput.trim(),
-            aspectRatio: imageAspectRatio,
-          },
-        };
-        setSessions((prev) =>
-          prev.map((s) => (s.id === targetId ? { ...s, messages: [...s.messages, imgMsg] } : s))
-        );
-        setIsImageGenModalOpen(false);
-        setImagePromptInput("");
-      }
-    } catch (e: any) {
-      alert("Gagal membuat gambar: " + (e.message || String(e)));
-    } finally {
-      setIsGeneratingImage(false);
     }
   };
 
@@ -2260,11 +2204,6 @@ export const AIChat: React.FC<AIChatProps> = ({
           description: `"${res.createdSlides.title}" dengan ${res.createdSlides.slides?.length ?? 0} slide siap diunduh.`,
         });
       }
-      if (res.createdImage) {
-        toast.success("🎨 Ilustrasi Gambar Berhasil Dibuat!", {
-          description: "Gambar telah dimuat di dalam percakapan.",
-        });
-      }
 
       const assistantMessage: ChatMessage = {
         id: assistantMsgId,
@@ -2276,7 +2215,6 @@ export const AIChat: React.FC<AIChatProps> = ({
         createdTodo: createdTodoObj || undefined,
         createdDocument: res.createdDocument || undefined,
         createdSlides: res.createdSlides || undefined,
-        createdImage: res.createdImage || undefined,
         groundingSources: res.groundingSources || undefined,
         timestamp: res.timestamp || Date.now(),
       };
@@ -2614,7 +2552,6 @@ export const AIChat: React.FC<AIChatProps> = ({
         createdTodo: createdTodoObj || undefined,
         createdDocument: res.createdDocument || undefined,
         createdSlides: res.createdSlides || undefined,
-        createdImage: res.createdImage || undefined,
         groundingSources: res.groundingSources || undefined,
         timestamp: res.timestamp || Date.now(),
       };
@@ -3087,21 +3024,7 @@ export const AIChat: React.FC<AIChatProps> = ({
                       {/* Divider */}
                       <div className="my-1 border-t border-[#2a2a2a]" />
 
-                      {/* 4. Buat Gambar AI */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsToolsMenuOpen(false);
-                          setActiveSubmenu("none");
-                          setIsImageGenModalOpen(true);
-                        }}
-                        className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-[#ededed] hover:bg-[#262626] transition cursor-pointer text-left"
-                      >
-                        <Sparkles className="w-4 h-4 text-pink-400 shrink-0" />
-                        <span>Buat Gambar AI</span>
-                      </button>
-
-                      {/* 5. Dokumen Word / PDF */}
+                      {/* 4. Dokumen Word / PDF */}
                       <button
                         type="button"
                         onClick={() => {
@@ -4454,82 +4377,6 @@ export const AIChat: React.FC<AIChatProps> = ({
                           );
                         })()}
 
-                        {/* Interactive Created Image Card */}
-                        {m.createdImage && m.createdImage.url && (
-                          <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-50/90 dark:bg-[#161616] border border-slate-200/80 dark:border-[#262626] shadow-2xs space-y-3">
-                            <div className="flex items-center justify-between flex-wrap gap-2">
-                              <div className="flex items-center gap-2.5">
-                                <div className="w-8 h-8 rounded-xl bg-purple-600 dark:bg-purple-500 text-white flex items-center justify-center font-bold text-xs shadow-2xs shrink-0">
-                                  <ImageIcon className="w-4 h-4" />
-                                </div>
-                                <div className="min-w-0">
-                                  <span className="text-xs font-bold text-slate-900 dark:text-[#f3f3f3] block truncate">
-                                    Gambar / Diagram AI Dihasilkan
-                                  </span>
-                                  <span className="text-[11px] text-slate-500 dark:text-[#888] truncate block">
-                                    {m.createdImage.caption || "Ilustrasi Visual"}
-                                  </span>
-                                </div>
-                              </div>
-
-                              <div className="flex items-center gap-1.5 shrink-0">
-                                <button
-                                  type="button"
-                                  onClick={() => setLightboxImage({ url: m.createdImage!.url!, caption: m.createdImage?.caption, prompt: m.createdImage?.prompt })}
-                                  className="p-1.5 rounded-xl text-slate-600 dark:text-[#aaa] hover:bg-slate-200/70 dark:hover:bg-[#252525] transition cursor-pointer"
-                                  title="Perbesar Tampilan (Lightbox)"
-                                >
-                                  <Maximize2 className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={async () => {
-                                    try {
-                                      const res = await fetch(m.createdImage!.url!);
-                                      const blob = await res.blob();
-                                      triggerFileDownload(blob, `ai_image_${Date.now()}.png`);
-                                    } catch {
-                                      window.open(m.createdImage!.url!, "_blank");
-                                    }
-                                  }}
-                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white bg-purple-600 hover:bg-purple-700 active:scale-95 shadow-xs transition-all cursor-pointer"
-                                  title="Unduh Gambar PNG"
-                                >
-                                  <Download className="w-3.5 h-3.5" />
-                                  <span>Unduh Gambar</span>
-                                </button>
-                              </div>
-                            </div>
-
-                            <div
-                              onClick={() => setLightboxImage({ url: m.createdImage!.url!, caption: m.createdImage?.caption, prompt: m.createdImage?.prompt })}
-                              className="group relative w-full overflow-hidden rounded-xl border border-slate-200/80 dark:border-[#2a2a2a] bg-slate-900 cursor-pointer shadow-xs max-h-[380px]"
-                              style={{
-                                aspectRatio: m.createdImage.aspectRatio === "1:1" ? "1 / 1" : m.createdImage.aspectRatio === "4:3" ? "4 / 3" : "16 / 9",
-                              }}
-                            >
-                              <img
-                                src={m.createdImage.url}
-                                alt={m.createdImage.caption || m.createdImage.prompt}
-                                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-102"
-                                loading="lazy"
-                              />
-                              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
-                                <p className="text-xs text-white font-medium drop-shadow-md">
-                                  🔍 Klik untuk melihat ukuran penuh
-                                </p>
-                              </div>
-                            </div>
-
-                            {m.createdImage.prompt && (
-                              <div className="text-[11px] text-slate-500 dark:text-[#777] bg-white dark:bg-[#181818] p-2 rounded-lg border border-slate-200/60 dark:border-[#252525]">
-                                <span className="font-semibold text-slate-700 dark:text-slate-300">Prompt: </span>
-                                {m.createdImage.prompt}
-                              </div>
-                            )}
-                          </div>
-                        )}
-
                         {/* Message Quick Action Rail */}
                         <div className="flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-slate-100 dark:border-[#222]">
                           <button
@@ -5298,215 +5145,7 @@ export const AIChat: React.FC<AIChatProps> = ({
         );
       })()}
 
-      {/* ── 7. Image Lightbox Modal ── */}
-      {lightboxImage && (
-        <div
-          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200"
-          onClick={() => setLightboxImage(null)}
-        >
-          <div
-            className="relative max-w-4xl max-h-[90vh] w-full flex flex-col items-center gap-3 animate-in zoom-in-95 duration-200"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Action Bar */}
-            <div className="w-full flex items-center justify-between text-white px-2">
-              <span className="text-xs font-semibold text-slate-300 truncate max-w-md">
-                {lightboxImage.caption || "Preview Gambar AI"}
-              </span>
-              <div className="flex items-center gap-2">
-                <a
-                  href={lightboxImage.url}
-                  download={`ai_image_${Date.now()}.png`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition flex items-center gap-1.5 text-xs font-semibold cursor-pointer"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>Unduh Resolusi Penuh</span>
-                </a>
-                <button
-                  type="button"
-                  onClick={() => setLightboxImage(null)}
-                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-
-            {/* Image display */}
-            <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-white/10 bg-black max-h-[75vh] flex items-center justify-center">
-              <img
-                src={lightboxImage.url}
-                alt={lightboxImage.caption || "Preview"}
-                className="max-h-[75vh] w-auto object-contain rounded-2xl"
-              />
-            </div>
-
-            {lightboxImage.prompt && (
-              <p className="text-xs text-slate-400 text-center max-w-xl px-4 line-clamp-2">
-                Prompt: {lightboxImage.prompt}
-              </p>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ── 7.5 Quick Image Generation Modal ── */}
-      {isImageGenModalOpen && (
-        <div
-          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
-          onClick={() => !isGeneratingImage && setIsImageGenModalOpen(false)}
-        >
-          <div
-            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-lg shadow-2xl p-6 relative overflow-hidden animate-in zoom-in-95 duration-200"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 flex items-center justify-center">
-                  <ImageIcon className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-slate-800 dark:text-slate-100 text-base">
-                    Buat Gambar AI
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Hasilkan gambar visual kualitas tinggi dengan Imagen / Gemini
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsImageGenModalOpen(false)}
-                disabled={isGeneratingImage}
-                className="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 flex items-center justify-center transition cursor-pointer disabled:opacity-50"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Body */}
-            <div className="py-4 space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                  Deskripsi Gambar (Prompt)
-                </label>
-                <textarea
-                  value={imagePromptInput}
-                  onChange={(e) => setImagePromptInput(e.target.value)}
-                  placeholder="Contoh: Ilustrasi sel biologi 3D dengan label nukleus dan mitokondria, gaya futuristik edukasi..."
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 transition resize-none min-h-[90px]"
-                  disabled={isGeneratingImage}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-                      e.preventDefault();
-                      handleGenerateImageSubmit();
-                    }
-                  }}
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">
-                  Gaya Visual & Kualitas HD
-                </label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {(
-                    [
-                      { id: "scientific", label: "Sains & 3D", desc: "Infografis & Anatomi" },
-                      { id: "photorealistic", label: "Fotorealistik", desc: "Sinematik 8K Riil" },
-                      { id: "digital_art", label: "Seni Digital", desc: "Ilustrasi Estetik" },
-                      { id: "isometric", label: "Isometrik 3D", desc: "Teknik Presisi" },
-                    ] as const
-                  ).map((st) => (
-                    <button
-                      key={st.id}
-                      type="button"
-                      onClick={() => setImageStyle(st.id)}
-                      disabled={isGeneratingImage}
-                      className={`px-2.5 py-2 rounded-xl text-xs font-medium border transition cursor-pointer flex flex-col items-start text-left gap-0.5 ${
-                        imageStyle === st.id
-                          ? "border-violet-500 bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-300 font-semibold shadow-xs"
-                          : "border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300"
-                      }`}
-                    >
-                      <span className="font-semibold text-xs">{st.label}</span>
-                      <span className="text-[10px] opacity-70 leading-tight">{st.desc}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">
-                  Rasio Aspek
-                </label>
-                <div className="grid grid-cols-4 gap-2">
-                  {(
-                    [
-                      { id: "16:9", label: "16:9 Landscape" },
-                      { id: "1:1", label: "1:1 Persegi" },
-                      { id: "4:3", label: "4:3 Standar" },
-                      { id: "9:16", label: "9:16 Portrait" },
-                    ] as const
-                  ).map((aspect) => (
-                    <button
-                      key={aspect.id}
-                      type="button"
-                      onClick={() => setImageAspectRatio(aspect.id)}
-                      disabled={isGeneratingImage}
-                      className={`px-3 py-2 rounded-xl text-xs font-medium border transition cursor-pointer flex flex-col items-center gap-1 ${
-                        imageAspectRatio === aspect.id
-                          ? "border-violet-500 bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-300 font-semibold shadow-xs"
-                          : "border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300"
-                      }`}
-                    >
-                      <span>{aspect.id}</span>
-                      <span className="text-[10px] opacity-70 truncate max-w-full">
-                        {aspect.label.split(" ")[1]}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100 dark:border-slate-800">
-              <button
-                type="button"
-                onClick={() => setIsImageGenModalOpen(false)}
-                disabled={isGeneratingImage}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                onClick={handleGenerateImageSubmit}
-                disabled={!imagePromptInput.trim() || isGeneratingImage}
-                className="px-4 py-2 rounded-xl text-xs font-semibold bg-violet-600 hover:bg-violet-700 text-white shadow-md shadow-violet-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-1.5 cursor-pointer"
-              >
-                {isGeneratingImage ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    <span>Merender Gambar AI HD...</span>
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span>Buat Gambar HD</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── 8. Document & Presentation Style Customizer Modal ── */}
+      {/* ── 7. Document & Presentation Style Customizer Modal ── */}
       <DocumentCustomizerModal
         isOpen={!!customizingDoc || !!customizingSlides}
         onClose={() => {
