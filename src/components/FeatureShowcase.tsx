@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from "react";
 import {
   MessageSquare,
+  MessageSquareText,
+  MessageSquarePlus,
   Sparkles,
   Bot,
   CheckCircle2,
@@ -20,6 +22,7 @@ import {
   Clock,
   Eye,
   ChevronRight,
+  X,
 } from "lucide-react";
 
 type FeatureTab = "Demo" | "AI Chatbot" | "Tasks Menu" | "To-Do" | "Auto-Notes";
@@ -62,6 +65,20 @@ export function FeatureShowcase({ language = "ENG" }: FeatureShowcaseProps) {
     return () => observer.disconnect();
   }, []);
 
+  // Close chat helper with staggered exit animation
+  const closeChat = () => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+    if (chatStatus === "open") {
+      setChatStatus("closing");
+      closeTimerRef.current = setTimeout(() => {
+        setChatStatus("closed");
+      }, 380);
+    }
+  };
+
   // Toggle chat with staggered open and close animations
   const handleToggleChat = () => {
     if (closeTimerRef.current) {
@@ -70,12 +87,17 @@ export function FeatureShowcase({ language = "ENG" }: FeatureShowcaseProps) {
     }
 
     if (chatStatus === "open") {
-      setChatStatus("closing");
-      closeTimerRef.current = setTimeout(() => {
-        setChatStatus("closed");
-      }, 380);
+      closeChat();
     } else {
       setChatStatus("open");
+    }
+  };
+
+  // Switch tab and automatically close chat bubbles if open
+  const handleSelectTab = (tab: FeatureTab) => {
+    if (activeTab !== tab) {
+      setActiveTab(tab);
+      closeChat();
     }
   };
 
@@ -183,16 +205,19 @@ export function FeatureShowcase({ language = "ENG" }: FeatureShowcaseProps) {
             </div>
           )}
 
-          {/* Bubble 5 with "..." - Stays anchored at the bottom continuously */}
+          {/* Interactive Dynamic Chat Trigger Button (Option 1) */}
           <button
             type="button"
             onClick={handleToggleChat}
-            className="bg-[#4238c9] dark:bg-[#4f46e5] hover:bg-[#382ebd] dark:hover:bg-[#4338ca] active:scale-95 text-white px-6 sm:px-7 py-2 sm:py-2.5 rounded-full shadow-lg text-xs sm:text-sm font-bold tracking-widest cursor-pointer transition-all duration-200 flex items-center justify-center gap-1.5 w-fit"
-            title={chatStatus === "open" ? "Klik untuk menyembunyikan chat" : "Klik untuk menampilkan chat"}
+            className="group bg-[#4238c9] dark:bg-[#4f46e5] hover:bg-[#382ebd] dark:hover:bg-[#4338ca] active:scale-95 text-white w-10 h-10 sm:w-11 sm:h-11 rounded-full shadow-lg cursor-pointer transition-all duration-300 flex items-center justify-center border border-white/20 dark:border-white/10 hover:shadow-indigo-500/30"
+            title={chatStatus === "open" ? (language === "IND" ? "Sembunyikan pesan" : "Hide messages") : (language === "IND" ? "Lihat pesan" : "View messages")}
+            aria-label={chatStatus === "open" ? "Tutup pesan" : "Buka pesan"}
           >
-            <span className="tracking-widest font-extrabold text-sm sm:text-base leading-none">
-              ...
-            </span>
+            {chatStatus === "open" ? (
+              <X className="w-4 h-4 text-white transition-transform duration-200 group-hover:rotate-90" />
+            ) : (
+              <MessageSquarePlus className="w-4 h-4 text-white transition-transform duration-200 group-hover:scale-110" />
+            )}
           </button>
         </div>
 
@@ -256,7 +281,7 @@ export function FeatureShowcase({ language = "ENG" }: FeatureShowcaseProps) {
                       ? "bg-indigo-50/90 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-700 shadow-xs"
                       : "bg-white/80 dark:bg-white/5 border-slate-200/80 dark:border-white/10"
                       }`}>
-                      <Calendar className="w-3.5 h-3.5 text-sky-500 mb-1" />
+                      <BookOpen className="w-3.5 h-3.5 text-sky-500 mb-1" />
                       <div className="text-xs font-semibold text-slate-800 dark:text-white">Classroom Sync</div>
                       <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
                         {language === "IND" ? "Otomatis Sinkron" : "Auto-Synced"}
@@ -267,10 +292,10 @@ export function FeatureShowcase({ language = "ENG" }: FeatureShowcaseProps) {
                       ? "bg-indigo-50/90 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-700 shadow-xs"
                       : "bg-white/80 dark:bg-white/5 border-slate-200/80 dark:border-white/10"
                       }`}>
-                      <Bot className="w-3.5 h-3.5 text-indigo-500 mb-1" />
-                      <div className="text-xs font-semibold text-slate-800 dark:text-white">Socratic AI</div>
+                      <MessageSquareText className="w-3.5 h-3.5 text-indigo-500 mb-1" />
+                      <div className="text-xs font-semibold text-slate-800 dark:text-white">Tanya AI</div>
                       <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                        {language === "IND" ? "Tutor Interaktif" : "Interactive Tutor"}
+                        {language === "IND" ? "Tutor Sokratik" : "Socratic Tutor"}
                       </div>
                     </div>
 
@@ -278,10 +303,10 @@ export function FeatureShowcase({ language = "ENG" }: FeatureShowcaseProps) {
                       ? "bg-indigo-50/90 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-700 shadow-xs"
                       : "bg-white/80 dark:bg-white/5 border-slate-200/80 dark:border-white/10"
                       }`}>
-                      <Zap className="w-3.5 h-3.5 text-amber-500 mb-1" />
-                      <div className="text-xs font-semibold text-slate-800 dark:text-white">Low-Data Notes</div>
+                      <FileText className="w-3.5 h-3.5 text-amber-500 mb-1" />
+                      <div className="text-xs font-semibold text-slate-800 dark:text-white">Rangkuman AI</div>
                       <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                        {language === "IND" ? "Hemat 85% Kuota" : "Save 85% Bandwidth"}
+                        {language === "IND" ? "Catatan Ringkas" : "Smart Summary"}
                       </div>
                     </div>
                   </div>
@@ -521,7 +546,7 @@ export function FeatureShowcase({ language = "ENG" }: FeatureShowcaseProps) {
             <button
               key={tab}
               type="button"
-              onClick={() => setActiveTab(tab)}
+              onClick={() => handleSelectTab(tab)}
               className={`font-montserrat text-xs sm:text-sm font-semibold transition-all duration-200 cursor-pointer ${isActive
                 ? "bg-[#4b43c6] text-white px-5 sm:px-6 py-2 sm:py-2.5 rounded-full shadow-md scale-105"
                 : "bg-transparent hover:bg-slate-100 dark:hover:bg-zinc-800/80 text-slate-700 dark:text-zinc-300 px-3.5 sm:px-4 py-2 rounded-full"
