@@ -372,7 +372,7 @@ export function LandingPage({
                         <span>{language.flag}</span>
                         <span>{language.code}</span>
                       </span>
-                      <span className="text-[10px] text-slate-400 dark:text-[#888]">{language.label}</span>
+                      <span className="text-xs text-slate-400 dark:text-[#888]">{language.label}</span>
                     </button>
                   ))}
                 </div>
@@ -414,28 +414,12 @@ export function LandingPage({
               )}
             </button>
 
-            {/* Mode Simulasi CTA */}
-            {/* <div className="group relative flex items-center justify-center hidden sm:flex">
-              <button
-                type="button"
-                onClick={onDemoMode}
-                disabled={isAuthenticating}
-                title="Mode Simulasi"
-                className="group/button flex items-center justify-center gap-0 overflow-hidden rounded-[10px] border border-slate-200 bg-slate-100 px-2 py-2 text-slate-600 transition-all duration-300 ease-out hover:bg-slate-200 hover:px-3 dark:border-[#2b2b2b] dark:bg-[#141414] dark:text-[#a3a3a3] dark:hover:bg-[#161616] dark:hover:text-[#f5f5f5] disabled:opacity-50 cursor-pointer shrink-0"
-              >
-                <MonitorPlay className="h-4 w-4 shrink-0" />
-                <span className="max-w-0 overflow-hidden whitespace-nowrap text-[11px] font-medium opacity-0 transition-all duration-300 ease-out group-hover/button:max-w-[110px] group-hover/button:opacity-100 group-hover/button:ml-1.5 hidden sm:inline-block">
-                  {uiText.hero.simulation}
-                </span>
-              </button>
-            </div> */}
-
             {/* Masuk Google CTA */}
             <button
               type="button"
               onClick={onConnectGoogle}
               disabled={isAuthenticating}
-              className="font-montserrat inline-flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 text-[11px] sm:text-sm font-semibold rounded-[10px] bg-slate-900 hover:bg-[#fbbf24] dark:bg-[#f5f5f5] dark:hover:bg-[#fbbf24] text-white dark:text-[#0c0c0c] transition cursor-pointer disabled:opacity-50 active:scale-95 shadow-xs whitespace-nowrap"
+              className="font-montserrat inline-flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold rounded-[10px] bg-slate-900 hover:bg-[#fbbf24] dark:bg-[#f5f5f5] dark:hover:bg-[#fbbf24] text-white dark:text-[#0c0c0c] transition cursor-pointer disabled:opacity-50 active:scale-95 shadow-xs whitespace-nowrap"
             >
               <LogIn className="w-3.5 h-3.5" />
               <span>{isAuthenticating ? uiText.hero.loading : uiText.hero.signIn}</span>
@@ -625,9 +609,8 @@ export function LandingPage({
             <button
               type="button"
               onClick={onDemoMode}
-              className="group relative overflow-hidden rounded-2xl border border-slate-300 dark:border-[#333333] bg-white dark:bg-[#121212] px-5 sm:px-6 py-3 sm:py-3.5 text-slate-800 dark:text-[#e5e5e5] shadow-[0_4px_14px_rgba(15,23,42,0.05)] transition-all duration-300 ease-out hover:border-slate-400 dark:hover:border-[#555555] hover:shadow-[0_12px_30px_rgba(79,70,229,0.12)] hover:px-6 sm:hover:px-7 dark:hover:text-white cursor-pointer active:scale-95 w-full sm:w-auto"
+              className="group relative overflow-hidden rounded-2xl border border-slate-300 dark:border-[#333333] bg-white dark:bg-[#121212] px-5 sm:px-6 py-3 sm:py-3.5 text-slate-800 dark:text-[#e5e5e5] shadow-[0_4px_14px_rgba(15,23,42,0.05)] transition-all duration-300 ease-out hover:border-indigo-400 dark:hover:border-indigo-500 hover:shadow-[0_12px_30px_rgba(79,70,229,0.12)] hover:px-6 sm:hover:px-7 dark:hover:text-white cursor-pointer active:scale-95 w-full sm:w-auto"
             >
-              <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-indigo-100 to-indigo-50 dark:from-indigo-500/10 dark:to-indigo-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-out pointer-events-none" />
               <span className="relative flex items-center justify-center gap-1.5 text-sm sm:text-base font-semibold transition-all duration-300 ease-out group-hover:gap-2">
                 <span>{uiText.hero.demoButton}</span>
                 <ArrowUpRight className="h-4 w-4 opacity-70 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:opacity-100" />
@@ -641,7 +624,6 @@ export function LandingPage({
               disabled={isAuthenticating}
               className="group relative overflow-hidden rounded-2xl bg-[#4b43c6] hover:bg-[#3e36b8] dark:bg-[#5b52e0] dark:hover:bg-[#4d44d0] px-5 sm:px-7 py-3 sm:py-3.5 text-white shadow-[0_10px_28px_rgba(79,70,229,0.28)] hover:shadow-[0_18px_36px_rgba(79,70,229,0.35)] hover:px-6 sm:hover:px-8 transition-all duration-300 ease-out cursor-pointer disabled:opacity-50 active:scale-95 w-full sm:w-auto"
             >
-              <span className="absolute inset-0 w-full h-full bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-out pointer-events-none" />
               <span className="relative flex items-center justify-center gap-2 text-sm sm:text-base font-semibold transition-all duration-300 ease-out group-hover:gap-2.5">
                 {/* Clean SVG Google icon */}
                 <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
@@ -669,13 +651,13 @@ export function LandingPage({
         {/* Interactive Scroll Down Indicator Cue */}
         <a
           href="#about-platform"
-          className="absolute bottom-5 sm:bottom-7 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-1 text-slate-400 hover:text-[#4b43c6] dark:text-zinc-500 dark:hover:text-indigo-400 transition-all duration-200 cursor-pointer group select-none"
+          className="absolute bottom-5 sm:bottom-7 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-1 text-slate-400 hover:text-[#4b43c6] dark:text-zinc-500 dark:hover:text-indigo-400 transition-all duration-300 cursor-pointer group select-none"
           title="Gulir ke bawah untuk melihat fitur"
         >
-          <span className="text-[10px] font-montserrat font-semibold tracking-widest uppercase opacity-70 group-hover:opacity-100 transition-opacity">
+          <span className="text-xs font-montserrat font-semibold tracking-widest uppercase opacity-70 group-hover:opacity-100 transition-opacity">
             {uiText.hero.scroll}
           </span>
-          <ChevronDown className="w-4 h-4 animate-bounce" />
+          <ChevronDown className="w-4 h-4 transition-transform duration-300 group-hover:translate-y-1" />
         </a>
       </section>
 
@@ -699,7 +681,7 @@ export function LandingPage({
           {uiText.sections.aboutSubtitle}
         </h3>
 
-        <p className="font-inter text-sm sm:text-base md:text-[17px] text-slate-600 dark:text-[#a3a3a3] leading-relaxed max-w-3xl mx-auto font-normal text-center">
+        <p className="font-inter text-sm sm:text-base md:text-lg text-slate-600 dark:text-[#a3a3a3] leading-relaxed max-w-3xl mx-auto font-normal text-center">
           {uiText.sections.aboutDescription}
         </p>
       </section>

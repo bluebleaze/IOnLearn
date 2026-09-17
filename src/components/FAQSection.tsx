@@ -118,7 +118,7 @@ export function FAQSection({ language = "ENG" }: FAQSectionProps) {
 
         {/* RIGHT COLUMN: Have Any Questions on Your Mind? Ask Us! */}
         <div className="lg:col-span-5 flex flex-col pt-2 lg:pt-8">
-          <h3 className="font-cal text-3xl sm:text-4xl md:text-[44px] font-black text-slate-900 dark:text-white leading-[1.15] mb-6 select-none">
+          <h3 className="font-cal text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 dark:text-white leading-[1.12] mb-6 select-none">
             {language === "IND" ? (
               <>
                 Ada <br />

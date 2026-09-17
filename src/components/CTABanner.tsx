@@ -31,7 +31,7 @@ export function CTABanner({ onConnectGoogle, language = "ENG" }: CTABannerProps)
 
         {/* Content */}
         <div className="flex flex-col relative z-10 text-center md:text-left">
-          <h2 className="font-cal text-2xl sm:text-3xl md:text-[32px] font-bold tracking-tight text-white">
+          <h2 className="font-cal text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-white">
             {copy.title}
           </h2>
           <p className="font-inter text-xs sm:text-sm text-white/85 leading-relaxed max-w-xl mt-2.5">

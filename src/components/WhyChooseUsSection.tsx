@@ -1,8 +1,7 @@
 "use client";
 
 import React from "react";
-import { DrawablyHighlight } from "drawably/react"
-// import "drawably/style.css"
+import { DrawablyHighlight } from "drawably/react";
 
 interface WhyChooseUsSectionProps {
   language?: "ENG" | "IND";
@@ -31,6 +30,7 @@ export function WhyChooseUsSection({ language = "ENG" }: WhyChooseUsSectionProps
           { title: "Built-in To-Do List", text: "Helps you organize your daily tasks and study plans so you never miss a deadline." },
         ],
       };
+
   return (
     <section className="w-full max-w-6xl mx-auto px-4 sm:px-6 pt-20 sm:pt-28 pb-20">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-[0.9fr_1fr_1fr] md:gap-5">
@@ -38,7 +38,7 @@ export function WhyChooseUsSection({ language = "ENG" }: WhyChooseUsSectionProps
           <span className="font-montserrat text-xs sm:text-sm font-bold tracking-wider text-[#4838cc] lowercase dark:text-[#818cf8] mb-2">
             {copy.eyebrow}
           </span>
-          <h2 className="font-cal text-2xl sm:text-3xl md:text-[36px] font-black leading-[1.08] tracking-tight text-slate-900 dark:text-white">
+          <h2 className="font-cal text-2xl sm:text-3xl md:text-4xl font-black leading-[1.08] tracking-tight text-slate-900 dark:text-white">
             {copy.heading.map((part, index) => (
               <React.Fragment key={part + index}>
                 {index === 1 ? (
@@ -52,7 +52,7 @@ export function WhyChooseUsSection({ language = "ENG" }: WhyChooseUsSectionProps
           </h2>
         </div>
 
-        <article className="group relative overflow-hidden rounded-[30px] border border-indigo-100 bg-[linear-gradient(135deg,#eeedfc_0%,#f5f3ff_100%)] p-5 shadow-[0_16px_36px_rgba(79,70,229,0.08)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_22px_48px_rgba(79,70,229,0.12)] dark:border-indigo-900/30 dark:bg-[linear-gradient(135deg,#1a1738_0%,#201b46_100%)] sm:p-6">
+        <article className="group relative overflow-hidden rounded-[24px] sm:rounded-[30px] border border-indigo-100 bg-[linear-gradient(135deg,#eeedfc_0%,#f5f3ff_100%)] p-5 shadow-[0_16px_36px_rgba(79,70,229,0.08)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_22px_48px_rgba(79,70,229,0.12)] dark:border-indigo-900/30 dark:bg-[linear-gradient(135deg,#1a1738_0%,#201b46_100%)] sm:p-6">
           <div className="mb-6 flex items-center justify-between">
             <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/80 text-sm font-bold text-[#4b43c6] shadow-sm dark:bg-white/10 dark:text-indigo-300">
               01
@@ -62,12 +62,12 @@ export function WhyChooseUsSection({ language = "ENG" }: WhyChooseUsSectionProps
           <h3 className="font-montserrat text-base sm:text-lg font-bold text-slate-900 dark:text-white">
             {copy.cards[0].title}
           </h3>
-          <p className="mt-4 text-xs leading-relaxed text-slate-700 dark:text-slate-300 sm:text-[13px]">
+          <p className="mt-4 text-xs sm:text-sm leading-relaxed text-slate-700 dark:text-slate-300">
             {copy.cards[0].text}
           </p>
         </article>
 
-        <article className="group relative overflow-hidden rounded-[30px] border border-rose-100 bg-[linear-gradient(135deg,#fdf0ee_0%,#fff4f1_100%)] p-5 shadow-[0_16px_36px_rgba(244,114,182,0.08)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_22px_48px_rgba(244,114,182,0.12)] dark:border-rose-900/30 dark:bg-[linear-gradient(135deg,#2d1b20_0%,#331e22_100%)] sm:p-6">
+        <article className="group relative overflow-hidden rounded-[24px] sm:rounded-[30px] border border-rose-100 bg-[linear-gradient(135deg,#fdf0ee_0%,#fff4f1_100%)] p-5 shadow-[0_16px_36px_rgba(244,114,182,0.08)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_22px_48px_rgba(244,114,182,0.12)] dark:border-rose-900/30 dark:bg-[linear-gradient(135deg,#2d1b20_0%,#331e22_100%)] sm:p-6">
           <div className="mb-6 flex items-center justify-between">
             <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/80 text-sm font-bold text-rose-600 shadow-sm dark:bg-white/10 dark:text-rose-300">
               02
@@ -77,12 +77,12 @@ export function WhyChooseUsSection({ language = "ENG" }: WhyChooseUsSectionProps
           <h3 className="font-montserrat text-base sm:text-lg font-bold text-slate-900 dark:text-white">
             {copy.cards[1].title}
           </h3>
-          <p className="mt-4 text-xs leading-relaxed text-slate-700 dark:text-slate-300 sm:text-[13px]">
+          <p className="mt-4 text-xs sm:text-sm leading-relaxed text-slate-700 dark:text-slate-300">
             {copy.cards[1].text}
           </p>
         </article>
 
-        <article className="group relative overflow-hidden rounded-[30px] border border-amber-100 bg-[linear-gradient(135deg,#fff9eb_0%,#fdf7ed_100%)] p-5 shadow-[0_16px_36px_rgba(251,191,36,0.08)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_22px_48px_rgba(251,191,36,0.12)] dark:border-amber-900/30 dark:bg-[linear-gradient(135deg,#25231c_0%,#2a2a22_100%)] sm:p-6 md:col-span-2">
+        <article className="group relative overflow-hidden rounded-[24px] sm:rounded-[30px] border border-amber-100 bg-[linear-gradient(135deg,#fff9eb_0%,#fdf7ed_100%)] p-5 shadow-[0_16px_36px_rgba(251,191,36,0.08)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_22px_48px_rgba(251,191,36,0.12)] dark:border-amber-900/30 dark:bg-[linear-gradient(135deg,#25231c_0%,#2a2a22_100%)] sm:p-6 md:col-span-2">
           <div className="mb-6 flex items-center justify-between">
             <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/80 text-sm font-bold text-amber-600 shadow-sm dark:bg-white/10 dark:text-amber-300">
               03
@@ -92,12 +92,12 @@ export function WhyChooseUsSection({ language = "ENG" }: WhyChooseUsSectionProps
           <h3 className="font-montserrat text-base sm:text-lg font-bold text-slate-900 dark:text-white">
             {copy.cards[2].title}
           </h3>
-          <p className="mt-4 max-w-xl text-xs leading-relaxed text-slate-700 dark:text-slate-300 sm:text-[13px]">
+          <p className="mt-4 max-w-xl text-xs sm:text-sm leading-relaxed text-slate-700 dark:text-slate-300">
             {copy.cards[2].text}
           </p>
         </article>
 
-        <article className="group relative overflow-hidden rounded-[30px] border border-sky-100 bg-[linear-gradient(135deg,#edf6fc_0%,#f5fbff_100%)] p-5 shadow-[0_16px_36px_rgba(59,130,246,0.08)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_22px_48px_rgba(59,130,246,0.12)] dark:border-sky-900/30 dark:bg-[linear-gradient(135deg,#162433_0%,#1b2f46_100%)] sm:p-6">
+        <article className="group relative overflow-hidden rounded-[24px] sm:rounded-[30px] border border-sky-100 bg-[linear-gradient(135deg,#edf6fc_0%,#f5fbff_100%)] p-5 shadow-[0_16px_36px_rgba(59,130,246,0.08)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_22px_48px_rgba(59,130,246,0.12)] dark:border-sky-900/30 dark:bg-[linear-gradient(135deg,#162433_0%,#1b2f46_100%)] sm:p-6">
           <div className="mb-6 flex items-center justify-between">
             <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/80 text-sm font-bold text-sky-600 shadow-sm dark:bg-white/10 dark:text-sky-300">
               04
@@ -107,7 +107,7 @@ export function WhyChooseUsSection({ language = "ENG" }: WhyChooseUsSectionProps
           <h3 className="font-montserrat text-base sm:text-lg font-bold text-slate-900 dark:text-white">
             {copy.cards[3].title}
           </h3>
-          <p className="mt-4 text-xs leading-relaxed text-slate-700 dark:text-slate-300 sm:text-[13px]">
+          <p className="mt-4 text-xs sm:text-sm leading-relaxed text-slate-700 dark:text-slate-300">
             {copy.cards[3].text}
           </p>
         </article>

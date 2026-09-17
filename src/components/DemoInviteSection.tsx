@@ -71,7 +71,7 @@ export function DemoInviteSection({ onDemoMode, language = "ENG" }: DemoInviteSe
             </svg>
 
             {/* Stacked multi-line headline spanning exact height */}
-            <h2 className="font-montserrat font-bold text-2xl sm:text-[28px] md:text-[32px] text-slate-900 dark:text-white leading-[1.18] tracking-tight flex flex-col justify-between py-1 select-none">
+            <h2 className="font-montserrat font-bold text-2xl sm:text-3xl md:text-4xl text-slate-900 dark:text-white leading-[1.18] tracking-tight flex flex-col justify-between py-1 select-none">
               {copy.headline.map((line) => (
                 <span key={line}>{line}</span>
               ))}
@@ -112,7 +112,7 @@ export function DemoInviteSection({ onDemoMode, language = "ENG" }: DemoInviteSe
               <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5">
                 {/* Brand Logo */}
                 <div className="flex items-center gap-1">
-                  <span className="bg-[#493fe4] text-white font-black text-[10px] px-1.5 py-0.5 rounded">
+                  <span className="bg-[#493fe4] text-white font-black text-xs px-1.5 py-0.5 rounded">
                     IOn
                   </span>
                   <span className="font-cal font-bold text-xs text-[#493fe4] dark:text-indigo-400">
@@ -121,7 +121,7 @@ export function DemoInviteSection({ onDemoMode, language = "ENG" }: DemoInviteSe
                 </div>
 
                 {/* Action Tag Pills */}
-                <div className="flex items-center gap-1.5 text-[9px] font-montserrat">
+                <div className="flex items-center gap-1.5 text-xs font-montserrat">
                   <span className="px-2 py-0.5 rounded-full border border-slate-200 dark:border-white/10 text-slate-600 dark:text-zinc-300">
                     @ {language === "IND" ? "Chatbot AI" : "AI Chatbot"}
                   </span>
@@ -142,7 +142,7 @@ export function DemoInviteSection({ onDemoMode, language = "ENG" }: DemoInviteSe
                     {language === "IND" ? "Pelajar Cerdas." : "Smart Learner."}
                   </span>
                 </div>
-                <p className="font-inter text-[10.5px] text-slate-500 dark:text-zinc-400 mt-1 leading-relaxed line-clamp-2">
+                <p className="font-inter text-xs text-slate-500 dark:text-zinc-400 mt-1 leading-relaxed line-clamp-2">
                   {language === "IND"
                     ? "Kelola tugas Google Classroom, rangkum materi dengan AI, dan pantau prioritas belajar harian Anda."
                     : "Manage Google Classroom assignments, summarize materials with AI, and track your daily study priorities."}
@@ -154,7 +154,7 @@ export function DemoInviteSection({ onDemoMode, language = "ENG" }: DemoInviteSe
 
                 {/* Card 1: All Task (Solid Purple) */}
                 <div className="bg-[#493fe4] text-white rounded-xl p-2.5 sm:p-3 flex flex-col justify-between shadow-xs min-h-[64px]">
-                  <span className="text-[9px] font-montserrat opacity-90">
+                  <span className="text-xs font-montserrat opacity-90">
                     {language === "IND" ? "Semua Tugas" : "All Tasks"}
                   </span>
                   <div className="my-0.5">
@@ -162,27 +162,27 @@ export function DemoInviteSection({ onDemoMode, language = "ENG" }: DemoInviteSe
                       07
                     </span>
                   </div>
-                  <span className="text-[7px] font-montserrat tracking-wider opacity-75 uppercase">
+                  <span className="text-xs font-montserrat tracking-wider opacity-75 uppercase">
                     {language === "IND" ? "TOTAL TUGAS" : "TOTAL NUMBER"}
                   </span>
                 </div>
 
                 {/* Card 2: AI Chatbot (White) */}
                 <div className="bg-white dark:bg-zinc-800/80 rounded-xl p-2.5 sm:p-3 border border-slate-200/80 dark:border-white/10 flex flex-col justify-between min-h-[64px]">
-                  <span className="text-[9px] font-montserrat font-bold text-slate-800 dark:text-zinc-200">
+                  <span className="text-xs font-montserrat font-bold text-slate-800 dark:text-zinc-200">
                     {language === "IND" ? "Chatbot AI" : "AI Chatbot"}
                   </span>
                   <div className="my-0.5 flex items-center gap-1 text-[#493fe4] dark:text-indigo-400">
                     <Bot className="w-3.5 h-3.5" />
                   </div>
-                  <span className="text-[7.5px] font-inter text-slate-400 dark:text-zinc-400 truncate">
+                  <span className="text-xs font-inter text-slate-400 dark:text-zinc-400 truncate">
                     {language === "IND" ? "tanyakan soal sulit" : "chat your complex problem"}
                   </span>
                 </div>
 
                 {/* Card 3: Classes (White) */}
                 <div className="bg-white dark:bg-zinc-800/80 rounded-xl p-2.5 sm:p-3 border border-slate-200/80 dark:border-white/10 flex flex-col justify-between min-h-[64px]">
-                  <span className="text-[9px] font-montserrat font-semibold text-slate-700 dark:text-zinc-300">
+                  <span className="text-xs font-montserrat font-semibold text-slate-700 dark:text-zinc-300">
                     {language === "IND" ? "Kelas Aktif" : "Active Classes"}
                   </span>
                   <div className="my-0.5">
@@ -190,7 +190,7 @@ export function DemoInviteSection({ onDemoMode, language = "ENG" }: DemoInviteSe
                       05
                     </span>
                   </div>
-                  <span className="text-[7px] font-montserrat tracking-wider text-slate-400 dark:text-zinc-400 uppercase">
+                  <span className="text-xs font-montserrat tracking-wider text-slate-400 dark:text-zinc-400 uppercase">
                     {language === "IND" ? "LIHAT KELAS" : "VIEW CLASSES"}
                   </span>
                 </div>
@@ -202,7 +202,7 @@ export function DemoInviteSection({ onDemoMode, language = "ENG" }: DemoInviteSe
           </div>
 
           {/* Action Button: Exact width as the card */}
-          <div className="flex flex-col gap-3 ">
+          <div className="flex flex-col gap-3">
             <button
               onClick={onDemoMode}
               className="w-full bg-[#493fe4] hover:bg-[#3d32d4] text-white font-montserrat font-bold py-3.5 px-6 rounded-2xl sm:rounded-full flex items-center justify-center gap-2 shadow-md hover:shadow-indigo-500/25 transition-all duration-200 cursor-pointer active:scale-[0.99] text-sm sm:text-base group mt-1 z-1"
@@ -212,7 +212,7 @@ export function DemoInviteSection({ onDemoMode, language = "ENG" }: DemoInviteSe
             </button>
 
             {/* Supportive Copy */}
-            <p className="font-inter text-xs sm:text-[13px] text-slate-700 dark:text-zinc-300 leading-relaxed max-w-lg mt-1">
+            <p className="font-inter text-xs sm:text-sm text-slate-700 dark:text-zinc-300 leading-relaxed max-w-lg mt-1">
               {copy.note}
             </p>
           </div>
