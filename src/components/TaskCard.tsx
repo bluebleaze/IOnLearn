@@ -1,19 +1,19 @@
 "use client";
-import React from "react";
+
+import React, { useState } from "react";
 import {
   Check,
   Clock,
   Sparkles,
-  Youtube,
-  FileText,
   ChevronRight,
-  ListChecks,
   Paperclip,
   AlertCircle,
+  CheckCircle2,
   Loader2,
+  Calendar,
 } from "lucide-react";
-import confetti from "canvas-confetti";
 import { TodoTask } from "../types";
+import { TaskCompleteConfirmModal } from "./TaskCompleteConfirmModal";
 
 interface TaskCardProps {
   task: TodoTask;
@@ -38,71 +38,59 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   onToggleComplete,
   onOpenDetails,
 }) => {
+  const [showConfirmComplete, setShowConfirmComplete] = useState(false);
+
   const handleCheck = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!task.isCompleted) {
-      try {
-        confetti({
-          particleCount: 30,
-          spread: 45,
-          origin: { y: 0.85 },
-          colors: ["#818cf8", "#34d399", "#fbbf24"],
-        });
-      } catch (err) {}
+      setShowConfirmComplete(true);
+    } else {
+      onToggleComplete(task.id);
     }
+  };
+
+  const handleConfirmDone = () => {
     onToggleComplete(task.id);
   };
 
-  // Due date status badge
-  let dueBadge = null;
-  if (task.dueDateStr) {
+  // Status computation for explicit distinction: Perlu Dikerjakan, Nanti, Telat, Selesai
+  const getStatusInfo = () => {
     if (task.isCompleted) {
-      dueBadge = (
-        <span className="inline-flex items-center gap-1 text-xs text-slate-500 dark:text-[#737373]">
-          <Clock className="w-3 h-3 text-slate-400" />
-          <span>{task.dueDateStr}</span>
-        </span>
-      );
-    } else if (task.dueTimestamp) {
-      const diffHours = (task.dueTimestamp - Date.now()) / (1000 * 3600);
-      if (diffHours < 0) {
-        dueBadge = (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-[#f87171]">
-            <AlertCircle className="w-3 h-3 text-rose-600 dark:text-[#f87171]" />
-            <span>Terlewat ({task.dueDateStr})</span>
-          </span>
-        );
-      } else if (diffHours <= 24) {
-        dueBadge = (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-[#fbbf24]">
-            <Clock className="w-3 h-3 text-amber-600 dark:text-[#fbbf24]" />
-            <span>Hari Ini ({task.dueDateStr})</span>
-          </span>
-        );
-      } else if (diffHours <= 48) {
-        dueBadge = (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold bg-orange-50 dark:bg-orange-950/40 text-orange-800 dark:text-orange-300">
-            <Clock className="w-3 h-3 text-orange-600 dark:text-orange-400" />
-            <span>Besok ({task.dueDateStr})</span>
-          </span>
-        );
-      } else {
-        dueBadge = (
-          <span className="inline-flex items-center gap-1 text-xs text-slate-600 dark:text-[#a3a3a3]">
-            <Clock className="w-3 h-3 text-slate-400" />
-            <span>{task.dueDateStr}</span>
-          </span>
-        );
-      }
-    } else {
-      dueBadge = (
-        <span className="inline-flex items-center gap-1 text-xs text-slate-600 dark:text-[#a3a3a3]">
-          <Clock className="w-3 h-3 text-slate-400" />
-          <span>{task.dueDateStr}</span>
-        </span>
-      );
+      return {
+        label: "Selesai",
+        badgeClass: "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200/70 dark:border-emerald-800/50",
+        icon: CheckCircle2,
+      };
     }
-  }
+    const now = Date.now();
+    if (typeof task.dueTimestamp === "number" && !isNaN(task.dueTimestamp) && task.dueTimestamp < now) {
+      return {
+        label: "Telat",
+        badgeClass: "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200/70 dark:border-rose-800/50",
+        icon: AlertCircle,
+      };
+    }
+    const isUrgent =
+      task.priority === "high" ||
+      (typeof task.dueTimestamp === "number" && !isNaN(task.dueTimestamp) && task.dueTimestamp - now <= 48 * 3600 * 1000) ||
+      (!task.dueTimestamp && task.priority !== "low");
+
+    if (isUrgent) {
+      return {
+        label: "Perlu Dikerjakan",
+        badgeClass: "bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border-indigo-200/70 dark:border-indigo-800/50",
+        icon: Clock,
+      };
+    }
+    return {
+      label: "Nanti",
+      badgeClass: "bg-slate-100 dark:bg-[#1e1e24] text-slate-700 dark:text-slate-300 border-slate-200/70 dark:border-[#30303a]",
+      icon: Calendar,
+    };
+  };
+
+  const statusInfo = getStatusInfo();
+  const StatusIcon = statusInfo.icon;
 
   const checklistTotal = task.aiAnalysis?.checklist?.length || 0;
   const checklistDone = task.aiAnalysis?.checklist?.filter((c) => c.done)?.length || 0;
@@ -115,119 +103,140 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   };
 
   return (
-    <div
-      id={`task-card-${task.id}`}
-      role="button"
-      tabIndex={0}
-      onClick={() => onOpenDetails(task)}
-      onKeyDown={handleKeyDown}
-      className={`group rounded-2xl p-4.5 sm:p-5 shadow-2xs border transition-all duration-150 flex flex-col justify-between cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#121212] ${
-        task.isCompleted
-          ? "bg-slate-50/60 dark:bg-[#141414]/50 border-slate-200/70 dark:border-[#222] opacity-80"
-          : "bg-white dark:bg-[#161616] border-slate-200/80 dark:border-[#262626] hover:border-indigo-400 dark:hover:border-indigo-900/60 hover:shadow-xs"
-      }`}
-    >
-      <div className="space-y-2.5">
-        {/* Top Header: Course Pill + Due Date + Checkbox */}
-        <div className="flex items-center justify-between gap-2.5">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="px-2.5 py-0.5 rounded-md text-xs font-semibold bg-indigo-50 dark:bg-[#1f1f28] text-indigo-700 dark:text-[#a5b4fc] max-w-[170px] truncate">
-              {task.courseName || "Kuliah"}
-            </span>
-
-            {dueBadge}
-
-            {task.points !== undefined && (
-              <span className="text-xs text-slate-500 dark:text-[#a3a3a3]">
-                {task.points} pts
+    <>
+      <div
+        id={`task-card-${task.id}`}
+        role="button"
+        tabIndex={0}
+        onClick={() => onOpenDetails(task)}
+        onKeyDown={handleKeyDown}
+        className={`group rounded-2xl p-4 sm:p-5 shadow-xs border transition-all duration-200 flex flex-col justify-between cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#121212] ${
+          task.isCompleted
+            ? "bg-slate-50/70 dark:bg-[#131316] border-slate-200/60 dark:border-[#222228] opacity-85"
+            : "bg-white dark:bg-[#16161b] border-slate-200/80 dark:border-[#26262e] hover:border-indigo-400 dark:hover:border-indigo-700/60 hover:shadow-md hover:-translate-y-0.5"
+        }`}
+      >
+        <div className="space-y-3">
+          {/* Top Header: Course Pill + Status Badge + Checkbox */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-1.5 min-w-0 flex-1">
+              <span className="px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/40 max-w-[170px] truncate">
+                {task.courseName || "Kuliah"}
               </span>
-            )}
+
+              {/* Status Badge with Label & Icon */}
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-semibold border ${statusInfo.badgeClass}`}>
+                <StatusIcon className="w-3 h-3 shrink-0" />
+                <span>{statusInfo.label}</span>
+              </span>
+
+              {task.points !== undefined && (
+                <span className="text-xs font-medium text-slate-500 dark:text-[#a3a3a3] hidden sm:inline">
+                  {task.points} pts
+                </span>
+              )}
+            </div>
+
+            {/* Quick Checkbox Button */}
+            <button
+              id={`task-checkbox-${task.id}`}
+              type="button"
+              onClick={handleCheck}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.stopPropagation();
+                }
+              }}
+              className="min-w-[40px] min-h-[40px] -m-2 flex items-center justify-center cursor-pointer shrink-0 focus-visible:outline-none"
+              title={task.isCompleted ? "Tandai belum selesai" : "Tandai selesai"}
+              aria-label={task.isCompleted ? `Tandai "${task.title}" belum selesai` : `Tandai "${task.title}" sudah selesai`}
+            >
+              <span
+                className={`w-5.5 h-5.5 rounded-lg flex items-center justify-center transition-colors focus-visible:ring-2 focus-visible:ring-emerald-500 ${
+                  task.isCompleted
+                    ? "bg-emerald-500 text-white shadow-2xs"
+                    : "border-2 border-slate-300 hover:border-emerald-500 dark:border-[#444] text-slate-700 dark:text-[#f5f5f5]"
+                }`}
+              >
+                {task.isCompleted && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+              </span>
+            </button>
           </div>
 
-          {/* Quick Checkbox Button */}
-          <button
-            id={`task-checkbox-${task.id}`}
-            type="button"
-            onClick={handleCheck}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.stopPropagation();
-              }
-            }}
-            className="min-w-[44px] min-h-[44px] -m-2.5 flex items-center justify-center cursor-pointer shrink-0 focus-visible:outline-none"
-            title={task.isCompleted ? "Tandai belum selesai" : "Tandai sudah selesai"}
-            aria-label={task.isCompleted ? `Tandai "${task.title}" belum selesai` : `Tandai "${task.title}" sudah selesai`}
+          {/* Task Title */}
+          <h3
+            className={`font-heading text-sm sm:text-base font-bold tracking-tight leading-snug break-words transition-colors group-hover:text-indigo-600 dark:group-hover:text-indigo-400 ${
+              task.isCompleted
+                ? "text-slate-600 dark:text-[#888] line-through decoration-slate-300 dark:decoration-slate-700"
+                : "text-slate-900 dark:text-[#f5f5f5]"
+            }`}
+            title={task.title}
           >
-            <span
-              className={`w-5.5 h-5.5 rounded-md flex items-center justify-center transition focus-visible:ring-2 focus-visible:ring-emerald-500 ${
-                task.isCompleted
-                  ? "bg-emerald-500 text-white shadow-2xs"
-                  : "border border-slate-300 hover:border-emerald-500 dark:border-[#444] text-slate-700 dark:text-[#f5f5f5]"
-              }`}
-            >
-              {task.isCompleted && <Check className="w-3 h-3 stroke-[3]" />}
-            </span>
-          </button>
+            {truncateWords(task.title, 12)}
+          </h3>
+
+          {/* Short Description */}
+          {task.description && (
+            <p className="text-xs text-slate-600 dark:text-[#a3a3a3] line-clamp-2 leading-relaxed">
+              {truncateWords(task.description, 16)}
+            </p>
+          )}
+
+          {/* Deadline info */}
+          {task.dueDateStr && (
+            <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-[#888]">
+              <Clock className="w-3.5 h-3.5 text-slate-400" />
+              <span>Tenggat: <strong className="font-semibold text-slate-700 dark:text-slate-300">{task.dueDateStr}</strong></span>
+            </div>
+          )}
+
+          {/* Attachments Indicator */}
+          {task.materials && task.materials.length > 0 && (
+            <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-[#a3a3a3]">
+              <Paperclip className="w-3.5 h-3.5" />
+              <span>{task.materials.length} Lampiran File</span>
+            </div>
+          )}
         </div>
 
-        {/* Task Title */}
-        <h3
-          className={`font-heading text-sm sm:text-base font-bold tracking-tight leading-snug break-words transition group-hover:text-indigo-600 dark:group-hover:text-indigo-400 ${
-            task.isCompleted
-              ? "text-slate-600 dark:text-[#888]"
-              : "text-slate-900 dark:text-[#f5f5f5]"
-          }`}
-          title={task.title}
-        >
-          {truncateWords(task.title, 12)}
-        </h3>
-
-        {/* Short Description */}
-        {task.description && (
-          <p className="text-xs text-slate-600 dark:text-[#a3a3a3] line-clamp-2 leading-relaxed">
-            {truncateWords(task.description, 16)}
-          </p>
-        )}
-
-        {/* Attachments Indicator (Clean count pill) */}
-        {task.materials && task.materials.length > 0 && (
-          <div className="flex items-center gap-1 text-xs text-slate-500 dark:text-[#a3a3a3]">
-            <Paperclip className="w-3.5 h-3.5" />
-            <span>{task.materials.length} Lampiran</span>
-          </div>
-        )}
-      </div>
-
-      {/* Quiet Status Footer */}
-      <div className="mt-3.5 pt-2.5 border-t border-slate-100 dark:border-[#222] flex items-center justify-between text-xs text-slate-500 dark:text-[#888]">
-        {task.aiLoading ? (
-          <div className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 text-xs font-medium animate-pulse">
-            <Loader2 className="w-3 h-3 animate-spin" />
-            <span>Menyusun AI...</span>
-          </div>
-        ) : task.aiAnalysis ? (
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold bg-indigo-50 dark:bg-[#1f1f28] text-indigo-700 dark:text-[#a5b4fc]">
-              <Sparkles className="w-3 h-3 text-indigo-600 dark:text-[#818cf8]" />
-              Rangkuman AI
-            </span>
-            {checklistTotal > 0 && (
-              <span className="text-xs text-slate-600 dark:text-[#a3a3a3]">
-                {checklistDone}/{checklistTotal} Langkah
+        {/* Quiet Status Footer */}
+        <div className="mt-3.5 pt-2.5 border-t border-slate-100 dark:border-[#222228] flex items-center justify-between text-xs text-slate-500 dark:text-[#888]">
+          {task.aiLoading ? (
+            <div className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 text-xs font-medium animate-pulse">
+              <Loader2 className="w-3 h-3 animate-spin" />
+              <span>Menyusun AI...</span>
+            </div>
+          ) : task.aiAnalysis ? (
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold bg-indigo-50 dark:bg-[#1f1f28] text-indigo-700 dark:text-[#a5b4fc]">
+                <Sparkles className="w-3 h-3 text-indigo-600 dark:text-[#818cf8]" />
+                Rangkuman AI
               </span>
-            )}
-          </div>
-        ) : (
-          <span className="text-xs text-slate-500 dark:text-[#a3a3a3]">
-            Klik untuk detail & AI
-          </span>
-        )}
+              {checklistTotal > 0 && (
+                <span className="text-xs text-slate-600 dark:text-[#a3a3a3]">
+                  {checklistDone}/{checklistTotal} Langkah
+                </span>
+              )}
+            </div>
+          ) : (
+            <span className="text-xs text-slate-500 dark:text-[#a3a3a3]">
+              Klik untuk detail & AI
+            </span>
+          )}
 
-        <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-indigo-600 dark:text-[#818cf8] group-hover:translate-x-0.5 transition-transform">
-          <span>Detail</span>
-          <ChevronRight className="w-3 h-3" />
-        </span>
+          <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-indigo-600 dark:text-[#818cf8] group-hover:translate-x-0.5 transition-transform">
+            <span>Detail Tugas</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </span>
+        </div>
       </div>
-    </div>
+
+      <TaskCompleteConfirmModal
+        isOpen={showConfirmComplete}
+        onClose={() => setShowConfirmComplete(false)}
+        onConfirm={handleConfirmDone}
+        taskTitle={task.title}
+      />
+    </>
   );
 };

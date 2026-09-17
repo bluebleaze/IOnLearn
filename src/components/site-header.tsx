@@ -1,6 +1,8 @@
-import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
-import { SidebarTrigger } from "@/components/ui/sidebar"
+"use client";
+
+import React from "react";
+import { Separator } from "@/components/ui/separator";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 
 export function SiteHeader() {
   return (
@@ -18,11 +20,13 @@ export function SiteHeader() {
           </div>
         </div>
 
-        <div className="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-[linear-gradient(135deg,_rgba(99,102,241,0.10),_rgba(59,130,246,0.06))] px-3 py-1.5 text-xs font-medium text-indigo-700 shadow-[0_8px_18px_rgba(99,102,241,0.12)] dark:border-indigo-400/30 dark:bg-[linear-gradient(135deg,_rgba(99,102,241,0.18),_rgba(59,130,246,0.08))] dark:text-indigo-100">
-          <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_14px_rgba(52,211,153,0.8)]" />
-          Live sync
+        <div className="flex items-center gap-2.5">
+          <div className="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-[linear-gradient(135deg,_rgba(99,102,241,0.10),_rgba(59,130,246,0.06))] px-3 py-1.5 text-xs font-medium text-indigo-700 shadow-[0_8px_18px_rgba(99,102,241,0.12)] dark:border-indigo-400/30 dark:bg-[linear-gradient(135deg,_rgba(99,102,241,0.18),_rgba(59,130,246,0.08))] dark:text-indigo-100">
+            <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_14px_rgba(52,211,153,0.8)]" />
+            <span>Live sync</span>
+          </div>
         </div>
       </div>
     </header>
-  )
+  );
 }

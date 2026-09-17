@@ -39,6 +39,8 @@ import {
   Eye,
   Check,
   Copy,
+  LayoutGrid,
+  X,
 } from "lucide-react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -166,6 +168,7 @@ export default function NotesPage() {
   // Filter & Search
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSubject, setSelectedSubject] = useState<string>("all");
+  const [sidebarLayout, setSidebarLayout] = useState<"list" | "grid">("list");
 
   // Edit / Create Form state
   const [formTitle, setFormTitle] = useState("");
@@ -587,63 +590,178 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
           </div>
         </div>
 
-        {/* Workspace Layout: Left (Notes List) & Right (Active View / Editor) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* Left Column: Note Directory */}
-          <div className="lg:col-span-4 space-y-3">
-            {/* Search & Subject Filters */}
-            <div className="bg-white dark:bg-[#161616] rounded-2xl p-3.5 space-y-2.5 border border-slate-200/80 dark:border-[#262626] shadow-2xs">
-              <div className="relative">
-                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Cari catatan atau materi..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl bg-slate-50 dark:bg-[#181818] border border-slate-200/80 dark:border-[#2b2b2b] text-slate-900 dark:text-[#f3f3f3] placeholder:text-slate-400 focus:outline-none"
-                />
-              </div>
+        {/* ── FULL-WIDTH SEARCH BAR (KIRI -> KANAN) SEBAGAI PRIMARY CONTROL (Sesuai QA #9) ── */}
+        <div className="w-full bg-white dark:bg-[#16161c] rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-[#26262e] shadow-xs space-y-3">
+          <div className="relative w-full">
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Cari materi kuliah, topik pembelajaran, atau isi catatan secara instan..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-20 py-2.5 text-xs sm:text-sm rounded-xl bg-slate-50 dark:bg-[#1c1c24] border border-slate-200/80 dark:border-[#2b2b35] text-slate-900 dark:text-[#f3f3f3] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400 hover:text-slate-700 dark:hover:text-[#fff] px-2 py-1 rounded-md bg-slate-200/70 dark:bg-[#282830] transition cursor-pointer"
+              >
+                Clear
+              </button>
+            )}
+          </div>
 
-              {subjects.length > 0 && (
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
-                  <button
-                    onClick={() => setSelectedSubject("all")}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
-                      selectedSubject === "all"
-                        ? "bg-white dark:bg-[#252525] text-slate-900 dark:text-[#f3f3f3] shadow-sm font-semibold"
-                        : "text-slate-600 dark:text-[#888]"
-                    }`}
-                  >
-                    Semua ({notes.length})
-                  </button>
-                  {subjects.map((subj) => (
-                    <button
-                      key={subj}
-                      onClick={() => setSelectedSubject(subj)}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
-                        selectedSubject === subj
-                          ? "bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 shadow-sm font-semibold"
-                          : "text-slate-600 dark:text-[#888]"
-                      }`}
-                    >
-                      {subj}
-                    </button>
-                  ))}
-                </div>
-              )}
+          {/* Subject Pills Filter underneath search input */}
+          <div className="flex items-center justify-between gap-3 pt-1 flex-wrap">
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
+              <span className="text-xs font-medium text-slate-400 dark:text-[#777] mr-1 hidden sm:inline">Mata Kuliah:</span>
+              <button
+                onClick={() => setSelectedSubject("all")}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                  selectedSubject === "all"
+                    ? "bg-indigo-600 text-white shadow-2xs"
+                    : "bg-slate-100 dark:bg-[#202028] text-slate-700 dark:text-[#a3a3a3] hover:bg-slate-200 dark:hover:bg-[#282832]"
+                }`}
+              >
+                Semua ({notes.length})
+              </button>
+              {subjects.map((subj) => (
+                <button
+                  key={subj}
+                  onClick={() => setSelectedSubject(subj)}
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                    selectedSubject === subj
+                      ? "bg-indigo-600 text-white shadow-2xs"
+                      : "bg-slate-100 dark:bg-[#202028] text-slate-700 dark:text-[#a3a3a3] hover:bg-slate-200 dark:hover:bg-[#282832]"
+                  }`}
+                >
+                  {subj}
+                </button>
+              ))}
             </div>
 
-            {/* Note Cards List */}
+            <span className="text-xs text-slate-500 dark:text-[#888]">
+              Menampilkan <strong className="text-slate-800 dark:text-[#ddd]">{filteredNotes.length}</strong> catatan
+            </span>
+          </div>
+        </div>
+
+        {/* Workspace Layout: Left (Sidebar Notes Directory) & Right (Active View / Editor) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* Left Column: Note Directory (Sidebar) */}
+          <div className="lg:col-span-4 space-y-3">
+            {/* Sidebar Controls: Title & Layout Switcher (List vs Grid) Sesuai QA #9 */}
+            <div className="flex items-center justify-between px-1">
+              <div className="flex items-center gap-2">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-[#a3a3a3]">
+                  Hasil Catatan
+                </h3>
+                <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-[#202028] text-slate-600 dark:text-[#888] text-xs font-semibold">
+                  {filteredNotes.length}
+                </span>
+              </div>
+
+              {/* Layout Switcher (List vs Grid) */}
+              <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#1c1c24] p-0.5 rounded-xl border border-slate-200/80 dark:border-[#282834]">
+                <button
+                  type="button"
+                  onClick={() => setSidebarLayout("list")}
+                  className={`px-2 py-1 rounded-lg text-xs font-medium transition cursor-pointer flex items-center gap-1.5 ${
+                    sidebarLayout === "list"
+                      ? "bg-white dark:bg-[#282832] text-indigo-600 dark:text-indigo-400 shadow-2xs font-semibold"
+                      : "text-slate-500 dark:text-[#888] hover:text-slate-800 dark:hover:text-[#eee]"
+                  }`}
+                  title="Tampilan List"
+                >
+                  <List className="w-3.5 h-3.5" />
+                  <span className="text-[11px]">List</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSidebarLayout("grid")}
+                  className={`px-2 py-1 rounded-lg text-xs font-medium transition cursor-pointer flex items-center gap-1.5 ${
+                    sidebarLayout === "grid"
+                      ? "bg-white dark:bg-[#282832] text-indigo-600 dark:text-indigo-400 shadow-2xs font-semibold"
+                      : "text-slate-500 dark:text-[#888] hover:text-slate-800 dark:hover:text-[#eee]"
+                  }`}
+                  title="Tampilan Grid"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                  <span className="text-[11px]">Grid</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Note Cards List / Grid */}
             {filteredNotes.length === 0 ? (
-              <div className="text-center py-12 px-4 bg-slate-50/50 dark:bg-[#141414]/50 rounded-2xl">
+              <div className="text-center py-12 px-4 bg-slate-50/50 dark:bg-[#141414]/50 rounded-2xl border border-dashed border-slate-200 dark:border-[#26262e]">
                 <NotebookPen className="w-8 h-8 text-slate-400 mx-auto mb-2" />
                 <p className="text-xs text-slate-500 dark:text-[#888]">
                   {notes.length === 0
                     ? "Belum ada catatan. Buat catatan pertamamu!"
-                    : "Tidak ada catatan yang cocok dengan filter."}
+                    : "Tidak ada catatan yang cocok dengan filter pencarian."}
                 </p>
               </div>
+            ) : sidebarLayout === "grid" ? (
+              /* Grid Layout */
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-2.5">
+                {filteredNotes.map((note) => {
+                  const isSelected = activeNoteId === note.id;
+                  return (
+                    <div
+                      key={note.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => {
+                        setActiveNoteId(note.id);
+                        setIsEditing(false);
+                        setActiveQuiz(note.aiQuiz || null);
+                        setUserAnswers({});
+                        setQuizSubmitted(false);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setActiveNoteId(note.id);
+                          setIsEditing(false);
+                          setActiveQuiz(note.aiQuiz || null);
+                          setUserAnswers({});
+                          setQuizSubmitted(false);
+                        }
+                      }}
+                      className={`p-3 rounded-xl border transition-all cursor-pointer text-left flex flex-col justify-between ${
+                        isSelected
+                          ? "bg-white dark:bg-[#1c1c24] border-indigo-500/80 shadow-xs ring-1 ring-indigo-500/20"
+                          : "bg-white dark:bg-[#16161c] border-slate-200/80 dark:border-[#26262e] hover:border-slate-300 dark:hover:border-[#383842]"
+                      }`}
+                    >
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-1 flex-wrap">
+                          {note.subject && (
+                            <span className="px-1.5 py-0.5 rounded text-[10.5px] font-semibold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 truncate max-w-full">
+                              {note.subject}
+                            </span>
+                          )}
+                          {note.summary && (
+                            <span className="px-1 py-0.5 rounded text-[10px] bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 flex items-center gap-0.5">
+                              <Sparkles className="w-2.5 h-2.5" />
+                              <span>AI</span>
+                            </span>
+                          )}
+                        </div>
+                        <h4 className="text-xs font-semibold text-slate-900 dark:text-[#f3f3f3] line-clamp-2">
+                          {note.title || "Tanpa Judul"}
+                        </h4>
+                        <p className="text-[11px] text-slate-500 dark:text-[#888] line-clamp-2 leading-relaxed">
+                          {(note.content || "").replace(/[#*`~_\[\]()>-]/g, "").trim() || "Catatan kosong..."}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             ) : (
+              /* List Layout */
               <div className="space-y-2">
                 {filteredNotes.map((note) => {
                   const isSelected = activeNoteId === note.id;

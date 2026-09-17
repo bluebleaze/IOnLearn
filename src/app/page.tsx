@@ -36,6 +36,7 @@ import {
   syncAllUserDataToCloud,
 } from "../lib/taskStore";
 import confetti from "canvas-confetti";
+import { TaskCompleteConfirmModal } from "../components/TaskCompleteConfirmModal";
 
 export default function HomeHighlightPage() {
   return (
@@ -53,6 +54,7 @@ function HomeContent() {
   const [todos, setTodos] = useState<PersonalTodo[]>([]);
   const [notes, setNotes] = useState<StudyNote[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [taskToConfirm, setTaskToConfirm] = useState<{ id: string; title: string } | null>(null);
 
   useEffect(() => {
     setTasks(loadTasks());
@@ -140,9 +142,15 @@ function HomeContent() {
     if (res.nowCompleted) {
       try {
         confetti({ particleCount: 35, spread: 50, origin: { y: 0.8 } });
-      } catch {}
+      } catch { }
       toast.success("Tugas Diselesaikan!", { description: res.title });
     }
+  };
+
+  const handleConfirmTaskComplete = () => {
+    if (!taskToConfirm) return;
+    handleToggleTask(taskToConfirm.id);
+    setTaskToConfirm(null);
   };
 
   const handleToggleTodo = (todoId: string) => {
@@ -151,7 +159,7 @@ function HomeContent() {
     if (res.nowCompleted) {
       try {
         confetti({ particleCount: 25, spread: 40, origin: { y: 0.8 } });
-      } catch {}
+      } catch { }
       toast.success("To-Do Selesai!", { description: res.title });
     }
   };
@@ -175,7 +183,7 @@ function HomeContent() {
                 <span>{new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long" })}</span>
               </div>
               <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-[#f3f3f3] font-heading">
-                Selamat datang kembali, {userProfile?.name?.split(" ")[0] || "Pelajar"}
+                Selamat datang kembali, {userProfile?.name ? userProfile.name.split(" ").slice(0, 2).join(" ") : "Pelajar"}
               </h1>
               <p className="text-xs sm:text-sm text-slate-600 dark:text-[#999] leading-relaxed">
                 Terdapat <span className="font-semibold text-slate-900 dark:text-[#f0f0f0]">{stats.activeTasksCount} tugas aktif</span>
@@ -210,18 +218,18 @@ function HomeContent() {
           </div>
         </div>
 
-        {/* 4 Key Highlight Metrics (Quiet, Balanced) */}
+        {/* 4 Key Highlight Metrics (Quiet, Balanced, Vibrant & High Contrast) */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {/* Card 1: Tugas Classroom */}
           <div
             onClick={() => router.push("/tasks")}
-            className="bg-white dark:bg-[#161616] p-4 sm:p-5 rounded-2xl shadow-2xs border border-slate-200/80 dark:border-[#262626] cursor-pointer hover:border-slate-300 dark:hover:border-[#3a3a3a] transition-colors group"
+            className="bg-white dark:bg-[#161616] p-4 sm:p-5 rounded-2xl shadow-2xs border border-slate-200/80 dark:border-[#262626] cursor-pointer hover:border-indigo-300 dark:hover:border-indigo-500/40 hover:shadow-md transition-all group relative overflow-hidden"
           >
             <div className="flex items-center justify-between">
-              <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-[#202020] text-slate-700 dark:text-[#d0d0d0] flex items-center justify-center">
+              <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center transition-transform group-hover:scale-105">
                 <BookOpen className="w-4 h-4" />
               </div>
-              <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors" />
+              <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors" />
             </div>
             <div className="mt-3">
               <div className="text-2xl font-bold tracking-tight text-slate-900 dark:text-[#f3f3f3] font-heading">
@@ -246,13 +254,13 @@ function HomeContent() {
           {/* Card 2: To-Do List */}
           <div
             onClick={() => router.push("/todo")}
-            className="bg-white dark:bg-[#161616] p-4 sm:p-5 rounded-2xl shadow-2xs border border-slate-200/80 dark:border-[#262626] cursor-pointer hover:border-slate-300 dark:hover:border-[#3a3a3a] transition-colors group"
+            className="bg-white dark:bg-[#161616] p-4 sm:p-5 rounded-2xl shadow-2xs border border-slate-200/80 dark:border-[#262626] cursor-pointer hover:border-amber-300 dark:hover:border-amber-500/40 hover:shadow-md transition-all group relative overflow-hidden"
           >
             <div className="flex items-center justify-between">
-              <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-[#202020] text-slate-700 dark:text-[#d0d0d0] flex items-center justify-center">
+              <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-100 dark:border-amber-900/50 text-amber-600 dark:text-amber-400 flex items-center justify-center transition-transform group-hover:scale-105">
                 <ListTodo className="w-4 h-4" />
               </div>
-              <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors" />
+              <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors" />
             </div>
             <div className="mt-3">
               <div className="text-2xl font-bold tracking-tight text-slate-900 dark:text-[#f3f3f3] font-heading">
@@ -270,13 +278,13 @@ function HomeContent() {
           {/* Card 3: Catatan Materi */}
           <div
             onClick={() => router.push("/notes")}
-            className="bg-white dark:bg-[#161616] p-4 sm:p-5 rounded-2xl shadow-2xs border border-slate-200/80 dark:border-[#262626] cursor-pointer hover:border-slate-300 dark:hover:border-[#3a3a3a] transition-colors group"
+            className="bg-white dark:bg-[#161616] p-4 sm:p-5 rounded-2xl shadow-2xs border border-slate-200/80 dark:border-[#262626] cursor-pointer hover:border-purple-300 dark:hover:border-purple-500/40 hover:shadow-md transition-all group relative overflow-hidden"
           >
             <div className="flex items-center justify-between">
-              <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-[#202020] text-slate-700 dark:text-[#d0d0d0] flex items-center justify-center">
+              <div className="w-9 h-9 rounded-xl bg-purple-50 dark:bg-purple-950/40 border border-purple-100 dark:border-purple-900/50 text-purple-600 dark:text-purple-400 flex items-center justify-center transition-transform group-hover:scale-105">
                 <NotebookPen className="w-4 h-4" />
               </div>
-              <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors" />
+              <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors" />
             </div>
             <div className="mt-3">
               <div className="text-2xl font-bold tracking-tight text-slate-900 dark:text-[#f3f3f3] font-heading">
@@ -287,7 +295,7 @@ function HomeContent() {
               </div>
             </div>
             <div className="mt-2.5 text-xs text-slate-500 dark:text-[#888] flex items-center gap-1">
-              <Sparkles className="w-3 h-3 text-indigo-500" />
+              <Sparkles className="w-3 h-3 text-purple-500" />
               <span>{stats.notesWithAICount} dirangkum AI</span>
             </div>
           </div>
@@ -295,13 +303,13 @@ function HomeContent() {
           {/* Card 4: Tanya AI Hub */}
           <div
             onClick={() => router.push("/chat")}
-            className="bg-white dark:bg-[#161616] p-4 sm:p-5 rounded-2xl shadow-2xs border border-slate-200/80 dark:border-[#262626] cursor-pointer hover:border-slate-300 dark:hover:border-[#3a3a3a] transition-colors group"
+            className="bg-white dark:bg-[#161616] p-4 sm:p-5 rounded-2xl shadow-2xs border border-slate-200/80 dark:border-[#262626] cursor-pointer hover:border-emerald-300 dark:hover:border-emerald-500/40 hover:shadow-md transition-all group relative overflow-hidden"
           >
             <div className="flex items-center justify-between">
-              <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-[#202020] text-slate-700 dark:text-[#d0d0d0] flex items-center justify-center">
+              <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center transition-transform group-hover:scale-105">
                 <BrainCircuit className="w-4 h-4" />
               </div>
-              <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors" />
+              <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" />
             </div>
             <div className="mt-3">
               <div className="text-2xl font-bold tracking-tight text-slate-900 dark:text-[#f3f3f3] font-heading">
@@ -363,7 +371,11 @@ function HomeContent() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleToggleTask(t.id);
+                            if (!t.isCompleted) {
+                              setTaskToConfirm({ id: t.id, title: t.title });
+                            } else {
+                              handleToggleTask(t.id);
+                            }
                           }}
                           className="w-5 h-5 rounded-md border border-slate-300 dark:border-[#444] hover:border-indigo-500 flex items-center justify-center shrink-0 cursor-pointer"
                         >
@@ -431,18 +443,16 @@ function HomeContent() {
                   {todayTodos.map((todo) => (
                     <div
                       key={todo.id}
-                      className={`p-2.5 rounded-xl bg-slate-50/70 dark:bg-[#181818] border border-slate-100 dark:border-[#242424] flex items-center justify-between gap-3 ${
-                        todo.isCompleted ? "opacity-50 line-through" : ""
-                      }`}
+                      className={`p-2.5 rounded-xl bg-slate-50/70 dark:bg-[#181818] border border-slate-100 dark:border-[#242424] flex items-center justify-between gap-3 ${todo.isCompleted ? "opacity-50 line-through" : ""
+                        }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
                         <button
                           onClick={() => handleToggleTodo(todo.id)}
-                          className={`w-4 h-4 rounded flex items-center justify-center shrink-0 cursor-pointer transition-colors ${
-                            todo.isCompleted
-                              ? "bg-emerald-500 text-white"
-                              : "border border-slate-300 dark:border-[#444]"
-                          }`}
+                          className={`w-4 h-4 rounded flex items-center justify-center shrink-0 cursor-pointer transition-colors ${todo.isCompleted
+                            ? "bg-emerald-500 text-white"
+                            : "border border-slate-300 dark:border-[#444]"
+                            }`}
                         >
                           {todo.isCompleted && <Check className="w-2.5 h-2.5 stroke-[3]" />}
                         </button>
@@ -546,6 +556,13 @@ function HomeContent() {
           </div>
         </div>
       </div>
+
+      <TaskCompleteConfirmModal
+        isOpen={Boolean(taskToConfirm)}
+        taskTitle={taskToConfirm?.title}
+        onClose={() => setTaskToConfirm(null)}
+        onConfirm={handleConfirmTaskComplete}
+      />
     </>
   );
 }

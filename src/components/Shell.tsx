@@ -354,7 +354,7 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
         syncClassroom,
       }}
     >
-      <SidebarProvider defaultOpen>
+      <SidebarProvider>
         <AppSidebar
           userProfile={userProfile}
           isConnected={true}
@@ -419,8 +419,8 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
             </div>
 
             {/* Quick Actions in Header */}
-            <div className="flex items-center gap-2">
-              {/* Navbar Classroom Sync Button */}
+            <div className="flex items-center gap-2 sm:gap-2.5">
+              {/* Refresh Sinkronisasi Button (Sesuai QA #8) */}
               <button
                 onClick={syncClassroom}
                 disabled={isSyncing}
@@ -428,10 +428,10 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
                   isSyncing
                     ? syncProgress?.message || "Sedang menyinkronkan data Google Classroom..."
                     : lastSyncedAt
-                    ? `Terakhir disinkronkan: ${new Date(lastSyncedAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })} (Klik untuk update)`
-                    : "Sinkronkan data Google Classroom"
+                    ? `Terakhir disinkronkan: ${new Date(lastSyncedAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })} (Klik untuk refresh)`
+                    : "Refresh Sinkronisasi data Google Classroom"
                 }
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-slate-100 dark:bg-[#161616] text-slate-700 dark:text-[#a3a3a3] hover:text-slate-900 dark:hover:text-[#f5f5f5] border border-slate-200/60 dark:border-[#262626] shadow-2xs transition-colors cursor-pointer disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-[#18181f] text-slate-700 dark:text-[#ccc] hover:text-slate-900 dark:hover:text-[#fff] border border-slate-200/80 dark:border-[#282834] shadow-2xs hover:bg-slate-200/60 dark:hover:bg-[#22222c] transition-all cursor-pointer disabled:opacity-50"
               >
                 <RefreshCw
                   className={`w-3.5 h-3.5 text-emerald-600 dark:text-[#34d399] ${
@@ -442,8 +442,8 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
                   {isSyncing
                     ? syncProgress?.percent
                       ? `Sinkron (${syncProgress.percent}%)`
-                      : "Sinkronisasi..."
-                    : "Sinkron Classroom"}
+                      : "Menyinkronkan..."
+                    : "Refresh Sinkronisasi"}
                 </span>
               </button>
 
@@ -452,7 +452,7 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
                 onClick={handleToggleTheme}
                 title={isDark ? "Ganti ke Mode Terang" : "Ganti ke Mode Gelap"}
                 aria-label="Toggle theme"
-                className="size-8 rounded-full flex items-center justify-center bg-slate-100 dark:bg-[#161616] text-slate-700 dark:text-[#a3a3a3] hover:text-slate-900 dark:hover:text-[#f5f5f5] shadow-2xs hover:bg-slate-200/70 dark:hover:bg-[#202020] transition-all cursor-pointer"
+                className="size-8 rounded-xl flex items-center justify-center bg-slate-100 dark:bg-[#18181f] text-slate-700 dark:text-[#a3a3a3] hover:text-slate-900 dark:hover:text-[#f5f5f5] border border-slate-200/80 dark:border-[#282834] shadow-2xs hover:bg-slate-200/70 dark:hover:bg-[#22222c] transition-all cursor-pointer shrink-0"
               >
                 {isDark ? (
                   <Sun className="size-4 text-amber-500" />

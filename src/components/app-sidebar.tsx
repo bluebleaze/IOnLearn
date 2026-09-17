@@ -27,6 +27,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { NavUser } from "@/components/nav-user";
+import { AccountModal } from "./AccountModal";
 import { BrandText, APP_TAGLINE } from "@/lib/brand";
 import { UserProfile } from "@/services/classroomService";
 import { cn } from "@/lib/utils";
@@ -52,6 +53,7 @@ export function AppSidebar({
   const { state, isMobile, setOpenMobile } = useSidebar();
   const isCollapsed = state === "collapsed" && !isMobile;
   const [isDark, setIsDark] = React.useState(false);
+  const [showAccountModal, setShowAccountModal] = React.useState(false);
 
   React.useEffect(() => {
     if (typeof window !== "undefined") {
@@ -109,13 +111,13 @@ export function AppSidebar({
   return (
     <Sidebar
       collapsible="icon"
-      className="border-r border-indigo-100/80 bg-[linear-gradient(180deg,_rgba(255,255,255,0.96),_rgba(247,247,255,0.9))] backdrop-blur-xl dark:border-indigo-500/10 dark:bg-[linear-gradient(180deg,_rgba(15,23,42,0.94),_rgba(17,24,39,0.96))] shadow-[0_18px_45px_rgba(79,70,229,0.09)] dark:shadow-[0_18px_45px_rgba(2,6,23,0.7)]"
+      className="border-r border-slate-200/80 bg-white dark:border-white/[0.08] dark:bg-black shadow-none transition-colors"
       {...props}
     >
       {/* Header with Brand */}
-      <SidebarHeader className="border-0 p-2 overflow-hidden whitespace-nowrap">
-        <SidebarMenu className="overflow-hidden">
-          <SidebarMenuItem className="overflow-hidden">
+      <SidebarHeader className="border-0 h-14 p-2 group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:px-0 flex flex-col justify-center overflow-hidden whitespace-nowrap">
+        <SidebarMenu className="overflow-hidden group-data-[collapsible=icon]:items-center">
+          <SidebarMenuItem className="overflow-hidden group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:justify-center">
             <SidebarMenuButton
               size="lg"
               tooltip="IOnLearn"
@@ -123,7 +125,7 @@ export function AppSidebar({
                 if (isMobile) setOpenMobile(false);
                 router.push("/");
               }}
-              className="cursor-pointer hover:bg-slate-100/80 dark:hover:bg-[#181818] transition-colors rounded-xl overflow-hidden whitespace-nowrap group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:justify-center pr-8"
+              className="cursor-pointer hover:bg-slate-100/80 dark:hover:bg-[#141416] transition-colors rounded-xl overflow-hidden whitespace-nowrap group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:mx-auto"
             >
               {isCollapsed ? (
                 /* Collapsed Icon: logoionlearnkecil */
@@ -154,25 +156,25 @@ export function AppSidebar({
       </SidebarHeader>
 
       {/* Main Content */}
-      <SidebarContent className="px-2 py-1 overflow-hidden whitespace-nowrap transition-[padding] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]">
+      <SidebarContent className="px-2 group-data-[collapsible=icon]:px-0 py-2 overflow-hidden whitespace-nowrap transition-[padding] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]">
         <SidebarGroup className="p-0 overflow-hidden">
-          <SidebarGroupLabel className="text-xs font-bold tracking-wider text-slate-500 dark:text-[#a3a3a3] uppercase px-2 mb-1.5 whitespace-nowrap truncate select-none">
+          <SidebarGroupLabel className="text-xs font-semibold tracking-wider text-slate-500 dark:text-[#6e6e73] uppercase px-2 mb-1.5 whitespace-nowrap truncate select-none">
             Menu Utama
           </SidebarGroupLabel>
           <SidebarGroupContent className="overflow-hidden">
-            <SidebarMenu className="space-y-1 overflow-hidden">
+            <SidebarMenu className="space-y-1 overflow-hidden group-data-[collapsible=icon]:items-center">
               {navItems.map((item) => (
-                <SidebarMenuItem key={item.title} className="overflow-hidden">
+                <SidebarMenuItem key={item.title} className="overflow-hidden group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:justify-center">
                   <SidebarMenuButton
                     asChild
                     isActive={item.isActive}
                     tooltip={item.title}
                     className={cn(
-                      "rounded-xl font-medium transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] overflow-hidden whitespace-nowrap group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:justify-center cursor-pointer",
+                      "rounded-xl font-medium transition-all duration-200 overflow-hidden whitespace-nowrap group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:mx-auto cursor-pointer",
                       isMobile ? "h-11 text-xs" : "h-9 text-xs",
                       item.isActive
-                        ? "bg-[linear-gradient(135deg,_rgba(99,102,241,0.13),_rgba(168,85,247,0.08))] text-indigo-700 shadow-[inset_0_0_0_1px_rgba(99,102,241,0.12)] dark:bg-[linear-gradient(135deg,_rgba(99,102,241,0.21),_rgba(59,130,246,0.08))] dark:text-indigo-200 font-semibold [&_svg]:text-indigo-600 dark:[&_svg]:text-indigo-300"
-                        : "text-slate-600 dark:text-[#a3a3a3] hover:text-slate-900 dark:hover:text-[#f5f5f5] hover:bg-[linear-gradient(135deg,_rgba(148,163,184,0.10),_rgba(99,102,241,0.08))] dark:hover:bg-[linear-gradient(135deg,_rgba(30,41,59,0.9),_rgba(67,56,202,0.12))]"
+                        ? "bg-slate-100 text-slate-900 font-semibold border border-slate-200/70 [&_svg]:text-slate-900 dark:bg-[#161618] dark:text-white dark:font-semibold dark:[&_svg]:text-white dark:border dark:border-white/[0.08]"
+                        : "text-slate-600 dark:text-[#8e8e93] hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/70 dark:hover:bg-[#121214]"
                     )}
                   >
                     <a
@@ -182,7 +184,7 @@ export function AppSidebar({
                         if (isMobile) setOpenMobile(false);
                         router.push(item.url);
                       }}
-                      className="flex items-center gap-2.5 px-3 py-2 w-full transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:gap-0"
+                      className="flex items-center gap-2.5 px-3 py-2 w-full transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-data-[collapsible=icon]:w-8 group-data-[collapsible=icon]:h-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:gap-0"
                     >
                       <item.icon className="size-4.5 shrink-0 transition-transform duration-150 group-hover:[&_svg]:scale-105" />
                       <span className="truncate whitespace-nowrap transition-[opacity,transform,max-width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] max-w-full group-data-[collapsible=icon]:max-w-0 group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:-translate-x-2 group-data-[collapsible=icon]:pointer-events-none group-data-[collapsible=icon]:hidden">
@@ -198,16 +200,27 @@ export function AppSidebar({
       </SidebarContent>
 
       {/* Footer with Profile and Settings */}
-      <SidebarFooter className="border-0 p-2 overflow-hidden whitespace-nowrap">
+      <SidebarFooter className="border-0 p-2 pb-3.5 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:pt-2 group-data-[collapsible=icon]:pb-3.5 overflow-hidden whitespace-nowrap">
         <NavUser
           user={user}
           onSyncClassroom={onSyncClassroom}
           isSyncing={isSyncing}
           onDisconnectGoogle={onDisconnectGoogle}
+          onOpenAccount={() => setShowAccountModal(true)}
         />
       </SidebarFooter>
 
       <SidebarRail />
+
+      <AccountModal
+        isOpen={showAccountModal}
+        onClose={() => setShowAccountModal(false)}
+        userProfile={userProfile}
+        isConnected={isConnected}
+        onSyncClassroom={onSyncClassroom}
+        isSyncing={isSyncing}
+        onDisconnectGoogle={onDisconnectGoogle}
+      />
     </Sidebar>
   );
 }

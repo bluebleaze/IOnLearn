@@ -25,10 +25,12 @@ import {
   Youtube,
   Plus,
   Filter,
+  Calendar,
 } from "lucide-react";
 import { Shell } from "@/components/Shell";
 import { TaskCard } from "@/components/TaskCard";
 import { TaskDetailModal } from "@/components/TaskDetailModal";
+import { TaskCompleteConfirmModal } from "@/components/TaskCompleteConfirmModal";
 import { TodoTask, PersonalTodo } from "@/types";
 import {
   loadTasks,
@@ -65,6 +67,7 @@ export default function TasksPage() {
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [activeDetailTaskId, setActiveDetailTaskId] = useState<string | null>(null);
   const [breakingDownTaskId, setBreakingDownTaskId] = useState<string | null>(null);
+  const [taskToComplete, setTaskToComplete] = useState<TodoTask | null>(null);
 
   const activeDetailTask = useMemo(() => {
     if (!activeDetailTaskId) return null;
@@ -165,31 +168,39 @@ export default function TasksPage() {
         return true;
       })
       .sort((a, b) => {
+        const now = Date.now();
+        const getStatusRank = (t: TodoTask): number => {
+          // Urutan prioritas QA #7: 1. Perlu Dikerjakan, 2. Nanti, 3. Telat, 4. Selesai
+          if (t.isCompleted) return 4;
+          if (typeof t.dueTimestamp === "number" && !isNaN(t.dueTimestamp) && t.dueTimestamp < now) {
+            return 3;
+          }
+          const isUrgent =
+            t.priority === "high" ||
+            (typeof t.dueTimestamp === "number" && !isNaN(t.dueTimestamp) && t.dueTimestamp - now <= 48 * 3600 * 1000) ||
+            (!t.dueTimestamp && t.priority !== "low");
+          if (isUrgent) return 1;
+          return 2;
+        };
+
+        const aRank = getStatusRank(a);
+        const bRank = getStatusRank(b);
+
+        // Tugas yang belum selesai harus selalu diprioritaskan di atas tugas selesai
+        // dan diurutkan berdasarkan status: Perlu Dikerjakan -> Nanti -> Telat -> Selesai
+        if (aRank !== bRank) {
+          return aRank - bRank;
+        }
+
         if (sortBy === "due-asc") {
-          const now = Date.now();
           const aHasDue = typeof a.dueTimestamp === "number" && !isNaN(a.dueTimestamp);
           const bHasDue = typeof b.dueTimestamp === "number" && !isNaN(b.dueTimestamp);
 
           if (aHasDue && bHasDue) {
-            const aIsOverdue = (a.dueTimestamp as number) < now;
-            const bIsOverdue = (b.dueTimestamp as number) < now;
-
-            // Tugas yang belum lewat tenggat: urutkan dari tenggat terdekat
-            if (!aIsOverdue && !bIsOverdue) {
-              return (a.dueTimestamp as number) - (b.dueTimestamp as number);
-            }
-            // Tugas mendatang/belum lewat tenggat berada di ATAS tugas yang terlewatkan
-            if (!aIsOverdue && bIsOverdue) return -1;
-            if (aIsOverdue && !bIsOverdue) return 1;
-
-            // Jika sama-sama terlewatkan: urutkan yang paling baru terlewat di atas
-            return (b.dueTimestamp as number) - (a.dueTimestamp as number);
+            return (a.dueTimestamp as number) - (b.dueTimestamp as number);
           }
-
-          // Tugas bertenggat waktu berada di atas tugas tanpa tenggat waktu
           if (aHasDue && !bHasDue) return -1;
           if (!aHasDue && bHasDue) return 1;
-
           return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
         }
         if (sortBy === "due-desc") {
@@ -212,7 +223,52 @@ export default function TasksPage() {
     setTasks(loadTasks());
   };
 
+  const getTaskStatusInfo = (t: TodoTask) => {
+    if (t.isCompleted) {
+      return {
+        label: "Selesai",
+        badgeClass: "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200/70 dark:border-emerald-800/50",
+        icon: CheckCircle2,
+      };
+    }
+    const now = Date.now();
+    if (typeof t.dueTimestamp === "number" && !isNaN(t.dueTimestamp) && t.dueTimestamp < now) {
+      return {
+        label: "Telat",
+        badgeClass: "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200/70 dark:border-rose-800/50",
+        icon: AlertCircle,
+      };
+    }
+    const isUrgent =
+      t.priority === "high" ||
+      (typeof t.dueTimestamp === "number" && !isNaN(t.dueTimestamp) && t.dueTimestamp - now <= 48 * 3600 * 1000) ||
+      (!t.dueTimestamp && t.priority !== "low");
+
+    if (isUrgent) {
+      return {
+        label: "Perlu Dikerjakan",
+        badgeClass: "bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border-indigo-200/70 dark:border-indigo-800/50",
+        icon: Clock,
+      };
+    }
+    return {
+      label: "Nanti",
+      badgeClass: "bg-slate-100 dark:bg-[#1e1e24] text-slate-700 dark:text-slate-300 border-slate-200/70 dark:border-[#30303a]",
+      icon: Calendar,
+    };
+  };
+
   const handleToggleComplete = (taskId: string) => {
+    const target = tasks.find((t) => t.id === taskId);
+    if (!target) return;
+    if (!target.isCompleted) {
+      setTaskToComplete(target);
+    } else {
+      executeToggleComplete(taskId);
+    }
+  };
+
+  const executeToggleComplete = (taskId: string) => {
     const res = toggleTaskComplete(taskId);
     setTasks(loadTasks());
     if (res.nowCompleted) {
@@ -942,89 +998,100 @@ export default function TasksPage() {
                   <table className="w-full text-left text-xs border-collapse">
                     <thead>
                       <tr className="border-b border-slate-200/80 dark:border-[#262626] bg-slate-50/70 dark:bg-[#181818] text-slate-600 dark:text-[#888]">
-                        <th className="py-3 px-4 w-10 text-center">Status</th>
+                        <th className="py-3 px-4 w-12 text-center">Centang</th>
                         <th className="py-3 px-4">Judul Tugas</th>
                         <th className="py-3 px-4 hidden md:table-cell">Mata Kuliah</th>
+                        <th className="py-3 px-4">Status</th>
                         <th className="py-3 px-4">Batas Waktu</th>
                         <th className="py-3 px-4 hidden sm:table-cell">AI Ready</th>
                         <th className="py-3 px-4 text-right">Aksi</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-[#222]">
-                      {filteredTasks.map((task) => (
-                        <tr
-                          key={task.id}
-                          className="hover:bg-slate-50/60 dark:hover:bg-[#1a1a1a] transition-colors cursor-pointer"
-                          onClick={() => setActiveDetailTaskId(task.id)}
-                        >
-                          <td className="py-2.5 px-4 text-center" onClick={(e) => e.stopPropagation()}>
-                            <button
-                              type="button"
-                              onClick={() => handleToggleComplete(task.id)}
-                              className="min-w-[44px] min-h-[44px] -m-2.5 flex items-center justify-center cursor-pointer mx-auto focus-visible:outline-none"
-                              title={task.isCompleted ? "Tandai Belum Selesai" : "Tandai Selesai"}
-                              aria-label={task.isCompleted ? `Tandai "${task.title}" belum selesai` : `Tandai "${task.title}" selesai`}
-                            >
-                              <span
-                                className={`w-4.5 h-4.5 rounded-md flex items-center justify-center transition ${
-                                  task.isCompleted
-                                    ? "bg-emerald-500 text-white"
-                                    : "border border-slate-300 dark:border-[#444] hover:border-emerald-500"
-                                }`}
-                              >
-                                {task.isCompleted && <Check className="w-3 h-3 stroke-[3]" />}
-                              </span>
-                            </button>
-                          </td>
-                          <td className="py-2.5 px-4 font-semibold text-slate-900 dark:text-[#f3f3f3] max-w-xs truncate">
-                            <span className={task.isCompleted ? "line-through text-slate-400 dark:text-[#777]" : ""}>
-                              {task.title}
-                            </span>
-                          </td>
-                          <td className="py-2.5 px-4 text-slate-600 dark:text-[#aaa] hidden md:table-cell truncate max-w-[160px]">
-                            {task.courseName || "Kuliah"}
-                          </td>
-                          <td className="py-2.5 px-4 whitespace-nowrap">{renderDueBadge(task)}</td>
-                          <td className="py-2.5 px-4 hidden sm:table-cell">
-                            {task.aiAnalysis ? (
-                              <span className="inline-flex items-center gap-1 text-xs text-indigo-600 dark:text-indigo-400 font-semibold">
-                                <Sparkles className="w-3 h-3" />
-                                Siap
-                              </span>
-                            ) : (
+                      {filteredTasks.map((task) => {
+                        const sInfo = getTaskStatusInfo(task);
+                        const SIcon = sInfo.icon;
+                        return (
+                          <tr
+                            key={task.id}
+                            className="hover:bg-slate-50/60 dark:hover:bg-[#1a1a1a] transition-colors cursor-pointer"
+                            onClick={() => setActiveDetailTaskId(task.id)}
+                          >
+                            <td className="py-2.5 px-4 text-center" onClick={(e) => e.stopPropagation()}>
                               <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleAnalyzeWithAI(task.id);
-                                }}
-                                className="text-xs text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-medium"
+                                type="button"
+                                onClick={() => handleToggleComplete(task.id)}
+                                className="min-w-[40px] min-h-[40px] -m-2 flex items-center justify-center cursor-pointer mx-auto focus-visible:outline-none"
+                                title={task.isCompleted ? "Tandai Belum Selesai" : "Tandai Selesai"}
+                                aria-label={task.isCompleted ? `Tandai "${task.title}" belum selesai` : `Tandai "${task.title}" selesai`}
                               >
-                                + Analisis
+                                <span
+                                  className={`w-4.5 h-4.5 rounded-md flex items-center justify-center transition ${
+                                    task.isCompleted
+                                      ? "bg-emerald-500 text-white shadow-2xs"
+                                      : "border-2 border-slate-300 dark:border-[#444] hover:border-emerald-500"
+                                  }`}
+                                >
+                                  {task.isCompleted && <Check className="w-3 h-3 stroke-[3]" />}
+                                </span>
                               </button>
-                            )}
-                          </td>
-                          <td className="py-2.5 px-4 text-right" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex items-center justify-end gap-1">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => router.push(`/chat?taskId=${task.id}`)}
-                                className="h-6.5 px-2 text-xs text-indigo-600 dark:text-indigo-400 font-semibold"
-                              >
-                                Tanya AI
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setActiveDetailTaskId(task.id)}
-                                className="h-6.5 px-2.5 text-xs rounded-lg border-slate-200 dark:border-[#2b2b2b]"
-                              >
-                                Detail
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
+                            </td>
+                            <td className="py-2.5 px-4 font-semibold text-slate-900 dark:text-[#f3f3f3] max-w-xs truncate">
+                              <span className={task.isCompleted ? "line-through text-slate-400 dark:text-[#777]" : ""}>
+                                {task.title}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-4 text-slate-600 dark:text-[#aaa] hidden md:table-cell truncate max-w-[160px]">
+                              {task.courseName || "Kuliah"}
+                            </td>
+                            <td className="py-2.5 px-4 whitespace-nowrap">
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-semibold border ${sInfo.badgeClass}`}>
+                                <SIcon className="w-3 h-3 shrink-0" />
+                                <span>{sInfo.label}</span>
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-4 whitespace-nowrap">{renderDueBadge(task)}</td>
+                            <td className="py-2.5 px-4 hidden sm:table-cell">
+                              {task.aiAnalysis ? (
+                                <span className="inline-flex items-center gap-1 text-xs text-indigo-600 dark:text-indigo-400 font-semibold">
+                                  <Sparkles className="w-3 h-3" />
+                                  Siap
+                                </span>
+                              ) : (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleAnalyzeWithAI(task.id);
+                                  }}
+                                  className="text-xs text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-medium"
+                                >
+                                  + Analisis
+                                </button>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-4 text-right" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex items-center justify-end gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => router.push(`/chat?taskId=${task.id}`)}
+                                  className="h-6.5 px-2 text-xs text-indigo-600 dark:text-indigo-400 font-semibold"
+                                >
+                                  Tanya AI
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setActiveDetailTaskId(task.id)}
+                                  className="h-6.5 px-2.5 text-xs rounded-lg border-slate-200 dark:border-[#2b2b2b]"
+                                >
+                                  Detail
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -1045,6 +1112,17 @@ export default function TasksPage() {
             onOpenChat={(taskId) => router.push(`/chat?taskId=${taskId}`)}
           />
         )}
+
+        <TaskCompleteConfirmModal
+          isOpen={Boolean(taskToComplete)}
+          onClose={() => setTaskToComplete(null)}
+          onConfirm={() => {
+            if (taskToComplete) {
+              executeToggleComplete(taskToComplete.id);
+            }
+          }}
+          taskTitle={taskToComplete?.title}
+        />
       </div>
     </Shell>
   );
