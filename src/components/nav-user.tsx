@@ -113,20 +113,9 @@ export function NavUser({
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator className="bg-slate-100 dark:bg-white/[0.08] my-1" />
-            
+
             <DropdownMenuGroup className="space-y-0.5">
-              {onOpenAccount && (
-                <DropdownMenuItem
-                  onClick={() => {
-                    if (isMobile) setOpenMobile(false);
-                    onOpenAccount();
-                  }}
-                  className="cursor-pointer gap-2 px-2 py-1.5 rounded-lg text-xs font-medium text-slate-700 dark:text-[#a3a3a3] hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-[#18181b] outline-none"
-                >
-                  <User className="w-4 h-4 text-slate-500 dark:text-[#737373]" />
-                  <span>Detail Akun</span>
-                </DropdownMenuItem>
-              )}
+
 
               <DropdownMenuItem
                 onClick={() => {
@@ -146,9 +135,8 @@ export function NavUser({
                   className="cursor-pointer gap-2 px-2 py-1.5 rounded-lg text-xs font-medium text-slate-700 dark:text-[#a3a3a3] hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-[#18181b] outline-none"
                 >
                   <RefreshCw
-                    className={`w-4 h-4 text-emerald-600 dark:text-[#34d399] ${
-                      isSyncing ? "animate-spin" : ""
-                    }`}
+                    className={`w-4 h-4 text-emerald-600 dark:text-[#34d399] ${isSyncing ? "animate-spin" : ""
+                      }`}
                   />
                   <span>
                     {isSyncing ? "Menyinkronkan..." : "Sinkronkan Classroom"}

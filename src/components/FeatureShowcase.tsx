@@ -304,7 +304,7 @@ export function FeatureShowcase({ language = "ENG" }: FeatureShowcaseProps) {
                       : "bg-white/80 dark:bg-white/5 border-slate-200/80 dark:border-white/10"
                       }`}>
                       <FileText className="w-3.5 h-3.5 text-amber-500 mb-1" />
-                      <div className="text-xs font-semibold text-slate-800 dark:text-white">Rangkuman AI</div>
+                      <div className="text-xs font-semibold text-slate-800 dark:text-white">Rangkuman</div>
                       <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
                         {language === "IND" ? "Catatan Ringkas" : "Smart Summary"}
                       </div>

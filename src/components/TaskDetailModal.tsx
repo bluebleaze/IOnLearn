@@ -2,25 +2,18 @@
 
 import React, { useState, useEffect } from "react";
 import {
-  Sparkles,
   ExternalLink,
   Youtube,
   BookOpen,
-  Clock,
   MessageSquareText,
   Loader2,
   FileText,
   Save,
-  CheckCircle2,
   Paperclip,
   ListChecks,
   Check,
   X,
   Copy,
-  AlertCircle,
-  Calendar,
-  GraduationCap,
-  User,
   Link as LinkIcon,
   Globe,
   HelpCircle,
@@ -74,7 +67,12 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   });
 
   useEffect(() => {
-    const syncStyle = () => {
+    const syncStyle = (e?: Event) => {
+      const customEvent = e as CustomEvent<{ style?: "drawer" | "modal" }>;
+      if (customEvent?.detail?.style) {
+        setModalStyle(customEvent.detail.style);
+        return;
+      }
       const prefs = loadPreferences();
       if (prefs?.taskModalStyle) {
         setModalStyle(prefs.taskModalStyle);
@@ -82,14 +80,14 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     };
 
     syncStyle();
-    window.addEventListener("taskStoreChange", syncStyle);
-    window.addEventListener("task-modal-style-changed", syncStyle);
-    window.addEventListener("storage", syncStyle);
+    window.addEventListener("taskStoreChange", syncStyle as EventListener);
+    window.addEventListener("task-modal-style-changed", syncStyle as EventListener);
+    window.addEventListener("storage", syncStyle as EventListener);
 
     return () => {
-      window.removeEventListener("taskStoreChange", syncStyle);
-      window.removeEventListener("task-modal-style-changed", syncStyle);
-      window.removeEventListener("storage", syncStyle);
+      window.removeEventListener("taskStoreChange", syncStyle as EventListener);
+      window.removeEventListener("task-modal-style-changed", syncStyle as EventListener);
+      window.removeEventListener("storage", syncStyle as EventListener);
     };
   }, [isOpen]);
 
@@ -139,7 +137,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
           origin: { y: 0.8 },
           colors: ["#818cf8", "#34d399", "#fbbf24"],
         });
-      } catch {}
+      } catch { }
       onToggleComplete(task.id);
     }
   };
@@ -151,82 +149,39 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     toast.success("Teks Disalin", { description: `"${label}" disalin ke clipboard.` });
   };
 
-  // Status computation for Task Detail
-  const getStatusInfo = () => {
-    if (task.isCompleted) {
-      return {
-        label: "Selesai",
-        badgeClass: "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200/70 dark:border-emerald-800/50",
-        icon: CheckCircle2,
-      };
-    }
-    const now = Date.now();
-    if (typeof task.dueTimestamp === "number" && !isNaN(task.dueTimestamp) && task.dueTimestamp < now) {
-      return {
-        label: "Telat",
-        badgeClass: "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200/70 dark:border-rose-800/50",
-        icon: AlertCircle,
-      };
-    }
-    const isUrgent =
-      task.priority === "high" ||
-      (typeof task.dueTimestamp === "number" && !isNaN(task.dueTimestamp) && task.dueTimestamp - now <= 48 * 3600 * 1000) ||
-      (!task.dueTimestamp && task.priority !== "low");
-
-    if (isUrgent) {
-      return {
-        label: "Perlu Dikerjakan",
-        badgeClass: "bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border-indigo-200/70 dark:border-indigo-800/50",
-        icon: Clock,
-      };
-    }
-    return {
-      label: "Nanti",
-      badgeClass: "bg-slate-100 dark:bg-[#1e1e24] text-slate-700 dark:text-slate-300 border-slate-200/70 dark:border-[#30303a]",
-      icon: Calendar,
-    };
-  };
-
-  const statusInfo = getStatusInfo();
-  const StatusIcon = statusInfo.icon;
-
   const ai = task.aiAnalysis;
   const checklistTotal = ai?.checklist?.length || 0;
   const checklistDone = ai?.checklist?.filter((c) => c.done)?.length || 0;
   const checklistPercent = checklistTotal > 0 ? Math.round((checklistDone / checklistTotal) * 100) : 0;
 
-  // Extract Course Name and Class (e.g., Pemrograman Web Lanjut (TI-3A))
-  const courseRaw = task.courseName || "Mata Kuliah Umum";
-  const classMatch = courseRaw.match(/\(([^)]+)\)/);
-  const detectedClass = classMatch ? classMatch[1] : "Kelas Utama";
+  // Extract Course Name and Subject
+  const courseRaw = task.courseName || "";
   const detectedSubject = courseRaw.replace(/\s*\([^)]*\)/, "").trim() || courseRaw;
 
   // ── Inner Content (Top Navigation First -> Overview & Actions -> Detail Content) ──
   const renderModalContent = () => (
     <div className="flex flex-col h-full overflow-hidden bg-white dark:bg-[#141417] text-slate-900 dark:text-[#f3f3f3] animate-in slide-in-from-right duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]">
-      
+
       {/* ── 1. TOP NAVIGATION / TASK TABS (Sesuai QA #4) ── */}
       <div className="px-3.5 sm:px-6 pt-3 pb-0 border-b border-slate-200/80 dark:border-[#26262e] bg-slate-50/80 dark:bg-[#18181f] flex items-center justify-between shrink-0">
         <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto no-scrollbar scroll-smooth">
           <button
             onClick={() => setActiveTab("summary")}
-            className={`min-h-[42px] py-2 px-3 sm:px-3.5 text-xs font-semibold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
-              activeTab === "summary"
+            className={`min-h-[42px] py-2 px-3 sm:px-3.5 text-xs font-semibold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${activeTab === "summary"
                 ? "border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400 bg-white dark:bg-[#141417] rounded-t-lg shadow-2xs"
                 : "border-transparent text-slate-600 dark:text-[#a3a3a3] hover:text-slate-900 dark:hover:text-[#f0f0f0]"
-            }`}
+              }`}
           >
-            <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
-            <span>Rangkuman AI</span>
+            <FileText className="w-3.5 h-3.5 text-indigo-500" />
+            <span>Rangkuman</span>
           </button>
 
           <button
             onClick={() => setActiveTab("checklist")}
-            className={`min-h-[42px] py-2 px-3 sm:px-3.5 text-xs font-semibold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
-              activeTab === "checklist"
+            className={`min-h-[42px] py-2 px-3 sm:px-3.5 text-xs font-semibold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${activeTab === "checklist"
                 ? "border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400 bg-white dark:bg-[#141417] rounded-t-lg shadow-2xs"
                 : "border-transparent text-slate-600 dark:text-[#a3a3a3] hover:text-slate-900 dark:hover:text-[#f0f0f0]"
-            }`}
+              }`}
           >
             <ListChecks className="w-3.5 h-3.5 text-emerald-500" />
             <span>Langkah ({checklistDone}/{checklistTotal})</span>
@@ -234,11 +189,10 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
           <button
             onClick={() => setActiveTab("youtube")}
-            className={`min-h-[42px] py-2 px-3 sm:px-3.5 text-xs font-semibold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
-              activeTab === "youtube"
+            className={`min-h-[42px] py-2 px-3 sm:px-3.5 text-xs font-semibold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${activeTab === "youtube"
                 ? "border-rose-600 text-rose-600 dark:border-rose-400 dark:text-rose-400 bg-white dark:bg-[#141417] rounded-t-lg shadow-2xs"
                 : "border-transparent text-slate-600 dark:text-[#a3a3a3] hover:text-slate-900 dark:hover:text-[#f0f0f0]"
-            }`}
+              }`}
           >
             <Youtube className="w-3.5 h-3.5 text-rose-500" />
             <span>Video ({ai?.youtubeVideos?.length || 0})</span>
@@ -246,11 +200,10 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
           <button
             onClick={() => setActiveTab("notes")}
-            className={`min-h-[42px] py-2 px-3 sm:px-3.5 text-xs font-semibold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
-              activeTab === "notes"
+            className={`min-h-[42px] py-2 px-3 sm:px-3.5 text-xs font-semibold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${activeTab === "notes"
                 ? "border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400 bg-white dark:bg-[#141417] rounded-t-lg shadow-2xs"
                 : "border-transparent text-slate-600 dark:text-[#a3a3a3] hover:text-slate-900 dark:hover:text-[#f0f0f0]"
-            }`}
+              }`}
           >
             <BookOpen className="w-3.5 h-3.5 text-indigo-500" />
             <span>Catatan</span>
@@ -268,72 +221,44 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
         </button>
       </div>
 
-      {/* ── 2. TASK OVERVIEW & ACTIONS (Tepat di bawah tab navigation) ── */}
-      <div className="p-4 sm:p-5 border-b border-slate-200/80 dark:border-[#26262e] bg-white dark:bg-[#141417] shrink-0 space-y-3">
-        {/* Top Badges */}
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/40">
-            {detectedSubject}
-          </span>
-          <span className="px-2.5 py-0.5 rounded-lg text-xs font-medium bg-slate-100 dark:bg-[#202028] text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-[#303038]">
-            Kelas: {detectedClass}
-          </span>
-          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-semibold border ${statusInfo.badgeClass}`}>
-            <StatusIcon className="w-3 h-3 shrink-0" />
-            <span>{statusInfo.label}</span>
-          </span>
-          {task.dueDateStr && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-medium bg-slate-100 dark:bg-[#202028] text-slate-700 dark:text-[#ccc]">
-              <Clock className="w-3 h-3 text-slate-400" />
-              <span>{task.dueDateStr}</span>
-            </span>
-          )}
-          {task.points !== undefined && (
-            <span className="px-2 py-0.5 rounded-lg text-xs font-medium bg-slate-100 dark:bg-[#202028] text-slate-600 dark:text-[#aaa]">
-              {task.points} Poin
-            </span>
+      {/* ── 2. TASK OVERVIEW & ACTIONS ── */}
+      <div className="p-4 sm:p-5 border-b border-slate-200/80 dark:border-[#26262e] bg-white dark:bg-[#141417] shrink-0 space-y-2.5">
+        {/* Title & subtle metadata */}
+        <div>
+          <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-[#f3f3f3] font-heading tracking-tight leading-snug">
+            {task.title}
+          </h2>
+          {(task.dueDateStr || task.points !== undefined || detectedSubject) && (
+            <p className="text-xs text-slate-500 dark:text-[#888] mt-1 flex items-center gap-2 flex-wrap">
+              {detectedSubject && <span>{detectedSubject}</span>}
+              {task.dueDateStr && (
+                <>
+                  <span>•</span>
+                  <span>Tenggat: {task.dueDateStr}</span>
+                </>
+              )}
+              {task.points !== undefined && (
+                <>
+                  <span>•</span>
+                  <span>{task.points} Poin</span>
+                </>
+              )}
+            </p>
           )}
         </div>
 
-        {/* Title */}
-        <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-[#f3f3f3] font-heading tracking-tight leading-snug">
-          {task.title}
-        </h2>
-
-        {/* Action Buttons Row (Generate Semua, Tandai Selesai, Tanya AI, Classroom) */}
-        <div className="flex flex-wrap items-center gap-2 pt-1">
-          {/* Generate Semua */}
-          <Button
-            onClick={() => onAnalyzeWithAI(task.id)}
-            disabled={task.aiLoading}
-            size="sm"
-            className="gap-1.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs cursor-pointer"
-            title="Generate Rangkuman, Langkah Kerja, Video, dan Catatan sekaligus"
-          >
-            {task.aiLoading ? (
-              <>
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                <span>Menganalisis...</span>
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Generate Semua</span>
-              </>
-            )}
-          </Button>
-
+        {/* Action Buttons Row */}
+        <div className="flex flex-wrap items-center gap-2 pt-0.5">
           {/* Tandai Selesai */}
           {onToggleComplete && (
             <Button
               onClick={handleToggleTaskComplete}
               variant={task.isCompleted ? "outline" : "emerald"}
               size="sm"
-              className={`text-xs rounded-xl font-semibold gap-1.5 cursor-pointer ${
-                task.isCompleted
+              className={`text-xs rounded-xl font-semibold gap-1.5 cursor-pointer ${task.isCompleted
                   ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800"
                   : ""
-              }`}
+                }`}
             >
               <Check className="w-3.5 h-3.5 stroke-[3]" />
               <span>{task.isCompleted ? "Selesai (Klik Buka)" : "Tandai Selesai"}</span>
@@ -369,58 +294,8 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
         </div>
       </div>
 
-      {/* ── 3. SCROLLABLE TAB & TASK DETAIL BODY (Sesuai QA #5) ── */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 text-xs sm:text-sm">
-        
-        {/* Comprehensive Task & Class Detail Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 p-4 rounded-2xl bg-slate-50/90 dark:bg-[#181820] border border-slate-200/80 dark:border-[#282834]">
-          {/* Detail Tugas */}
-          <div className="space-y-2">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#888] flex items-center gap-1.5">
-              <FileText className="w-3.5 h-3.5 text-indigo-500" />
-              Detail Tugas
-            </h4>
-            <div className="space-y-1.5 text-xs">
-              <div className="flex justify-between py-1 border-b border-slate-200/60 dark:border-[#22222a]">
-                <span className="text-slate-500 dark:text-[#888]">Status:</span>
-                <span className="font-semibold text-slate-900 dark:text-[#f3f3f3]">{statusInfo.label}</span>
-              </div>
-              <div className="flex justify-between py-1 border-b border-slate-200/60 dark:border-[#22222a]">
-                <span className="text-slate-500 dark:text-[#888]">Tenggat Waktu:</span>
-                <span className="font-semibold text-slate-900 dark:text-[#f3f3f3]">{task.dueDateStr || "Tanpa Batas Waktu"}</span>
-              </div>
-              <div className="flex justify-between py-1">
-                <span className="text-slate-500 dark:text-[#888]">Bobot Poin:</span>
-                <span className="font-semibold text-slate-900 dark:text-[#f3f3f3]">{task.points !== undefined ? `${task.points} Poin` : "Tidak Dinilai"}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Detail Kelas & Pengajar */}
-          <div className="space-y-2">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#888] flex items-center gap-1.5">
-              <GraduationCap className="w-3.5 h-3.5 text-indigo-500" />
-              Detail Kelas & Pengajar
-            </h4>
-            <div className="space-y-1.5 text-xs">
-              <div className="flex justify-between py-1 border-b border-slate-200/60 dark:border-[#22222a]">
-                <span className="text-slate-500 dark:text-[#888]">Mata Pelajaran:</span>
-                <span className="font-semibold text-slate-900 dark:text-[#f3f3f3] truncate max-w-[180px]">{detectedSubject}</span>
-              </div>
-              <div className="flex justify-between py-1 border-b border-slate-200/60 dark:border-[#22222a]">
-                <span className="text-slate-500 dark:text-[#888]">Kelas:</span>
-                <span className="font-semibold text-slate-900 dark:text-[#f3f3f3]">{detectedClass}</span>
-              </div>
-              <div className="flex justify-between py-1">
-                <span className="text-slate-500 dark:text-[#888]">Pengajar / Guru:</span>
-                <span className="font-semibold text-slate-900 dark:text-[#f3f3f3] flex items-center gap-1">
-                  <User className="w-3 h-3 text-slate-400" />
-                  <span>Pengajar Google Classroom</span>
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
+      {/* ── 3. SCROLLABLE TAB & TASK DETAIL BODY ── */}
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 text-xs sm:text-sm">
 
         {/* Deskripsi Lengkap Tugas */}
         {task.description ? (
@@ -530,8 +405,8 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                 {/* Summary Box */}
                 <div className="p-4 bg-slate-50 dark:bg-[#181820] rounded-xl border border-slate-200/80 dark:border-[#262632] space-y-2">
                   <h4 className="text-xs font-bold text-slate-900 dark:text-[#f3f3f3] flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-indigo-600 dark:text-[#818cf8]" />
-                    Intisari & Ringkasan Materi:
+                    <FileText className="w-3.5 h-3.5 text-indigo-600 dark:text-[#818cf8]" />
+                    Intisari Materi:
                   </h4>
                   <p className="text-xs sm:text-sm text-slate-700 dark:text-[#d4d4d8] leading-relaxed">
                     {ai.summary}
@@ -594,9 +469,9 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
               </div>
             ) : (
               <div className="text-center py-10 px-4 bg-slate-50 dark:bg-[#181820] rounded-2xl border border-slate-200/80 dark:border-[#262632] space-y-3">
-                <Sparkles className="w-8 h-8 mx-auto text-indigo-500 opacity-60" />
+                <FileText className="w-8 h-8 mx-auto text-indigo-500 opacity-60" />
                 <h4 className="text-sm font-semibold text-slate-900 dark:text-[#f3f3f3]">
-                  Belum ada rangkuman AI untuk tugas ini
+                  Belum ada rangkuman untuk tugas ini
                 </h4>
                 <p className="text-xs text-slate-500 dark:text-[#888] max-w-sm mx-auto">
                   Analisis AI akan merangkum materi, memecah langkah pengerjaan, dan mencarikan video rekomendasi.
@@ -605,7 +480,6 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                   onClick={() => onAnalyzeWithAI(task.id)}
                   className="text-xs rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer"
                 >
-                  <Sparkles className="w-3.5 h-3.5 mr-1" />
                   Mulai Analisis AI Sekarang
                 </Button>
               </div>
@@ -644,16 +518,14 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                         onToggleChecklistItem(task.id, item.id);
                       }
                     }}
-                    className={`p-3 rounded-xl border transition-all cursor-pointer min-h-[44px] flex items-center gap-3 ${
-                      item.done
+                    className={`p-3 rounded-xl border transition-all cursor-pointer min-h-[44px] flex items-center gap-3 ${item.done
                         ? "bg-slate-50/70 dark:bg-[#15151b] border-slate-200/70 dark:border-[#22222a] opacity-75"
                         : "bg-white dark:bg-[#181820] border-slate-200/80 dark:border-[#282834] hover:border-indigo-400 dark:hover:border-indigo-800"
-                    }`}
+                      }`}
                   >
                     <div
-                      className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 transition ${
-                        item.done ? "bg-emerald-500 text-white" : "border border-slate-300 dark:border-[#444]"
-                      }`}
+                      className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 transition ${item.done ? "bg-emerald-500 text-white" : "border border-slate-300 dark:border-[#444]"
+                        }`}
                     >
                       {item.done && <Check className="w-3 h-3 stroke-[3]" />}
                     </div>
@@ -813,7 +685,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent
         hideCloseButton
-        className="w-[calc(100%-1rem)] sm:w-full max-w-3xl h-[90dvh] sm:h-[88vh] max-h-[820px] p-0 flex flex-col gap-0 overflow-hidden bg-white dark:bg-[#141417] border-slate-200/80 dark:border-[#26262e] shadow-2xl rounded-2xl animate-in slide-in-from-right duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
+        className="w-[calc(100%-1.5rem)] sm:w-full max-w-2xl max-h-[85vh] p-0 flex flex-col gap-0 overflow-hidden bg-white dark:bg-[#141417] border-slate-200/80 dark:border-[#26262e] shadow-2xl rounded-2xl animate-in slide-in-from-right duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
       >
         <DialogTitle className="sr-only">{task.title}</DialogTitle>
         <DialogDescription className="sr-only">Detail tugas dan rangkuman materi pembelajaran</DialogDescription>

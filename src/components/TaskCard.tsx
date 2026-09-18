@@ -110,11 +110,10 @@ export const TaskCard: React.FC<TaskCardProps> = ({
         tabIndex={0}
         onClick={() => onOpenDetails(task)}
         onKeyDown={handleKeyDown}
-        className={`group rounded-2xl p-4 sm:p-5 shadow-xs border transition-all duration-200 flex flex-col justify-between cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#121212] ${
-          task.isCompleted
+        className={`group rounded-2xl p-4 sm:p-5 shadow-xs border transition-all duration-200 flex flex-col justify-between cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#121212] ${task.isCompleted
             ? "bg-slate-50/70 dark:bg-[#131316] border-slate-200/60 dark:border-[#222228] opacity-85"
             : "bg-white dark:bg-[#16161b] border-slate-200/80 dark:border-[#26262e] hover:border-indigo-400 dark:hover:border-indigo-700/60 hover:shadow-md hover:-translate-y-0.5"
-        }`}
+          }`}
       >
         <div className="space-y-3">
           {/* Top Header: Course Pill + Status Badge + Checkbox */}
@@ -152,11 +151,10 @@ export const TaskCard: React.FC<TaskCardProps> = ({
               aria-label={task.isCompleted ? `Tandai "${task.title}" belum selesai` : `Tandai "${task.title}" sudah selesai`}
             >
               <span
-                className={`w-5.5 h-5.5 rounded-lg flex items-center justify-center transition-colors focus-visible:ring-2 focus-visible:ring-emerald-500 ${
-                  task.isCompleted
+                className={`w-5.5 h-5.5 rounded-lg flex items-center justify-center transition-colors focus-visible:ring-2 focus-visible:ring-emerald-500 ${task.isCompleted
                     ? "bg-emerald-500 text-white shadow-2xs"
                     : "border-2 border-slate-300 hover:border-emerald-500 dark:border-[#444] text-slate-700 dark:text-[#f5f5f5]"
-                }`}
+                  }`}
               >
                 {task.isCompleted && <Check className="w-3.5 h-3.5 stroke-[3]" />}
               </span>
@@ -165,11 +163,10 @@ export const TaskCard: React.FC<TaskCardProps> = ({
 
           {/* Task Title */}
           <h3
-            className={`font-heading text-sm sm:text-base font-bold tracking-tight leading-snug break-words transition-colors group-hover:text-indigo-600 dark:group-hover:text-indigo-400 ${
-              task.isCompleted
+            className={`font-heading text-sm sm:text-base font-bold tracking-tight leading-snug break-words transition-colors group-hover:text-indigo-600 dark:group-hover:text-indigo-400 ${task.isCompleted
                 ? "text-slate-600 dark:text-[#888] line-through decoration-slate-300 dark:decoration-slate-700"
                 : "text-slate-900 dark:text-[#f5f5f5]"
-            }`}
+              }`}
             title={task.title}
           >
             {truncateWords(task.title, 12)}
@@ -208,9 +205,8 @@ export const TaskCard: React.FC<TaskCardProps> = ({
             </div>
           ) : task.aiAnalysis ? (
             <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold bg-indigo-50 dark:bg-[#1f1f28] text-indigo-700 dark:text-[#a5b4fc]">
-                <Sparkles className="w-3 h-3 text-indigo-600 dark:text-[#818cf8]" />
-                Rangkuman AI
+              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-indigo-50 dark:bg-[#1f1f28] text-indigo-700 dark:text-[#a5b4fc]">
+                Rangkuman
               </span>
               {checklistTotal > 0 && (
                 <span className="text-xs text-slate-600 dark:text-[#a3a3a3]">

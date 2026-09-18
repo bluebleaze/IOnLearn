@@ -468,7 +468,7 @@ export default function NotesPage() {
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || "Gagal menghasilkan rangkuman AI.");
+        throw new Error(errorData.error || "Gagal menghasilkan rangkuman.");
       }
 
       const data = await res.json();
@@ -480,7 +480,7 @@ export default function NotesPage() {
           updatedAt: new Date().toISOString(),
         });
         setNotes(loadNotes());
-        toast.success("Rangkuman AI Berhasil Dibuat!");
+        toast.success("Rangkuman Berhasil Dibuat!");
       }
     } catch (err: any) {
       toast.error("Gagal Merangkum", { description: err.message });
@@ -574,7 +574,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
               Catatan Materi
             </h1>
             <p className="text-sm text-slate-500 dark:text-[#a3a3a3] mt-1">
-              Ruang belajar mandiri untuk menyimpan materi kuliah berbasis Markdown, membuat rangkuman AI, dan latihan kuis interaktif.
+              Ruang belajar mandiri untuk menyimpan materi kuliah berbasis Markdown, membuat rangkuman, dan latihan kuis interaktif.
             </p>
           </div>
 
@@ -802,9 +802,8 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                               </span>
                             )}
                             {note.summary && (
-                              <span className="px-1.5 py-0.5 rounded text-xs bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 flex items-center gap-1">
-                                <Sparkles className="w-2.5 h-2.5" />
-                                Rangkuman AI
+                              <span className="px-1.5 py-0.5 rounded text-xs bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 flex items-center">
+                                Rangkuman
                               </span>
                             )}
                           </div>
@@ -939,8 +938,8 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                 {activeNote.summary && (
                   <div className="bg-indigo-50/60 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40 rounded-xl p-4 space-y-2">
                     <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-700 dark:text-indigo-300">
-                      <Sparkles className="w-3.5 h-3.5" />
-                      <span>Rangkuman Inti AI</span>
+                      <FileText className="w-3.5 h-3.5" />
+                      <span>Rangkuman</span>
                     </div>
                     <div className="prose prose-sm dark:prose-invert max-w-none text-xs text-slate-700 dark:text-[#d4d4d4] leading-relaxed">
                       <Markdown
@@ -1108,7 +1107,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                   Pilih Catatan untuk Membaca
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-[#888] max-w-sm mx-auto">
-                  Pilih salah satu catatan materi di kolom kiri untuk melihat isinya, menghasilkan rangkuman cerdas AI, atau mulai latihan kuis.
+                  Pilih salah satu catatan materi di kolom kiri untuk melihat isinya, menghasilkan rangkuman cerdas, atau mulai latihan kuis.
                 </p>
                 <Button
                   size="sm"

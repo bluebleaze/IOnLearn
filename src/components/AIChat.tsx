@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "motion/react";
 import {
   Send,
   Plus,
@@ -19,6 +20,8 @@ import {
   CheckCircle2,
   GraduationCap,
   Paperclip,
+  PanelLeft,
+  Columns2,
   X,
   FileText,
   ImageIcon,
@@ -499,41 +502,36 @@ export const AIChat: React.FC<AIChatProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
+  // Layout Modes: 'sidebar' | 'split' | 'minimal'
+  const [layoutMode, setLayoutMode] = useState<"sidebar" | "split" | "minimal">(() => {
+    return userPreferences?.chatLayout || loadPreferences()?.chatLayout || "sidebar";
+  });
+  const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = useState(true);
+  const [splitWorkspaceTab, setSplitWorkspaceTab] = useState<"task" | "note">("task");
+
   // Drawer History state
   const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false);
 
-  // Chat Style Mode (Claude style: Chat vs Cowork)
-  const [chatStyle, setChatStyle] = useState<"chat" | "cowork">("chat");
-  const [showCoworkModal, setShowCoworkModal] = useState(false);
-
-  const handleSelectChatStyle = (style: "chat" | "cowork") => {
-    if (style === "cowork") {
-      try {
-        const alreadySeen = sessionStorage.getItem("ionlearn_cowork_modal_seen");
-        if (!alreadySeen) {
-          setShowCoworkModal(true);
-          return;
-        }
-      } catch {
-        setShowCoworkModal(true);
-        return;
-      }
+  useEffect(() => {
+    if (userPreferences?.chatLayout) {
+      setLayoutMode(userPreferences.chatLayout);
     }
-    setChatStyle(style);
-  };
+  }, [userPreferences?.chatLayout]);
 
-  const handleCancelCowork = () => {
-    setShowCoworkModal(false);
-    setChatStyle("chat");
-  };
-
-  const handleConfirmCowork = () => {
-    setShowCoworkModal(false);
-    setChatStyle("cowork");
-    try {
-      sessionStorage.setItem("ionlearn_cowork_modal_seen", "true");
-    } catch { }
-  };
+  useEffect(() => {
+    const handleLayoutChange = () => {
+      const p = loadPreferences();
+      if (p?.chatLayout) {
+        setLayoutMode(p.chatLayout);
+      }
+    };
+    window.addEventListener("chat-layout-changed", handleLayoutChange);
+    window.addEventListener("taskStoreChange", handleLayoutChange);
+    return () => {
+      window.removeEventListener("chat-layout-changed", handleLayoutChange);
+      window.removeEventListener("taskStoreChange", handleLayoutChange);
+    };
+  }, []);
 
   // Speech-to-Text (STT) and Text-to-Speech (TTS)
   const [isListening, setIsListening] = useState(false);
@@ -809,11 +807,11 @@ export const AIChat: React.FC<AIChatProps> = ({
       prev.map((s) =>
         s.id === currentId
           ? {
-              ...s,
-              messages: s.messages.map((m) =>
-                m.isStreaming ? { ...m, isStreaming: false } : m
-              ),
-            }
+            ...s,
+            messages: s.messages.map((m) =>
+              m.isStreaming ? { ...m, isStreaming: false } : m
+            ),
+          }
           : s
       )
     );
@@ -1257,7 +1255,7 @@ export const AIChat: React.FC<AIChatProps> = ({
     const subtitle = courseName
       ? `Mata Pelajaran: ${courseName}`
       : lines.find((l) => !l.startsWith("#") && l.length > 15 && l.length < 90)?.replace(/^[-*•]+\s*/, "") ||
-        "Ringkasan Materi Pembelajaran Komprehensif";
+      "Ringkasan Materi Pembelajaran Komprehensif";
 
     const sections = cleanContent.split(/(?:^|\n)(?=#+\s*)/);
     const slides: { title: string; bullets: string[]; notes?: string }[] = [];
@@ -1828,16 +1826,12 @@ export const AIChat: React.FC<AIChatProps> = ({
       aiPromptPayload = `${aiPromptPayload}\n\n[Dokumen/File Terlampir]:\n${fileContext}`;
     }
 
-    if (chatStyle === "cowork") {
-      aiPromptPayload = `${aiPromptPayload}\n\n[Mode Kolaborasi / Cowork]: Berikan jawaban yang sangat terstruktur, jelas, lengkap dengan format siap pakai (misal rencana aksi bertahap, poin eksekusi langsung, atau template draf kerja).`;
-    }
-
     let contextualTask = activeTask;
     if (!contextualTask && activeNote) {
       contextualTask = {
         id: activeNote.id,
         title: activeNote.title || "Catatan Materi",
-        description: `${activeNote.content || ""}\n\n${activeNote.summary ? `Rangkuman AI:\n${activeNote.summary}` : ""
+        description: `${activeNote.content || ""}\n\n${activeNote.summary ? `Rangkuman:\n${activeNote.summary}` : ""
           }`,
         courseName: activeNote.subject || "Catatan Materi",
         isCompleted: false,
@@ -1886,8 +1880,8 @@ export const AIChat: React.FC<AIChatProps> = ({
         (currentAttachments.some((f) => f.type === "youtube")
           ? `Analisis Video YouTube: ${currentAttachments.find((f) => f.type === "youtube")?.youtubeInfo?.title || "Video Pembelajaran"}`
           : currentAttachments.some((f) => f.type === "image")
-          ? "Analisis Foto/Gambar"
-          : "Analisis Dokumen Terlampir"),
+            ? "Analisis Foto/Gambar"
+            : "Analisis Dokumen Terlampir"),
       attachments: currentAttachments.map((a) => ({
         name: a.name,
         size: a.size,
@@ -1967,7 +1961,7 @@ export const AIChat: React.FC<AIChatProps> = ({
               );
             }
           })
-          .catch(() => {});
+          .catch(() => { });
       }
     }
 
@@ -1977,8 +1971,8 @@ export const AIChat: React.FC<AIChatProps> = ({
         content:
           idx === nextMessages.length - 1
             ? (isDeepResearchEnabled
-                ? `[MODE DEEP RESEARCH AKTIF]: Berikan riset mendalam, tinjau berbagai dimensi materi secara komprehensif, dan sertakan fakta pendukung terstruktur.\n\n${aiPromptPayload}`
-                : aiPromptPayload)
+              ? `[MODE DEEP RESEARCH AKTIF]: Berikan riset mendalam, tinjau berbagai dimensi materi secara komprehensif, dan sertakan fakta pendukung terstruktur.\n\n${aiPromptPayload}`
+              : aiPromptPayload)
             : m.content,
         attachments:
           idx === nextMessages.length - 1 ? currentAttachments : undefined,
@@ -1992,20 +1986,20 @@ export const AIChat: React.FC<AIChatProps> = ({
               prev.map((s) =>
                 s.id === currentId
                   ? {
-                      ...s,
-                      messages: s.messages.map((m) =>
-                        m.id === assistantMsgId
-                          ? {
-                              ...m,
-                              streamStage: stage,
-                              streamStageDetail: detail,
-                              ...(searchQueries && searchQueries.length > 0
-                                ? { streamSearchQueries: searchQueries }
-                                : {}),
-                            }
-                          : m
-                      ),
-                    }
+                    ...s,
+                    messages: s.messages.map((m) =>
+                      m.id === assistantMsgId
+                        ? {
+                          ...m,
+                          streamStage: stage,
+                          streamStageDetail: detail,
+                          ...(searchQueries && searchQueries.length > 0
+                            ? { streamSearchQueries: searchQueries }
+                            : {}),
+                        }
+                        : m
+                    ),
+                  }
                   : s
               )
             );
@@ -2015,18 +2009,18 @@ export const AIChat: React.FC<AIChatProps> = ({
               prev.map((s) =>
                 s.id === currentId
                   ? {
-                      ...s,
-                      messages: s.messages.map((m) =>
-                        m.id === assistantMsgId
-                          ? {
-                              ...m,
-                              thoughtProcess: accumulated,
-                              streamStage: "thinking",
-                              streamStageDetail: "Memverifikasi data & merumuskan analisis...",
-                            }
-                          : m
-                      ),
-                    }
+                    ...s,
+                    messages: s.messages.map((m) =>
+                      m.id === assistantMsgId
+                        ? {
+                          ...m,
+                          thoughtProcess: accumulated,
+                          streamStage: "thinking",
+                          streamStageDetail: "Memverifikasi data & merumuskan analisis...",
+                        }
+                        : m
+                    ),
+                  }
                   : s
               )
             );
@@ -2036,19 +2030,19 @@ export const AIChat: React.FC<AIChatProps> = ({
               prev.map((s) =>
                 s.id === currentId
                   ? {
-                      ...s,
-                      messages: s.messages.map((m) =>
-                        m.id === assistantMsgId
-                          ? {
-                              ...m,
-                              content: accumulated,
-                              isStreaming: true,
-                              streamStage: "answering",
-                              streamStageDetail: "Menyusun jawaban terstruktur...",
-                            }
-                          : m
-                      ),
-                    }
+                    ...s,
+                    messages: s.messages.map((m) =>
+                      m.id === assistantMsgId
+                        ? {
+                          ...m,
+                          content: accumulated,
+                          isStreaming: true,
+                          streamStage: "answering",
+                          streamStageDetail: "Menyusun jawaban terstruktur...",
+                        }
+                        : m
+                    ),
+                  }
                   : s
               )
             );
@@ -2058,13 +2052,13 @@ export const AIChat: React.FC<AIChatProps> = ({
               prev.map((s) =>
                 s.id === currentId
                   ? {
-                      ...s,
-                      messages: s.messages.map((m) =>
-                        m.id === assistantMsgId
-                          ? { ...m, groundingSources: sources }
-                          : m
-                      ),
-                    }
+                    ...s,
+                    messages: s.messages.map((m) =>
+                      m.id === assistantMsgId
+                        ? { ...m, groundingSources: sources }
+                        : m
+                    ),
+                  }
                   : s
               )
             );
@@ -2175,8 +2169,8 @@ export const AIChat: React.FC<AIChatProps> = ({
           res.createdDocument.type === "pdf"
             ? "📄 File PDF Telah Dibuat!"
             : res.createdDocument.type === "xlsx"
-            ? "📊 File Excel (.xlsx) Telah Dibuat!"
-            : "📝 File Word Telah Dibuat!",
+              ? "📊 File Excel (.xlsx) Telah Dibuat!"
+              : "📝 File Word Telah Dibuat!",
           {
             description: `"${res.createdDocument.title}" siap diunduh di dalam percakapan.`,
           }
@@ -2222,17 +2216,17 @@ export const AIChat: React.FC<AIChatProps> = ({
           prev.map((s) =>
             s.id === currentId
               ? {
-                  ...s,
-                  messages: s.messages.map((m) =>
-                    m.id === assistantMsgId
-                      ? {
-                          ...m,
-                          content: m.content || "*(Jawaban dihentikan)*",
-                          isStreaming: false,
-                        }
-                      : m
-                  ),
-                }
+                ...s,
+                messages: s.messages.map((m) =>
+                  m.id === assistantMsgId
+                    ? {
+                      ...m,
+                      content: m.content || "*(Jawaban dihentikan)*",
+                      isStreaming: false,
+                    }
+                    : m
+                ),
+              }
               : s
           )
         );
@@ -2326,7 +2320,7 @@ export const AIChat: React.FC<AIChatProps> = ({
         contextualTask = {
           id: activeNote.id,
           title: activeNote.title || "Catatan Materi",
-          description: `${activeNote.content || ""}\n\n${activeNote.summary ? `Rangkuman AI:\n${activeNote.summary}` : ""}`,
+          description: `${activeNote.content || ""}\n\n${activeNote.summary ? `Rangkuman:\n${activeNote.summary}` : ""}`,
           courseName: activeNote.subject || "Catatan Materi",
           isCompleted: false,
           priority: "medium",
@@ -2350,20 +2344,20 @@ export const AIChat: React.FC<AIChatProps> = ({
               prev.map((s) =>
                 s.id === currentId
                   ? {
-                      ...s,
-                      messages: s.messages.map((m) =>
-                        m.id === assistantMsgId
-                          ? {
-                              ...m,
-                              streamStage: stage,
-                              streamStageDetail: detail,
-                              ...(searchQueries && searchQueries.length > 0
-                                ? { streamSearchQueries: searchQueries }
-                                : {}),
-                            }
-                          : m
-                      ),
-                    }
+                    ...s,
+                    messages: s.messages.map((m) =>
+                      m.id === assistantMsgId
+                        ? {
+                          ...m,
+                          streamStage: stage,
+                          streamStageDetail: detail,
+                          ...(searchQueries && searchQueries.length > 0
+                            ? { streamSearchQueries: searchQueries }
+                            : {}),
+                        }
+                        : m
+                    ),
+                  }
                   : s
               )
             );
@@ -2373,18 +2367,18 @@ export const AIChat: React.FC<AIChatProps> = ({
               prev.map((s) =>
                 s.id === currentId
                   ? {
-                      ...s,
-                      messages: s.messages.map((m) =>
-                        m.id === assistantMsgId
-                          ? {
-                              ...m,
-                              thoughtProcess: accumulated,
-                              streamStage: "thinking",
-                              streamStageDetail: "Memverifikasi data & merumuskan analisis...",
-                            }
-                          : m
-                      ),
-                    }
+                    ...s,
+                    messages: s.messages.map((m) =>
+                      m.id === assistantMsgId
+                        ? {
+                          ...m,
+                          thoughtProcess: accumulated,
+                          streamStage: "thinking",
+                          streamStageDetail: "Memverifikasi data & merumuskan analisis...",
+                        }
+                        : m
+                    ),
+                  }
                   : s
               )
             );
@@ -2394,19 +2388,19 @@ export const AIChat: React.FC<AIChatProps> = ({
               prev.map((s) =>
                 s.id === currentId
                   ? {
-                      ...s,
-                      messages: s.messages.map((m) =>
-                        m.id === assistantMsgId
-                          ? {
-                              ...m,
-                              content: accumulated,
-                              isStreaming: true,
-                              streamStage: "answering",
-                              streamStageDetail: "Menyusun jawaban terstruktur...",
-                            }
-                          : m
-                      ),
-                    }
+                    ...s,
+                    messages: s.messages.map((m) =>
+                      m.id === assistantMsgId
+                        ? {
+                          ...m,
+                          content: accumulated,
+                          isStreaming: true,
+                          streamStage: "answering",
+                          streamStageDetail: "Menyusun jawaban terstruktur...",
+                        }
+                        : m
+                    ),
+                  }
                   : s
               )
             );
@@ -2416,13 +2410,13 @@ export const AIChat: React.FC<AIChatProps> = ({
               prev.map((s) =>
                 s.id === currentId
                   ? {
-                      ...s,
-                      messages: s.messages.map((m) =>
-                        m.id === assistantMsgId
-                          ? { ...m, groundingSources: sources }
-                          : m
-                      ),
-                    }
+                    ...s,
+                    messages: s.messages.map((m) =>
+                      m.id === assistantMsgId
+                        ? { ...m, groundingSources: sources }
+                        : m
+                    ),
+                  }
                   : s
               )
             );
@@ -2559,17 +2553,17 @@ export const AIChat: React.FC<AIChatProps> = ({
           prev.map((s) =>
             s.id === currentId
               ? {
-                  ...s,
-                  messages: s.messages.map((m) =>
-                    m.id === assistantMsgId
-                      ? {
-                          ...m,
-                          content: m.content || "*(Jawaban dihentikan)*",
-                          isStreaming: false,
-                        }
-                      : m
-                  ),
-                }
+                ...s,
+                messages: s.messages.map((m) =>
+                  m.id === assistantMsgId
+                    ? {
+                      ...m,
+                      content: m.content || "*(Jawaban dihentikan)*",
+                      isStreaming: false,
+                    }
+                    : m
+                ),
+              }
               : s
           )
         );
@@ -2854,10 +2848,10 @@ export const AIChat: React.FC<AIChatProps> = ({
               attachedFiles.some((f) => f.type === "youtube")
                 ? `Tanyakan materi tentang "${attachedFiles.find((f) => f.type === "youtube")?.youtubeInfo?.title || "Video YouTube"}"… (atau tekan Enter untuk analisis lengkap)`
                 : activeTask
-                ? `Tanyakan tentang tugas "${activeTask.title}"…`
-                : activeNote
-                  ? `Tanyakan tentang catatan "${activeNote.title}"…`
-                  : "Tanyakan konsep, rumus, lampirkan berkas, atau tempel link YouTube… (Enter untuk kirim)"
+                  ? `Tanyakan tentang tugas "${activeTask.title}"…`
+                  : activeNote
+                    ? `Tanyakan tentang catatan "${activeNote.title}"…`
+                    : "Tanyakan konsep, rumus, lampirkan berkas, atau tempel link YouTube… (Enter untuk kirim)"
             }
             className="w-full bg-transparent border-0 focus:outline-none text-xs sm:text-sm text-slate-900 dark:text-[#ececec] placeholder:text-slate-400 dark:placeholder:text-[#666] pt-3.5 px-3.5 resize-none max-h-40 min-h-[24px] leading-relaxed"
           />
@@ -2873,11 +2867,10 @@ export const AIChat: React.FC<AIChatProps> = ({
                     setIsToolsMenuOpen(!isToolsMenuOpen);
                     setActiveSubmenu("none");
                   }}
-                  className={`p-1.5 transition-all cursor-pointer rounded-xl flex items-center justify-center ${
-                    isToolsMenuOpen
-                      ? "bg-indigo-600 text-white shadow-sm shadow-indigo-500/30"
-                      : "text-slate-500 dark:text-[#888] hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-[#222]"
-                  }`}
+                  className={`p-1.5 transition-all cursor-pointer rounded-xl flex items-center justify-center ${isToolsMenuOpen
+                    ? "bg-indigo-600 text-white shadow-sm shadow-indigo-500/30"
+                    : "text-slate-500 dark:text-[#888] hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-[#222]"
+                    }`}
                   title="Menu Alat AI, Pencarian Web & Lampiran"
                 >
                   <Plus className={`w-4 h-4 transition-transform duration-200 ${isToolsMenuOpen ? "rotate-45" : ""}`} />
@@ -2910,12 +2903,12 @@ export const AIChat: React.FC<AIChatProps> = ({
                         className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-[#ededed] hover:bg-[#262626] transition cursor-pointer text-left"
                       >
                         <svg className="w-4 h-4 shrink-0" viewBox="0 0 87.3 78" fill="none">
-                          <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8H0c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
-                          <path d="M43.65 25 29.9 1.2C28.55 2 27.4 3.1 26.6 4.5L1.2 48.5C.4 49.9 0 51.45 0 53h27.5z" fill="#00ac47"/>
-                          <path d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5H59.8l5.85 10.15z" fill="#ea4335"/>
-                          <path d="M43.65 25 57.4 1.2C56.05.4 54.5 0 52.95 0H34.35c-1.55 0-3.1.4-4.45 1.2z" fill="#00832d"/>
-                          <path d="m59.8 53-16.15-28H16.15L29.9 48.8l13.75 23.8h27.5c1.55 0 3.1-.4 4.45-1.2z" fill="#2684fc"/>
-                          <path d="m73.55 76.8-13.75-23.8-5.85 10.15 13.75 23.8c1.55 0 3.1-.4 4.45-1.2.5-.3.95-.65 1.4-1.05l-73.55-73.55" fill="#ffba00"/>
+                          <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8H0c0 1.55.4 3.1 1.2 4.5z" fill="#0066da" />
+                          <path d="M43.65 25 29.9 1.2C28.55 2 27.4 3.1 26.6 4.5L1.2 48.5C.4 49.9 0 51.45 0 53h27.5z" fill="#00ac47" />
+                          <path d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5H59.8l5.85 10.15z" fill="#ea4335" />
+                          <path d="M43.65 25 57.4 1.2C56.05.4 54.5 0 52.95 0H34.35c-1.55 0-3.1.4-4.45 1.2z" fill="#00832d" />
+                          <path d="m59.8 53-16.15-28H16.15L29.9 48.8l13.75 23.8h27.5c1.55 0 3.1-.4 4.45-1.2z" fill="#2684fc" />
+                          <path d="m73.55 76.8-13.75-23.8-5.85 10.15 13.75 23.8c1.55 0 3.1-.4 4.45-1.2.5-.3.95-.65 1.4-1.05l-73.55-73.55" fill="#ffba00" />
                         </svg>
                         <span>Add from Drive</span>
                       </button>
@@ -2942,9 +2935,8 @@ export const AIChat: React.FC<AIChatProps> = ({
                           type="button"
                           onClick={() => setActiveSubmenu(activeSubmenu === "uploads" ? "none" : "uploads")}
                           onMouseEnter={() => setActiveSubmenu("uploads")}
-                          className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition cursor-pointer text-left ${
-                            activeSubmenu === "uploads" ? "bg-[#262626] text-white" : "text-[#ededed] hover:bg-[#262626]"
-                          }`}
+                          className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition cursor-pointer text-left ${activeSubmenu === "uploads" ? "bg-[#262626] text-white" : "text-[#ededed] hover:bg-[#262626]"
+                            }`}
                         >
                           <div className="flex items-center gap-3">
                             <MoreHorizontal className="w-4 h-4 text-[#aaa]" />
@@ -3073,11 +3065,10 @@ export const AIChat: React.FC<AIChatProps> = ({
                             localStorage.setItem("ionlearn_grounding_enabled", String(nextVal));
                           }
                         }}
-                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition ${
-                          isGroundingAvailable
-                            ? "text-[#ededed] hover:bg-[#262626] cursor-pointer"
-                            : "text-[#777] bg-[#141414] opacity-50 cursor-not-allowed"
-                        }`}
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition ${isGroundingAvailable
+                          ? "text-[#ededed] hover:bg-[#262626] cursor-pointer"
+                          : "text-[#777] bg-[#141414] opacity-50 cursor-not-allowed"
+                          }`}
                         title={
                           isGroundingAvailable
                             ? (isGroundingEnabled ? "Grounding Web Aktif: AI memvalidasi fakta via Google Search" : "Grounding Web Nonaktif")
@@ -3101,8 +3092,8 @@ export const AIChat: React.FC<AIChatProps> = ({
                               {!isGroundingAvailable
                                 ? "Pencarian web nonaktif (kuota habis)"
                                 : isGroundingEnabled
-                                ? "Google Search real-time aktif"
-                                : "Pencarian web dinonaktifkan"}
+                                  ? "Google Search real-time aktif"
+                                  : "Pencarian web dinonaktifkan"}
                             </div>
                           </div>
                         </div>
@@ -3121,18 +3112,16 @@ export const AIChat: React.FC<AIChatProps> = ({
                             </button>
                           )}
                           <div
-                            className={`w-9 h-5 rounded-full transition-colors relative flex items-center ${
-                              isGroundingAvailable && isGroundingEnabled
-                                ? "bg-blue-600"
-                                : "bg-[#333]"
-                            }`}
+                            className={`w-9 h-5 rounded-full transition-colors relative flex items-center ${isGroundingAvailable && isGroundingEnabled
+                              ? "bg-blue-600"
+                              : "bg-[#333]"
+                              }`}
                           >
                             <div
-                              className={`w-4 h-4 rounded-full bg-white transition-transform flex items-center justify-center ${
-                                isGroundingAvailable && isGroundingEnabled
-                                  ? "translate-x-4.5"
-                                  : "translate-x-0.5"
-                              }`}
+                              className={`w-4 h-4 rounded-full bg-white transition-transform flex items-center justify-center ${isGroundingAvailable && isGroundingEnabled
+                                ? "translate-x-4.5"
+                                : "translate-x-0.5"
+                                }`}
                             >
                               {isGroundingAvailable && isGroundingEnabled && (
                                 <Check className="w-2.5 h-2.5 text-blue-600 stroke-[3]" />
@@ -3148,9 +3137,8 @@ export const AIChat: React.FC<AIChatProps> = ({
                           type="button"
                           onClick={() => setActiveSubmenu(activeSubmenu === "tools" ? "none" : "tools")}
                           onMouseEnter={() => setActiveSubmenu("tools")}
-                          className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition cursor-pointer text-left ${
-                            activeSubmenu === "tools" ? "bg-[#262626] text-white" : "text-[#ededed] hover:bg-[#262626]"
-                          }`}
+                          className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition cursor-pointer text-left ${activeSubmenu === "tools" ? "bg-[#262626] text-white" : "text-[#ededed] hover:bg-[#262626]"
+                            }`}
                         >
                           <div className="flex items-center gap-3">
                             <GraduationCap className="w-4 h-4 text-[#aaa]" />
@@ -3247,31 +3235,118 @@ export const AIChat: React.FC<AIChatProps> = ({
                 )}
               </div>
 
-              {/* Google Workspace Link Quick Button */}
-              <button
-                type="button"
-                onClick={() => setIsWorkspaceModalOpen(true)}
-                className="p-1.5 rounded-lg text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-slate-100 dark:hover:bg-[#202020] transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
-                title="Tautkan Dokumen / Spreadsheet Google Workspace"
-              >
-                <Link2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                <span className="text-xs font-semibold text-slate-700 dark:text-[#ccc] hidden sm:inline">
-                  Google Link
-                </span>
-              </button>
+              {/* Context Selector Dropdown Pill */}
+              <div className="relative" ref={contextRef}>
+                <button
+                  type="button"
+                  onClick={() => setIsContextOpen(!isContextOpen)}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-slate-200/80 dark:bg-[#202020] dark:hover:bg-[#282828] text-xs font-semibold text-slate-700 dark:text-[#d0d0d0] transition cursor-pointer"
+                  title="Pilih konteks materi / tugas"
+                >
+                  {activeTask ? (
+                    <BookOpen className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                  ) : activeNote ? (
+                    <NotebookPen className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+                  ) : (
+                    <GraduationCap className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                  )}
+                  <span className="max-w-[120px] sm:max-w-[200px] truncate">
+                    {activeTask
+                      ? activeTask.title
+                      : activeNote
+                        ? activeNote.title
+                        : "Pilih Materi Belajar"}
+                  </span>
+                  <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
+                </button>
 
-              {/* YouTube Video Link Quick Button */}
-              <button
-                type="button"
-                onClick={() => setIsYouTubeModalOpen(true)}
-                className="p-1.5 rounded-lg text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-slate-100 dark:hover:bg-[#202020] transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
-                title="Tautkan & Analisis Video YouTube"
-              >
-                <Youtube className="w-4 h-4 text-red-600 dark:text-red-500" />
-                <span className="text-xs font-semibold text-slate-700 dark:text-[#ccc] hidden sm:inline">
-                  YouTube
-                </span>
-              </button>
+                {/* Context Dropdown Popover */}
+                {isContextOpen && (
+                  <div className="absolute left-0 bottom-full mb-2 w-72 sm:w-80 bg-white dark:bg-[#1a1a1a] rounded-2xl shadow-xl border border-slate-200/80 dark:border-[#2a2a2a] p-2.5 z-50 animate-in fade-in slide-in-from-bottom-2">
+                    <div className="flex items-center gap-1 pb-2 mb-1.5 border-b border-slate-100 dark:border-[#262626] text-xs">
+                      <button
+                        type="button"
+                        onClick={() => setContextTab("tasks")}
+                        className={`flex-1 py-1 rounded-lg font-semibold transition cursor-pointer ${contextTab === "tasks"
+                          ? "bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400"
+                          : "text-slate-500 hover:bg-slate-50 dark:hover:bg-[#202020]"
+                          }`}
+                      >
+                        Tugas Classroom ({tasks.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setContextTab("notes")}
+                        className={`flex-1 py-1 rounded-lg font-semibold transition cursor-pointer ${contextTab === "notes"
+                          ? "bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400"
+                          : "text-slate-500 hover:bg-slate-50 dark:hover:bg-[#202020]"
+                          }`}
+                      >
+                        Catatan ({notes.length})
+                      </button>
+                    </div>
+
+                    <div className="max-h-56 overflow-y-auto space-y-1 pr-1 text-xs">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleSelectTaskContext(undefined);
+                          handleSelectNoteContext(undefined);
+                        }}
+                        className="w-full text-left px-2.5 py-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-[#222] text-slate-700 dark:text-[#ccc] font-medium transition cursor-pointer"
+                      >
+                        🌐 Mode Bebas (Tanpa Konteks Khusus)
+                      </button>
+
+                      {contextTab === "tasks" ? (
+                        tasks.length === 0 ? (
+                          <p className="text-xs text-slate-400 p-3 text-center">
+                            Tidak ada tugas.
+                          </p>
+                        ) : (
+                          tasks.map((t) => (
+                            <button
+                              key={t.id}
+                              type="button"
+                              onClick={() => handleSelectTaskContext(t.id)}
+                              className={`w-full text-left px-2.5 py-2 rounded-xl transition truncate cursor-pointer ${activeTask?.id === t.id
+                                ? "bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 font-semibold"
+                                : "hover:bg-slate-100 dark:hover:bg-[#222] text-slate-700 dark:text-[#ccc]"
+                                }`}
+                            >
+                              <div className="font-semibold truncate">{t.title}</div>
+                              <div className="text-xs text-slate-400 truncate">
+                                {t.courseName || "Classroom"}
+                              </div>
+                            </button>
+                          ))
+                        )
+                      ) : notes.length === 0 ? (
+                        <p className="text-xs text-slate-400 p-3 text-center">
+                          Tidak ada catatan.
+                        </p>
+                      ) : (
+                        notes.map((n) => (
+                          <button
+                            key={n.id}
+                            type="button"
+                            onClick={() => handleSelectNoteContext(n.id)}
+                            className={`w-full text-left px-2.5 py-2 rounded-xl transition truncate cursor-pointer ${activeNote?.id === n.id
+                              ? "bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 font-semibold"
+                              : "hover:bg-slate-100 dark:hover:bg-[#222] text-slate-700 dark:text-[#ccc]"
+                              }`}
+                          >
+                            <div className="font-semibold truncate">{n.title}</div>
+                            <div className="text-xs text-slate-400 truncate">
+                              {n.subject || "Catatan"}
+                            </div>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
 
               <input
                 type="file"
@@ -3281,36 +3356,11 @@ export const AIChat: React.FC<AIChatProps> = ({
                 multiple
                 accept={activeAcceptFilter}
               />
-
-              {/* Claude-style Segmented Mode Switcher: Chat | Cowork */}
-              <div className="flex items-center bg-slate-100 dark:bg-[#202020] p-0.5 rounded-lg border border-slate-200/60 dark:border-[#2a2a2a] text-xs font-medium">
-                <button
-                  type="button"
-                  onClick={() => handleSelectChatStyle("chat")}
-                  className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${chatStyle === "chat"
-                    ? "bg-white dark:bg-[#323232] text-slate-900 dark:text-white shadow-2xs font-semibold"
-                    : "text-slate-500 dark:text-[#888] hover:text-slate-800 dark:hover:text-[#eee]"
-                    }`}
-                  title="Mode Chat Reguler: Diskusi & tanya jawab interaktif"
-                >
-                  Chat
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSelectChatStyle("cowork")}
-                  className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${chatStyle === "cowork"
-                    ? "bg-white dark:bg-[#323232] text-slate-900 dark:text-white shadow-2xs font-semibold"
-                    : "text-slate-500 dark:text-[#888] hover:text-slate-800 dark:hover:text-[#eee]"
-                    }`}
-                  title="Mode Cowork: Rencana kerja terstruktur, draf aksi & hasil siap pakai"
-                >
-                  Cowork
-                </button>
-              </div>
             </div>
 
-            {/* Unified Dynamic Action Button: Mic (when empty) / Send (when text or files present) */}
+            {/* Right: Dynamic Action Button (Mic / Stop / Send) */}
             <div className="flex items-center gap-1.5 shrink-0">
+              {/* Dynamic Action Button: Mic / Send */}
               {isListening ? (
                 <button
                   type="button"
@@ -3360,248 +3410,463 @@ export const AIChat: React.FC<AIChatProps> = ({
     );
   };
 
-  return (
-    <div className="flex flex-col h-full w-full bg-white dark:bg-[#0e0e0e] overflow-hidden">
-      {/* ── 1. SUB-HEADER CONTROL STRIP (Integrated, Non-Overlapping) ── */}
-      <div className="shrink-0 flex items-center justify-between px-3 sm:px-5 py-2 border-b border-slate-200/80 dark:border-[#202020] bg-slate-50/60 dark:bg-[#121212] gap-2">
-        {/* Left: Context Selector Pill */}
-        <div className="relative" ref={contextRef}>
+  // Reusable History List & Search
+  const renderHistoryContent = (isDrawer = false) => (
+    <div className="flex flex-col h-full overflow-hidden bg-white dark:bg-[#131313]">
+      {/* Header */}
+      <div className="p-3.5 border-b border-slate-200/70 dark:border-[#202020] flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <History className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+          <span className="text-xs font-bold text-slate-900 dark:text-[#f0f0f0]">
+            Riwayat Percakapan
+          </span>
+        </div>
+        {isDrawer && (
           <button
             type="button"
-            onClick={() => setIsContextOpen(!isContextOpen)}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-[#1c1c1c] hover:bg-slate-200/80 dark:hover:bg-[#252525] text-xs font-semibold text-slate-700 dark:text-[#d0d0d0] transition cursor-pointer"
+            onClick={() => setIsHistoryDrawerOpen(false)}
+            className="p-1 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#202020] transition cursor-pointer"
           >
-            {activeTask ? (
-              <BookOpen className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
-            ) : activeNote ? (
-              <NotebookPen className="w-3.5 h-3.5 text-purple-500 shrink-0" />
-            ) : (
-              <GraduationCap className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
-            )}
-            <span className="max-w-[140px] sm:max-w-[240px] truncate">
-              {activeTask
-                ? activeTask.title
-                : activeNote
-                  ? activeNote.title
-                  : "Pilih Materi Belajar"}
-            </span>
-            <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
+            <X className="w-4 h-4" />
           </button>
+        )}
+      </div>
 
-          {/* Context Dropdown Popover */}
-          {isContextOpen && (
-            <div className="absolute left-0 top-full mt-1.5 w-80 bg-white dark:bg-[#1a1a1a] rounded-2xl shadow-xl border border-slate-200/80 dark:border-[#2a2a2a] p-2.5 z-50 animate-in fade-in">
-              <div className="flex items-center gap-1 pb-2 mb-1.5 border-b border-slate-100 dark:border-[#262626] text-xs">
+      {/* Actions: New Chat & Search */}
+      <div className="p-3 border-b border-slate-100 dark:border-[#1e1e1e] space-y-2">
+        <Button
+          onClick={() => handleNewChat()}
+          className="w-full justify-center gap-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xs h-9 cursor-pointer"
+        >
+          <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+          <span>Percakapan Baru</span>
+        </Button>
+
+        <div className="relative">
+          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            value={sessionSearchQuery}
+            onChange={(e) => setSessionSearchQuery(e.target.value)}
+            placeholder="Cari percakapan…"
+            className="w-full pl-8 pr-2.5 py-1.5 text-xs rounded-xl bg-slate-50 dark:bg-[#1a1a1a] border border-slate-200/70 dark:border-[#262626] text-slate-900 dark:text-[#eee] placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500/30"
+          />
+        </div>
+      </div>
+
+      {/* Sessions List */}
+      <div className="flex-1 overflow-y-auto p-2 space-y-1">
+        {filteredSessions.length === 0 ? (
+          <div className="text-center py-10 px-4 text-xs text-slate-400">
+            Tidak ada percakapan ditemukan.
+          </div>
+        ) : (
+          filteredSessions.map((s) => {
+            const isSelected = s.id === currentId;
+            const hasTask = Boolean(s.taskId);
+            const hasNote = Boolean(s.noteId);
+
+            return (
+              <div
+                key={s.id}
+                onClick={() => {
+                  setCurrentId(s.id);
+                  if (isDrawer) setIsHistoryDrawerOpen(false);
+                }}
+                className={`group relative flex items-center justify-between p-2.5 rounded-xl text-xs transition cursor-pointer ${
+                  isSelected
+                    ? "bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/40 text-indigo-950 dark:text-indigo-200 font-semibold"
+                    : "text-slate-600 dark:text-[#a0a0a0] hover:bg-slate-100 dark:hover:bg-[#1a1a1a]"
+                }`}
+              >
+                <div className="flex items-center gap-2 min-w-0 pr-1">
+                  {hasTask ? (
+                    <BookOpen className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                  ) : hasNote ? (
+                    <NotebookPen className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+                  ) : (
+                    <MessageSquare className="w-3.5 h-3.5 text-slate-400 shrink-0 opacity-70" />
+                  )}
+                  <span className="truncate">{getSessionTitle(s)}</span>
+                </div>
+
                 <button
                   type="button"
-                  onClick={() => setContextTab("tasks")}
-                  className={`flex-1 py-1 rounded-lg font-semibold transition cursor-pointer ${contextTab === "tasks"
-                    ? "bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400"
-                    : "text-slate-500 hover:bg-slate-50 dark:hover:bg-[#202020]"
-                    }`}
+                  onClick={(e) => handleDeleteSession(s.id, e)}
+                  className="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-slate-200/80 dark:hover:bg-[#282828] text-slate-400 hover:text-rose-600 transition shrink-0 cursor-pointer"
+                  title="Hapus sesi ini"
                 >
-                  Tugas Classroom ({tasks.length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setContextTab("notes")}
-                  className={`flex-1 py-1 rounded-lg font-semibold transition cursor-pointer ${contextTab === "notes"
-                    ? "bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400"
-                    : "text-slate-500 hover:bg-slate-50 dark:hover:bg-[#202020]"
-                    }`}
-                >
-                  Catatan ({notes.length})
+                  <Trash2 className="w-3 h-3" />
                 </button>
               </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
 
-              <div className="max-h-56 overflow-y-auto space-y-1 pr-1 text-xs">
-                <button
-                  type="button"
-                  onClick={() => {
-                    handleSelectTaskContext(undefined);
-                    handleSelectNoteContext(undefined);
-                  }}
-                  className="w-full text-left px-2.5 py-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-[#222] text-slate-700 dark:text-[#ccc] font-medium transition cursor-pointer"
-                >
-                  🌐 Mode Bebas (Tanpa Konteks Khusus)
-                </button>
+  // Split Workspace Panel (Right Column for 'split' mode)
+  const renderSplitWorkspace = () => {
+    return (
+      <div className="hidden lg:flex lg:w-[42%] xl:w-[45%] flex-col h-full bg-slate-50/50 dark:bg-[#111111] border-l border-slate-200/80 dark:border-[#202020] overflow-hidden shrink-0">
+        {/* Workspace Tab Header */}
+        <div className="p-3 border-b border-slate-200/70 dark:border-[#202020] flex items-center justify-between bg-white/70 dark:bg-[#141414]/70 backdrop-blur-xs">
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setSplitWorkspaceTab("task")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
+                splitWorkspaceTab === "task"
+                  ? "bg-indigo-600 text-white shadow-2xs"
+                  : "text-slate-600 dark:text-[#aaa] hover:bg-slate-100 dark:hover:bg-[#202020]"
+              }`}
+            >
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>Tugas Classroom</span>
+              {activeTask && (
+                <span className="w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-indigo-600" />
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setSplitWorkspaceTab("note")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
+                splitWorkspaceTab === "note"
+                  ? "bg-indigo-600 text-white shadow-2xs"
+                  : "text-slate-600 dark:text-[#aaa] hover:bg-slate-100 dark:hover:bg-[#202020]"
+              }`}
+            >
+              <NotebookPen className="w-3.5 h-3.5" />
+              <span>Catatan Belajar</span>
+              {activeNote && (
+                <span className="w-2 h-2 rounded-full bg-purple-400 ring-2 ring-indigo-600" />
+              )}
+            </button>
+          </div>
 
-                {contextTab === "tasks" ? (
-                  tasks.length === 0 ? (
-                    <p className="text-xs text-slate-400 p-3 text-center">
-                      Tidak ada tugas.
-                    </p>
-                  ) : (
-                    tasks.map((t) => (
-                      <button
-                        key={t.id}
-                        type="button"
-                        onClick={() => handleSelectTaskContext(t.id)}
-                        className={`w-full text-left px-2.5 py-2 rounded-xl transition truncate cursor-pointer ${activeTask?.id === t.id
-                          ? "bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 font-semibold"
-                          : "hover:bg-slate-100 dark:hover:bg-[#222] text-slate-700 dark:text-[#ccc]"
-                          }`}
-                      >
-                        <div className="font-semibold truncate">{t.title}</div>
-                        <div className="text-xs text-slate-400 truncate">
-                          {t.courseName || "Classroom"}
-                        </div>
-                      </button>
-                    ))
-                  )
-                ) : notes.length === 0 ? (
-                  <p className="text-xs text-slate-400 p-3 text-center">
-                    Tidak ada catatan.
-                  </p>
-                ) : (
-                  notes.map((n) => (
+          <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+            Workspace
+          </div>
+        </div>
+
+        {/* Workspace Body */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {splitWorkspaceTab === "task" ? (
+            activeTask ? (
+              <div className="space-y-4 animate-in fade-in duration-150">
+                {/* Task Header Card */}
+                <div className="p-4 rounded-2xl bg-white dark:bg-[#161616] border border-slate-200/80 dark:border-[#262626] shadow-2xs space-y-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="px-2.5 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 text-xs font-bold truncate">
+                      {activeTask.courseName || "Classroom"}
+                    </span>
+                    {(activeTask.dueTimestamp || activeTask.dueDateStr) && (
+                      <span className="text-xs text-slate-400 flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        <span>
+                          {new Date(activeTask.dueTimestamp || activeTask.dueDateStr || "").toLocaleDateString("id-ID", {
+                            day: "numeric",
+                            month: "short",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-[#f0f0f0]">
+                    {activeTask.title}
+                  </h3>
+                </div>
+
+                {/* Quick Prompts to discuss this task with AI */}
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    Aksi Bimbingan AI
+                  </label>
+                  <div className="grid grid-cols-1 gap-2">
                     <button
-                      key={n.id}
                       type="button"
-                      onClick={() => handleSelectNoteContext(n.id)}
-                      className={`w-full text-left px-2.5 py-2 rounded-xl transition truncate cursor-pointer ${activeNote?.id === n.id
-                        ? "bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 font-semibold"
-                        : "hover:bg-slate-100 dark:hover:bg-[#222] text-slate-700 dark:text-[#ccc]"
-                        }`}
+                      onClick={() => {
+                        setInputPrompt(`Jelaskan konsep utama dan langkah-langkah untuk mengerjakan tugas "${activeTask.title}".`);
+                        textareaRef.current?.focus();
+                      }}
+                      className="w-full text-left p-2.5 rounded-xl bg-white dark:bg-[#181818] border border-slate-200/70 dark:border-[#282828] hover:border-indigo-500 hover:bg-indigo-50/40 dark:hover:bg-indigo-950/30 text-xs text-slate-700 dark:text-[#ccc] transition cursor-pointer flex items-center gap-2"
                     >
-                      <div className="font-semibold truncate">{n.title}</div>
-                      <div className="text-xs text-slate-400 truncate">
-                        {n.subject || "Catatan"}
+                      <Sparkles className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                      <span>Bimbing langkah demi langkah tugas ini</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setInputPrompt(`Buatkan rangkuman materi dan poin penting yang diperlukan untuk menjawab tugas "${activeTask.title}".`);
+                        textareaRef.current?.focus();
+                      }}
+                      className="w-full text-left p-2.5 rounded-xl bg-white dark:bg-[#181818] border border-slate-200/70 dark:border-[#282828] hover:border-indigo-500 hover:bg-indigo-50/40 dark:hover:bg-indigo-950/30 text-xs text-slate-700 dark:text-[#ccc] transition cursor-pointer flex items-center gap-2"
+                    >
+                      <Brain className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                      <span>Rangkum poin kunci tugas</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Task Description */}
+                {activeTask.description && (
+                  <div className="p-4 rounded-2xl bg-white dark:bg-[#161616] border border-slate-200/80 dark:border-[#262626] space-y-2">
+                    <h4 className="text-xs font-bold text-slate-700 dark:text-[#ddd]">
+                      Deskripsi & Instruksi Tugas
+                    </h4>
+                    <div className="text-xs text-slate-600 dark:text-[#a0a0a0] leading-relaxed whitespace-pre-wrap">
+                      {activeTask.description}
+                    </div>
+                  </div>
+                )}
+
+                {/* Task Materials / Attachments */}
+                {activeTask.materials && activeTask.materials.length > 0 && (
+                  <div className="p-4 rounded-2xl bg-white dark:bg-[#161616] border border-slate-200/80 dark:border-[#262626] space-y-2">
+                    <h4 className="text-xs font-bold text-slate-700 dark:text-[#ddd]">
+                      Lampiran & Materi Tugas
+                    </h4>
+                    <div className="space-y-1.5">
+                      {activeTask.materials.map((m, idx) => {
+                        const fileLink = m.driveFile?.driveFile?.alternateLink || m.link?.url || m.youtubeVideo?.alternateLink || activeTask.classroomLink || "#";
+                        const fileTitle = m.driveFile?.driveFile?.title || m.link?.title || m.youtubeVideo?.title || "Lampiran Materi";
+                        return (
+                          <a
+                            key={idx}
+                            href={fileLink}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-[#1f1f1f] hover:bg-indigo-50 dark:hover:bg-indigo-950/40 border border-slate-200/60 dark:border-[#2a2a2a] text-xs text-slate-700 dark:text-[#ccc] transition"
+                          >
+                            <span className="truncate pr-2 font-medium">
+                              {fileTitle}
+                            </span>
+                            <ExternalLink className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          </a>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="p-4 rounded-2xl bg-white dark:bg-[#161616] border border-slate-200/80 dark:border-[#262626] text-center space-y-1">
+                  <p className="text-xs font-bold text-slate-700 dark:text-[#ccc]">
+                    Pilih Tugas untuk Ditampilkan
+                  </p>
+                  <p className="text-[11px] text-slate-400">
+                    Klik tugas di bawah untuk membuka panel bimbingan berdampingan.
+                  </p>
+                </div>
+                <div className="space-y-1.5">
+                  {tasks.map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => handleSelectTaskContext(t.id)}
+                      className="w-full text-left p-3 rounded-xl bg-white dark:bg-[#161616] border border-slate-200/70 dark:border-[#262626] hover:border-indigo-500 hover:bg-indigo-50/40 dark:hover:bg-indigo-950/30 transition cursor-pointer"
+                    >
+                      <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                        {t.title}
+                      </div>
+                      <div className="text-[11px] text-slate-400 truncate mt-0.5">
+                        {t.courseName || "Classroom"}
                       </div>
                     </button>
-                  ))
-                )}
+                  ))}
+                </div>
+              </div>
+            )
+          ) : activeNote ? (
+            <div className="space-y-4 animate-in fade-in duration-150">
+              <div className="p-4 rounded-2xl bg-white dark:bg-[#161616] border border-slate-200/80 dark:border-[#262626] shadow-2xs space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="px-2.5 py-0.5 rounded-lg bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 text-xs font-bold truncate">
+                    {activeNote.subject || "Catatan Belajar"}
+                  </span>
+                  <span className="text-[11px] text-slate-400">
+                    {new Date(activeNote.updatedAt || activeNote.createdAt).toLocaleDateString("id-ID")}
+                  </span>
+                </div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-[#f0f0f0]">
+                  {activeNote.title}
+                </h3>
+              </div>
+
+              {/* Quick Prompts for Note */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  Aksi Cepat Catatan
+                </label>
+                <div className="grid grid-cols-1 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInputPrompt(`Buatkan rangkuman ringkas dan poin-poin utama dari catatan "${activeNote.title}".`);
+                      textareaRef.current?.focus();
+                    }}
+                    className="w-full text-left p-2.5 rounded-xl bg-white dark:bg-[#181818] border border-slate-200/70 dark:border-[#282828] hover:border-purple-500 hover:bg-purple-50/40 dark:hover:bg-purple-950/30 text-xs text-slate-700 dark:text-[#ccc] transition cursor-pointer flex items-center gap-2"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+                    <span>Rangkum poin penting catatan</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInputPrompt(`Buatkan 5 soal latihan pilihan ganda beserta pembahasannya dari materi catatan "${activeNote.title}".`);
+                      textareaRef.current?.focus();
+                    }}
+                    className="w-full text-left p-2.5 rounded-xl bg-white dark:bg-[#181818] border border-slate-200/70 dark:border-[#282828] hover:border-purple-500 hover:bg-purple-50/40 dark:hover:bg-purple-950/30 text-xs text-slate-700 dark:text-[#ccc] transition cursor-pointer flex items-center gap-2"
+                  >
+                    <Brain className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+                    <span>Uji pemahaman dengan 5 soal latihan</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Note Content */}
+              <div className="p-4 rounded-2xl bg-white dark:bg-[#161616] border border-slate-200/80 dark:border-[#262626] space-y-2">
+                <h4 className="text-xs font-bold text-slate-700 dark:text-[#ddd]">
+                  Isi Catatan
+                </h4>
+                <div className="text-xs text-slate-600 dark:text-[#a0a0a0] leading-relaxed whitespace-pre-wrap">
+                  {activeNote.content}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="p-4 rounded-2xl bg-white dark:bg-[#161616] border border-slate-200/80 dark:border-[#262626] text-center space-y-1">
+                <p className="text-xs font-bold text-slate-700 dark:text-[#ccc]">
+                  Pilih Catatan untuk Ditampilkan
+                </p>
+                <p className="text-[11px] text-slate-400">
+                  Pilih catatan untuk mendiskusikan materinya berdampingan dengan AI.
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                {notes.map((n) => (
+                  <button
+                    key={n.id}
+                    type="button"
+                    onClick={() => handleSelectNoteContext(n.id)}
+                    className="w-full text-left p-3 rounded-xl bg-white dark:bg-[#161616] border border-slate-200/70 dark:border-[#262626] hover:border-purple-500 hover:bg-purple-50/40 dark:hover:bg-purple-950/30 transition cursor-pointer"
+                  >
+                    <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                      {n.title}
+                    </div>
+                    <div className="text-[11px] text-slate-400 truncate mt-0.5">
+                      {n.subject || "Catatan"}
+                    </div>
+                  </button>
+                ))}
               </div>
             </div>
           )}
         </div>
-
-        {/* Right: History Drawer Button & New Chat */}
-        <div className="flex items-center gap-2">
-
-          {/* History Drawer Trigger */}
-          <button
-            type="button"
-            onClick={() => setIsHistoryDrawerOpen(true)}
-            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-[#1c1c1c] text-slate-700 dark:text-[#d0d0d0] hover:bg-slate-200/80 dark:hover:bg-[#252525] transition cursor-pointer"
-            title="Buka Riwayat Percakapan"
-          >
-            <History className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Riwayat</span>
-          </button>
-
-          {/* New Chat Button */}
-          <Button
-            size="sm"
-            onClick={() => handleNewChat()}
-            className="gap-1 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white h-7 sm:h-8 px-2.5 shadow-2xs"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span className="hidden md:inline">Baru</span>
-          </Button>
-        </div>
       </div>
+    );
+  };
 
-      {/* ── SLIDE-OVER HISTORY DRAWER ── */}
-      {isHistoryDrawerOpen && (
-        <div className="fixed inset-0 z-50 overflow-hidden">
-          <div
-            onClick={() => setIsHistoryDrawerOpen(false)}
-            className="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity animate-in fade-in"
-          />
-          <div className="fixed inset-y-0 right-0 max-w-full flex pl-10 z-50">
-            <div className="w-screen max-w-xs bg-white dark:bg-[#141414] border-l border-slate-200/80 dark:border-[#262626] shadow-2xl animate-in slide-in-from-right flex flex-col">
-              {/* Drawer Header */}
-              <div className="p-3.5 border-b border-slate-200/70 dark:border-[#202020] flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <History className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                  <span className="text-xs font-bold text-slate-900 dark:text-[#f0f0f0]">
-                    Riwayat Percakapan
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsHistoryDrawerOpen(false)}
-                  className="p-1 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#202020] transition cursor-pointer"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* Drawer Actions: New Chat & Search */}
-              <div className="p-3 border-b border-slate-100 dark:border-[#1e1e1e] space-y-2">
-                <Button
-                  onClick={() => handleNewChat()}
-                  className="w-full justify-center gap-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xs h-9"
-                >
-                  <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                  <span>Percakapan Baru</span>
-                </Button>
-
-                <div className="relative">
-                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="text"
-                    value={sessionSearchQuery}
-                    onChange={(e) => setSessionSearchQuery(e.target.value)}
-                    placeholder="Cari percakapan…"
-                    className="w-full pl-8 pr-2.5 py-1.5 text-xs rounded-xl bg-slate-50 dark:bg-[#1a1a1a] border border-slate-200/70 dark:border-[#262626] text-slate-900 dark:text-[#eee] placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500/30"
-                  />
-                </div>
-              </div>
-
-              {/* Drawer Sessions List */}
-              <div className="flex-1 overflow-y-auto p-2 space-y-1">
-                {filteredSessions.length === 0 ? (
-                  <div className="text-center py-10 px-4 text-xs text-slate-400">
-                    Tidak ada percakapan ditemukan.
-                  </div>
-                ) : (
-                  filteredSessions.map((s) => {
-                    const isSelected = s.id === currentId;
-                    const hasTask = Boolean(s.taskId);
-                    const hasNote = Boolean(s.noteId);
-
-                    return (
-                      <div
-                        key={s.id}
-                        onClick={() => {
-                          setCurrentId(s.id);
-                          setIsHistoryDrawerOpen(false);
-                        }}
-                        className={`group relative flex items-center justify-between p-2.5 rounded-xl text-xs transition cursor-pointer ${isSelected
-                          ? "bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/40 text-indigo-950 dark:text-indigo-200 font-semibold"
-                          : "text-slate-600 dark:text-[#a0a0a0] hover:bg-slate-100 dark:hover:bg-[#1a1a1a]"
-                          }`}
-                      >
-                        <div className="flex items-center gap-2 min-w-0 pr-1">
-                          {hasTask ? (
-                            <BookOpen className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
-                          ) : hasNote ? (
-                            <NotebookPen className="w-3.5 h-3.5 text-purple-500 shrink-0" />
-                          ) : (
-                            <MessageSquare className="w-3.5 h-3.5 text-slate-400 shrink-0 opacity-70" />
-                          )}
-                          <span className="truncate">{getSessionTitle(s)}</span>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={(e) => handleDeleteSession(s.id, e)}
-                          className="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-slate-200/80 dark:hover:bg-[#282828] text-slate-400 hover:text-rose-600 transition shrink-0"
-                          title="Hapus sesi ini"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-          </div>
+  return (
+    <div className="flex h-full w-full overflow-hidden relative">
+      {/* ── 1. DESKTOP SIDEBAR (FOR 'sidebar' MODE) ── */}
+      {layoutMode === "sidebar" && (
+        <div
+          className={`hidden md:flex flex-col h-full bg-white dark:bg-[#131313] border-r border-slate-200/80 dark:border-[#202020] transition-all duration-300 ease-in-out shrink-0 overflow-hidden ${
+            isDesktopSidebarOpen ? "w-64 lg:w-72" : "w-0 border-r-0"
+          }`}
+        >
+          {renderHistoryContent(false)}
         </div>
       )}
+
+      {/* ── 2. MAIN WORKSPACE AREA (CHAT FEED + OPTIONAL SPLIT PANEL) ── */}
+      <div className="flex-1 flex flex-row h-full min-w-0 overflow-hidden relative">
+        {/* Chat Feed Column */}
+        <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden relative">
+          {/* Top Floating / Action Capsule */}
+          <div className="absolute top-3 inset-x-4 z-20 flex items-center justify-between pointer-events-none">
+            {/* Left: Desktop Sidebar Toggle button (only in 'sidebar' mode) */}
+            <div className="pointer-events-auto flex items-center gap-1.5">
+              {layoutMode === "sidebar" && (
+                <button
+                  type="button"
+                  onClick={() => setIsDesktopSidebarOpen(!isDesktopSidebarOpen)}
+                  className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white/90 dark:bg-[#181818]/90 hover:bg-white dark:hover:bg-[#222] border border-slate-200/80 dark:border-[#2a2a2a] shadow-xs backdrop-blur-md text-slate-600 dark:text-[#ccc] hover:text-slate-900 dark:hover:text-white transition cursor-pointer text-xs font-medium"
+                  title={isDesktopSidebarOpen ? "Tutup Sidebar Riwayat" : "Buka Sidebar Riwayat"}
+                >
+                  <PanelLeft className="w-3.5 h-3.5 text-slate-500 dark:text-[#aaa]" />
+                  <span className="hidden sm:inline">
+                    {isDesktopSidebarOpen ? "Tutup Sidebar" : "Buka Sidebar"}
+                  </span>
+                </button>
+              )}
+            </div>
+
+            {/* Right: Floating Riwayat button (for 'minimal' & 'split' modes, or on mobile in 'sidebar' mode) */}
+            <div className="pointer-events-auto flex items-center gap-1.5">
+              {layoutMode !== "sidebar" ? (
+                <motion.button
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.96 }}
+                  type="button"
+                  onClick={() => setIsHistoryDrawerOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/90 dark:bg-[#181818]/90 hover:bg-white dark:hover:bg-[#222] border border-slate-200/80 dark:border-[#2a2a2a] shadow-xs backdrop-blur-md text-slate-600 dark:text-[#ccc] hover:text-slate-900 dark:hover:text-white transition cursor-pointer text-xs font-medium"
+                  title="Buka Riwayat Percakapan"
+                >
+                  <History className="w-3.5 h-3.5 text-slate-500 dark:text-[#aaa]" />
+                  <span>Riwayat</span>
+                </motion.button>
+              ) : (
+                <motion.button
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.96 }}
+                  type="button"
+                  onClick={() => setIsHistoryDrawerOpen(true)}
+                  className="md:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/90 dark:bg-[#181818]/90 hover:bg-white dark:hover:bg-[#222] border border-slate-200/80 dark:border-[#2a2a2a] shadow-xs backdrop-blur-md text-slate-600 dark:text-[#ccc] hover:text-slate-900 dark:hover:text-white transition cursor-pointer text-xs font-medium"
+                  title="Buka Riwayat Percakapan"
+                >
+                  <History className="w-3.5 h-3.5 text-slate-500 dark:text-[#aaa]" />
+                  <span>Riwayat</span>
+                </motion.button>
+              )}
+            </div>
+          </div>
+
+          {/* ── SLIDE-OVER HISTORY DRAWER WITH SPRING ANIMATION ── */}
+          <AnimatePresence>
+            {isHistoryDrawerOpen && (
+              <div className="fixed inset-0 z-50 overflow-hidden">
+                {/* Smooth Fade Backdrop */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.25, ease: "easeOut" }}
+                  onClick={() => setIsHistoryDrawerOpen(false)}
+                  className="fixed inset-0 bg-black/45 backdrop-blur-xs cursor-pointer"
+                />
+
+                {/* Smooth Spring Sliding Panel */}
+                <div className="fixed inset-y-0 right-0 max-w-full flex pl-10 z-50 pointer-events-none">
+                  <motion.div
+                    initial={{ x: "100%", opacity: 0.9 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    exit={{ x: "100%", opacity: 0.9 }}
+                    transition={{ type: "spring", damping: 28, stiffness: 280 }}
+                    className="pointer-events-auto w-screen max-w-xs bg-white dark:bg-[#141414] border-l border-slate-200/80 dark:border-[#262626] shadow-2xl flex flex-col"
+                  >
+                    {renderHistoryContent(true)}
+                  </motion.div>
+                </div>
+              </div>
+            )}
+          </AnimatePresence>
 
       {/* ── 2. Message Feed Area ── */}
       <div ref={scrollAreaRef} className="flex-1 min-h-0 overflow-y-auto">
@@ -3663,26 +3928,26 @@ export const AIChat: React.FC<AIChatProps> = ({
           </div>
         ) : (
           /* ── ACTIVE CONVERSATION FEED ── */
-          <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+          <div className="max-w-4xl mx-auto px-4 sm:px-8 py-4 sm:py-5 space-y-4">
             {messages.map((m) => {
               const isUser = m.role === "user";
 
               return (
                 <div
                   key={m.id}
-                  className={`group flex gap-3.5 ${isUser ? "justify-end" : "justify-start items-start"
+                  className={`group flex gap-3 ${isUser ? "justify-end" : "justify-start items-start"
                     }`}
                 >
                   {!isUser && (
-                    <div className="w-8 h-8 rounded-xl bg-indigo-600 dark:bg-indigo-500 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
-                      <Sparkles className="w-4 h-4" />
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-indigo-600 dark:bg-indigo-500 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
+                      <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </div>
                   )}
 
                   {isUser ? (
-                    <div className="flex flex-col items-end max-w-[86%] sm:max-w-[80%]">
+                    <div className="flex flex-col items-end max-w-[88%] sm:max-w-[80%]">
                       {/* User Bubble */}
-                      <div className="w-full bg-indigo-600 dark:bg-[#ececec] text-white dark:text-[#111] rounded-2xl rounded-br-xs px-4 py-3 text-xs sm:text-sm font-medium shadow-2xs">
+                      <div className="w-full bg-indigo-600 dark:bg-[#ececec] text-white dark:text-[#111] rounded-2xl rounded-br-xs px-4 py-2.5 sm:px-5 sm:py-3 text-xs sm:text-sm font-medium shadow-2xs leading-relaxed">
                         <div className="space-y-2">
                           <p className="whitespace-pre-wrap">{m.content}</p>
 
@@ -4115,8 +4380,8 @@ export const AIChat: React.FC<AIChatProps> = ({
                                   className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold text-white shadow-2xs shrink-0 ${m.createdDocument.type === "pdf"
                                     ? "bg-rose-600 dark:bg-rose-500"
                                     : m.createdDocument.type === "xlsx"
-                                    ? "bg-emerald-600 dark:bg-emerald-500"
-                                    : "bg-blue-600 dark:bg-blue-500"
+                                      ? "bg-emerald-600 dark:bg-emerald-500"
+                                      : "bg-blue-600 dark:bg-blue-500"
                                     }`}
                                 >
                                   {m.createdDocument.type === "pdf" ? "PDF" : m.createdDocument.type === "xlsx" ? "XLSX" : "DOCX"}
@@ -4126,8 +4391,8 @@ export const AIChat: React.FC<AIChatProps> = ({
                                     {m.createdDocument.type === "pdf"
                                       ? "Dokumen PDF Siap Unduh"
                                       : m.createdDocument.type === "xlsx"
-                                      ? "Spreadsheet Excel (.xlsx) Siap Unduh"
-                                      : "Dokumen Word (.docx) Siap Unduh"}
+                                        ? "Spreadsheet Excel (.xlsx) Siap Unduh"
+                                        : "Dokumen Word (.docx) Siap Unduh"}
                                   </span>
                                   <span className="text-[11px] text-slate-500 dark:text-[#888] truncate block">
                                     {m.createdDocument.fileName || (m.createdDocument.type === "pdf" ? "dokumen.pdf" : m.createdDocument.type === "xlsx" ? "tabel_data.xlsx" : "dokumen.docx")}
@@ -4153,13 +4418,12 @@ export const AIChat: React.FC<AIChatProps> = ({
                                       : "Kustomisasi nama siswa, pilihan font, ukuran teks, dan watermark IOnLearn"
                                   }
                                 >
-                                  <Sliders className={`w-3.5 h-3.5 ${
-                                    m.createdDocument.type === "xlsx"
-                                      ? "text-emerald-500"
-                                      : m.createdDocument.type === "pdf"
+                                  <Sliders className={`w-3.5 h-3.5 ${m.createdDocument.type === "xlsx"
+                                    ? "text-emerald-500"
+                                    : m.createdDocument.type === "pdf"
                                       ? "text-rose-500"
                                       : "text-blue-500"
-                                  }`} />
+                                    }`} />
                                   <span>Kustomisasi</span>
                                 </button>
                                 <button
@@ -4176,8 +4440,8 @@ export const AIChat: React.FC<AIChatProps> = ({
                                   className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white shadow-xs transition-all cursor-pointer shrink-0 ${m.createdDocument.type === "pdf"
                                     ? "bg-rose-600 hover:bg-rose-700 active:scale-95"
                                     : m.createdDocument.type === "xlsx"
-                                    ? "bg-emerald-600 hover:bg-emerald-700 active:scale-95"
-                                    : "bg-blue-600 hover:bg-blue-700 active:scale-95"
+                                      ? "bg-emerald-600 hover:bg-emerald-700 active:scale-95"
+                                      : "bg-blue-600 hover:bg-blue-700 active:scale-95"
                                     }`}
                                   title="Klik untuk mengunduh file dokumen langsung"
                                 >
@@ -4601,7 +4865,7 @@ export const AIChat: React.FC<AIChatProps> = ({
                         onClick={() => handleSendMessage(p)}
                         className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-[#1c1c1c] hover:bg-slate-200/80 dark:hover:bg-[#282828] text-xs text-slate-700 dark:text-[#ccc] hover:text-slate-900 dark:hover:text-[#fff] border border-slate-200/60 dark:border-[#282828] transition-all cursor-pointer text-left font-medium"
                       >
-                        ✨ {p}
+                        {p}
                       </button>
                     ))}
                   </div>
@@ -4613,10 +4877,15 @@ export const AIChat: React.FC<AIChatProps> = ({
 
       {/* ── 3. Docked Bottom Input Bar (When Messages Exist) ── */}
       {messages.length > 0 && (
-        <div className="shrink-0 px-4 sm:px-6 pb-4 pt-2 bg-gradient-to-t from-white via-white dark:from-[#141414] dark:via-[#141414] to-transparent">
+        <div className="shrink-0 px-3 sm:px-6 pb-2.5 pt-1.5 bg-gradient-to-t from-white via-white/95 dark:from-[#0e0e0e] dark:via-[#0e0e0e]/95 to-transparent">
           {renderInputBar(false)}
         </div>
       )}
+        </div>
+
+        {/* ── 3.5 DUAL SPLIT WORKSPACE (FOR 'split' MODE) ── */}
+        {layoutMode === "split" && renderSplitWorkspace()}
+      </div>
 
       {/* ── 4. File Content Preview Modal (PDF, Images, Code, Docs) ── */}
       {previewFile && (
@@ -4715,97 +4984,6 @@ export const AIChat: React.FC<AIChatProps> = ({
                   </pre>
                 </div>
               )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── 5. Claude-style Cowork Introduction Modal ── */}
-      {showCoworkModal && (
-        <div
-          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200"
-          onClick={handleCancelCowork}
-        >
-          <div
-            className="w-full max-w-md rounded-3xl overflow-hidden shadow-2xl border border-slate-200/40 dark:border-[#333] flex flex-col animate-in zoom-in-95 duration-200"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Top Light Illustration Area */}
-            <div className="relative bg-[#f6f4ee] dark:bg-[#1e1e1e] h-48 flex items-center justify-center p-6 select-none border-b border-[#e8e4da] dark:border-[#2a2a2a]">
-              {/* Close Button */}
-              <button
-                type="button"
-                onClick={handleCancelCowork}
-                className="absolute top-3.5 right-3.5 w-7 h-7 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center transition cursor-pointer"
-                title="Tutup (Kembali ke Chat)"
-              >
-                <X className="w-4 h-4" />
-              </button>
-
-              {/* Graphic Mock of the Pill Switch with Pointer Cursor */}
-              <div className="relative">
-                <div className="flex items-center bg-[#e4e0d5] dark:bg-[#2c2c2c] p-1.5 rounded-2xl shadow-inner border border-[#d8d3c5] dark:border-[#3a3a3a]">
-                  <div className="px-5 py-2 rounded-xl bg-white dark:bg-[#383838] shadow-sm text-slate-900 dark:text-white font-medium text-xs sm:text-sm">
-                    Chat
-                  </div>
-                  <div className="px-5 py-2 rounded-xl text-slate-400 dark:text-[#888] font-medium text-xs sm:text-sm">
-                    Cowork
-                  </div>
-                </div>
-
-                {/* Simulated mouse pointer clicking Cowork */}
-                <div className="absolute -bottom-3.5 right-6 pointer-events-none drop-shadow-md">
-                  <svg
-                    className="w-6 h-6 text-black dark:text-white fill-current"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M4 2l16 11-7.5 1.5 4.5 7.5-3 1.5-4.5-7.5L4 20V2z" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-
-            {/* Bottom Dark Information Area */}
-            <div className="bg-[#141414] text-white p-6 sm:p-7 space-y-4">
-              <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white font-serif">
-                Don&apos;t just chat. Cowork.
-              </h2>
-
-              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-                Dengan mode <strong>Cowork</strong>, AI bertindak sebagai rekan kolaborator mandiri untuk mengerjakan tugas kompleks: merancang draf, menganalisis dokumen, hingga menyusun poin eksekusi.
-              </p>
-
-              <ul className="space-y-2 text-xs sm:text-sm text-slate-300">
-                <li className="flex items-start gap-2.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400 mt-2 shrink-0" />
-                  <span>Langsung menghasilkan draf dokumen, laporan, dan kode siap pakai</span>
-                </li>
-                <li className="flex items-start gap-2.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400 mt-2 shrink-0" />
-                  <span>Menyusun rencana aksi langkah demi langkah secara terstruktur</span>
-                </li>
-                <li className="flex items-start gap-2.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400 mt-2 shrink-0" />
-                  <span>Otomatis sinkronisasi hasil kerja ke Catatan Belajar & To-Do List</span>
-                </li>
-              </ul>
-
-              <div className="flex items-center justify-end gap-2.5 pt-3">
-                <button
-                  type="button"
-                  onClick={handleCancelCowork}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold bg-[#262626] text-slate-300 hover:bg-[#333] hover:text-white transition cursor-pointer"
-                >
-                  Nanti
-                </button>
-                <button
-                  type="button"
-                  onClick={handleConfirmCowork}
-                  className="px-4 py-2 rounded-xl text-xs font-bold bg-white text-slate-900 hover:bg-slate-100 shadow-md transition cursor-pointer"
-                >
-                  Coba Cowork
-                </button>
-              </div>
             </div>
           </div>
         </div>
@@ -5023,11 +5201,10 @@ export const AIChat: React.FC<AIChatProps> = ({
                     <button
                       type="button"
                       onClick={() => setYoutubeAnalysisPreset("summary")}
-                      className={`p-2.5 rounded-xl border text-left text-xs transition cursor-pointer flex flex-col gap-1 ${
-                        youtubeAnalysisPreset === "summary"
-                          ? "bg-red-50 dark:bg-red-950/40 border-red-500 dark:border-red-500 text-red-900 dark:text-red-200 font-semibold"
-                          : "bg-slate-50 dark:bg-[#1c1c1c] border-slate-200 dark:border-[#333] text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-[#444]"
-                      }`}
+                      className={`p-2.5 rounded-xl border text-left text-xs transition cursor-pointer flex flex-col gap-1 ${youtubeAnalysisPreset === "summary"
+                        ? "bg-red-50 dark:bg-red-950/40 border-red-500 dark:border-red-500 text-red-900 dark:text-red-200 font-semibold"
+                        : "bg-slate-50 dark:bg-[#1c1c1c] border-slate-200 dark:border-[#333] text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-[#444]"
+                        }`}
                     >
                       <div className="font-bold flex items-center gap-1.5">
                         <span>📝 Rangkum Materi</span>
@@ -5040,11 +5217,10 @@ export const AIChat: React.FC<AIChatProps> = ({
                     <button
                       type="button"
                       onClick={() => setYoutubeAnalysisPreset("timestamps")}
-                      className={`p-2.5 rounded-xl border text-left text-xs transition cursor-pointer flex flex-col gap-1 ${
-                        youtubeAnalysisPreset === "timestamps"
-                          ? "bg-red-50 dark:bg-red-950/40 border-red-500 dark:border-red-500 text-red-900 dark:text-red-200 font-semibold"
-                          : "bg-slate-50 dark:bg-[#1c1c1c] border-slate-200 dark:border-[#333] text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-[#444]"
-                      }`}
+                      className={`p-2.5 rounded-xl border text-left text-xs transition cursor-pointer flex flex-col gap-1 ${youtubeAnalysisPreset === "timestamps"
+                        ? "bg-red-50 dark:bg-red-950/40 border-red-500 dark:border-red-500 text-red-900 dark:text-red-200 font-semibold"
+                        : "bg-slate-50 dark:bg-[#1c1c1c] border-slate-200 dark:border-[#333] text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-[#444]"
+                        }`}
                     >
                       <div className="font-bold flex items-center gap-1.5">
                         <span>⏱️ Garis Waktu</span>
@@ -5057,11 +5233,10 @@ export const AIChat: React.FC<AIChatProps> = ({
                     <button
                       type="button"
                       onClick={() => setYoutubeAnalysisPreset("quiz")}
-                      className={`p-2.5 rounded-xl border text-left text-xs transition cursor-pointer flex flex-col gap-1 ${
-                        youtubeAnalysisPreset === "quiz"
-                          ? "bg-red-50 dark:bg-red-950/40 border-red-500 dark:border-red-500 text-red-900 dark:text-red-200 font-semibold"
-                          : "bg-slate-50 dark:bg-[#1c1c1c] border-slate-200 dark:border-[#333] text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-[#444]"
-                      }`}
+                      className={`p-2.5 rounded-xl border text-left text-xs transition cursor-pointer flex flex-col gap-1 ${youtubeAnalysisPreset === "quiz"
+                        ? "bg-red-50 dark:bg-red-950/40 border-red-500 dark:border-red-500 text-red-900 dark:text-red-200 font-semibold"
+                        : "bg-slate-50 dark:bg-[#1c1c1c] border-slate-200 dark:border-[#333] text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-[#444]"
+                        }`}
                     >
                       <div className="font-bold flex items-center gap-1.5">
                         <span>❓ Kuis Pemahaman</span>
@@ -5074,11 +5249,10 @@ export const AIChat: React.FC<AIChatProps> = ({
                     <button
                       type="button"
                       onClick={() => setYoutubeAnalysisPreset("notes")}
-                      className={`p-2.5 rounded-xl border text-left text-xs transition cursor-pointer flex flex-col gap-1 ${
-                        youtubeAnalysisPreset === "notes"
-                          ? "bg-red-50 dark:bg-red-950/40 border-red-500 dark:border-red-500 text-red-900 dark:text-red-200 font-semibold"
-                          : "bg-slate-50 dark:bg-[#1c1c1c] border-slate-200 dark:border-[#333] text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-[#444]"
-                      }`}
+                      className={`p-2.5 rounded-xl border text-left text-xs transition cursor-pointer flex flex-col gap-1 ${youtubeAnalysisPreset === "notes"
+                        ? "bg-red-50 dark:bg-red-950/40 border-red-500 dark:border-red-500 text-red-900 dark:text-red-200 font-semibold"
+                        : "bg-slate-50 dark:bg-[#1c1c1c] border-slate-200 dark:border-[#333] text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-[#444]"
+                        }`}
                     >
                       <div className="font-bold flex items-center gap-1.5">
                         <span>📄 Catatan Materi</span>
