@@ -338,11 +338,10 @@ export function LandingPage({
 
   return (
     <div
-      className={`min-h-screen transition-colors duration-700 font-sans relative overflow-x-hidden ${
-        isKawaiiMode
-          ? "kawaii-theme bg-[#fff5f9] dark:bg-[#0e0714] text-slate-900 dark:text-[#fce7f3]"
-          : "bg-white dark:bg-[#0c0c0c] text-slate-900 dark:text-[#f5f5f5]"
-      }`}
+      className={`min-h-screen transition-colors duration-700 font-sans relative overflow-x-hidden ${isKawaiiMode
+        ? "kawaii-theme bg-[#fff5f9] dark:bg-[#0e0714] text-slate-900 dark:text-[#fce7f3]"
+        : "bg-white dark:bg-[#0c0c0c] text-slate-900 dark:text-[#f5f5f5]"
+        }`}
     >
       {/* Subtle organic Ubur Ubur background wave motif (calm, non-distracting) */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-[0.04]">
@@ -660,7 +659,7 @@ export function LandingPage({
                 handleLogoClick();
               }
             }}
-            className="animate-hero-logo mb-6 sm:mb-8 flex flex-col items-center justify-center cursor-pointer select-none relative group"
+            className="animate-hero-logo mb-6 sm:mb-8 flex flex-col items-center justify-end h-20 sm:h-24 md:h-28 w-full cursor-pointer select-none relative group"
             style={{ WebkitTapHighlightColor: "transparent" }}
           >
             <span className="sr-only">IOnLearn - Sinkronkan Tugas Kelas, Taklukkan dengan AI</span>
@@ -668,7 +667,7 @@ export function LandingPage({
             {/* Inner Squish Wrapper (re-triggers animation on EVERY single click) */}
             <div
               key={squishKey}
-              className="relative flex flex-col items-center transition-transform hover:scale-[1.04]"
+              className="relative flex flex-col items-center justify-end transition-transform hover:scale-[1.04]"
               style={{
                 animation: squishKey > 0 ? "logoSquish 0.52s cubic-bezier(0.28, 0.84, 0.42, 1) both" : undefined,
                 transformOrigin: "bottom center",
@@ -679,7 +678,7 @@ export function LandingPage({
                   <img
                     src="/logos/ionlearnkawaistyle.png"
                     alt="IOnLearn"
-                    className="kawaii-sticker-logo h-20 sm:h-24 md:h-28 lg:h-32 w-auto object-contain select-none relative z-10 transition-transform duration-300 group-hover/kawaii:scale-105"
+                    className="kawaii-sticker-logo h-28 sm:h-36 md:h-44 lg:h-52 w-auto max-w-none object-contain select-none relative z-10 transition-transform duration-300 group-hover/kawaii:scale-105"
                   />
                 </div>
               ) : (
@@ -688,13 +687,13 @@ export function LandingPage({
                   <img
                     src="/logos/Ionlearnnewfulltext.png"
                     alt="IOnLearn"
-                    className="h-16 sm:h-20 md:h-24 lg:h-28 w-auto object-contain block dark:hidden drop-shadow-sm select-none"
+                    className="h-22 sm:h-28 md:h-34 lg:h-38 w-auto max-w-none object-contain block dark:hidden drop-shadow-sm select-none"
                   />
                   {/* Dark Mode Logo */}
                   <img
                     src="/logos/Ionlearnnewfulltext-dark.png"
                     alt="IOnLearn"
-                    className="h-16 sm:h-20 md:h-24 lg:h-28 w-auto object-contain hidden dark:block drop-shadow-sm select-none"
+                    className="h-22 sm:h-28 md:h-34 lg:h-38 w-auto max-w-none object-contain hidden dark:block drop-shadow-sm select-none"
                   />
                 </div>
               )}
@@ -703,9 +702,8 @@ export function LandingPage({
 
           {/* Hero Tagline - Crisp, Clean High-Craft Typography */}
           <p
-            className={`animate-hero-tagline font-cal text-[clamp(2rem,6vw,4rem)] font-semibold tracking-tight max-w-[14ch] sm:max-w-2xl mx-auto mb-8 sm:mb-10 leading-[0.95] sm:leading-snug whitespace-pre-line transition-colors duration-500 ${
-              isKawaiiMode ? "text-slate-900 dark:text-[#fce7f3]" : "text-slate-900 dark:text-[#f5f5f5]"
-            }`}
+            className={`animate-hero-tagline font-cal text-[clamp(2rem,6vw,4rem)] font-semibold tracking-tight max-w-[14ch] sm:max-w-2xl mx-auto mb-8 sm:mb-10 leading-[0.95] sm:leading-snug whitespace-pre-line transition-colors duration-500 ${isKawaiiMode ? "text-slate-900 dark:text-[#fce7f3]" : "text-slate-900 dark:text-[#f5f5f5]"
+              }`}
           >
             {uiText.hero.tagline}
           </p>
@@ -728,11 +726,10 @@ export function LandingPage({
             <button
               type="button"
               onClick={onDemoMode}
-              className={`group relative overflow-hidden rounded-2xl border px-5 sm:px-6 py-3 sm:py-3.5 shadow-[0_4px_14px_rgba(15,23,42,0.05)] transition-all duration-300 ease-out hover:px-6 sm:hover:px-7 cursor-pointer active:scale-95 w-full sm:w-auto ${
-                isKawaiiMode
-                  ? "border-pink-200/70 dark:border-pink-900/50 bg-white/90 dark:bg-[#1a1120] text-slate-800 dark:text-pink-100 hover:border-pink-300 dark:hover:border-pink-700 hover:shadow-[0_8px_20px_rgba(244,63,94,0.1)]"
-                  : "border-slate-300 dark:border-[#333333] bg-white dark:bg-[#121212] text-slate-800 dark:text-[#e5e5e5] hover:border-indigo-400 dark:hover:border-indigo-500 hover:shadow-[0_12px_30px_rgba(79,70,229,0.12)] dark:hover:text-white"
-              }`}
+              className={`group relative overflow-hidden rounded-2xl border px-5 sm:px-6 py-3 sm:py-3.5 shadow-[0_4px_14px_rgba(15,23,42,0.05)] transition-all duration-300 ease-out hover:px-6 sm:hover:px-7 cursor-pointer active:scale-95 w-full sm:w-auto ${isKawaiiMode
+                ? "border-pink-200/70 dark:border-pink-900/50 bg-white/90 dark:bg-[#1a1120] text-slate-800 dark:text-pink-100 hover:border-pink-300 dark:hover:border-pink-700 hover:shadow-[0_8px_20px_rgba(244,63,94,0.1)]"
+                : "border-slate-300 dark:border-[#333333] bg-white dark:bg-[#121212] text-slate-800 dark:text-[#e5e5e5] hover:border-indigo-400 dark:hover:border-indigo-500 hover:shadow-[0_12px_30px_rgba(79,70,229,0.12)] dark:hover:text-white"
+                }`}
             >
               <span className="relative flex items-center justify-center gap-1.5 text-sm sm:text-base font-semibold transition-all duration-300 ease-out group-hover:gap-2">
                 <span>{uiText.hero.demoButton}</span>
@@ -745,11 +742,10 @@ export function LandingPage({
               type="button"
               onClick={onConnectGoogle}
               disabled={isAuthenticating}
-              className={`group relative overflow-hidden rounded-2xl px-5 sm:px-7 py-3 sm:py-3.5 text-white hover:px-6 sm:hover:px-8 transition-all duration-300 ease-out cursor-pointer disabled:opacity-50 active:scale-95 w-full sm:w-auto ${
-                isKawaiiMode
-                  ? "bg-[#f43f5e] hover:bg-[#e11d48] dark:bg-[#f43f5e] dark:hover:bg-[#e11d48] shadow-[0_10px_24px_rgba(244,63,94,0.35)] hover:shadow-[0_14px_30px_rgba(244,63,94,0.45)]"
-                  : "bg-[#4b43c6] hover:bg-[#3e36b8] dark:bg-[#5b52e0] dark:hover:bg-[#4d44d0] shadow-[0_10px_28px_rgba(79,70,229,0.28)] hover:shadow-[0_18px_36px_rgba(79,70,229,0.35)]"
-              }`}
+              className={`group relative overflow-hidden rounded-2xl px-5 sm:px-7 py-3 sm:py-3.5 text-white hover:px-6 sm:hover:px-8 transition-all duration-300 ease-out cursor-pointer disabled:opacity-50 active:scale-95 w-full sm:w-auto ${isKawaiiMode
+                ? "bg-[#f43f5e] hover:bg-[#e11d48] dark:bg-[#f43f5e] dark:hover:bg-[#e11d48] shadow-[0_10px_24px_rgba(244,63,94,0.35)] hover:shadow-[0_14px_30px_rgba(244,63,94,0.45)]"
+                : "bg-[#4b43c6] hover:bg-[#3e36b8] dark:bg-[#5b52e0] dark:hover:bg-[#4d44d0] shadow-[0_10px_28px_rgba(79,70,229,0.28)] hover:shadow-[0_18px_36px_rgba(79,70,229,0.35)]"
+                }`}
             >
               <span className="relative flex items-center justify-center gap-2 text-sm sm:text-base font-semibold transition-all duration-300 ease-out group-hover:gap-2.5">
                 {/* Clean SVG Google icon */}
@@ -797,9 +793,8 @@ export function LandingPage({
         className="landing-scroll-section w-full max-w-4xl mx-auto px-4 sm:px-6 pt-20 sm:pt-28 text-center scroll-mt-20"
       >
         <span
-          className={`font-montserrat text-xs sm:text-sm font-bold tracking-wider lowercase mb-2 inline-block transition-colors duration-300 ${
-            isKawaiiMode ? "text-pink-600 dark:text-pink-400" : "text-[#4f46e5] dark:text-[#818cf8]"
-          }`}
+          className={`font-montserrat text-xs sm:text-sm font-bold tracking-wider lowercase mb-2 inline-block transition-colors duration-300 ${isKawaiiMode ? "text-pink-600 dark:text-pink-400" : "text-[#4f46e5] dark:text-[#818cf8]"
+            }`}
         >
           {uiText.sections.aboutEyebrow}
         </span>
