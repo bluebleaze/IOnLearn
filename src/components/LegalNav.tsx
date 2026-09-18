@@ -49,7 +49,7 @@ export function LegalNav({ currentPage }: LegalNavProps) {
 
           <Link href="/" className="flex items-center gap-2 shrink-0">
             <img
-              src={isDark ? "/logos/logoionlearnfulltext-dark.png" : "/logos/logoionlearnfulltext.png"}
+              src={isDark ? "/logos/Ionlearnnewfulltext-dark.png" : "/logos/Ionlearnnewfulltext.png"}
               alt="IOnLearn"
               className="h-7 sm:h-8 w-auto object-contain"
             />

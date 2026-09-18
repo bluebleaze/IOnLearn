@@ -128,10 +128,10 @@ export function AppSidebar({
               className="cursor-pointer hover:bg-slate-100/80 dark:hover:bg-[#141416] transition-colors rounded-xl overflow-hidden whitespace-nowrap h-auto py-1.5 px-2 group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:mx-auto"
             >
               {isCollapsed ? (
-                /* Collapsed Icon: logoionlearnkecil */
+                /* Collapsed Icon: Ionlearnnewkecil */
                 <div className="flex aspect-square size-8 items-center justify-center shrink-0">
                   <img
-                    src="/logos/logoionlearnkecil.png"
+                    src="/logos/Ionlearnnewkecil.png"
                     alt="IOnLearn"
                     className="size-6 object-contain"
                   />
@@ -140,7 +140,7 @@ export function AppSidebar({
                 <div className="flex flex-col gap-0.5 text-left leading-tight overflow-hidden whitespace-nowrap transition-[opacity,transform,max-width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] max-w-full">
                   <div className="flex items-center">
                     <img
-                      src={isDark ? "/logos/logoionlearnfulltext-dark.png" : "/logos/logoionlearnfulltext.png"}
+                      src={isDark ? "/logos/Ionlearnnewfulltext-dark.png" : "/logos/Ionlearnnewfulltext.png"}
                       alt="IOnLearn"
                       className="h-6 w-auto object-contain"
                     />

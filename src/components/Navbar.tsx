@@ -86,7 +86,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             </Button>
             <a href="/" className="flex items-center gap-2 shrink-0">
               <img
-                src={currentTheme === "dark" ? "/logos/logoionlearnfulltext-dark.png" : "/logos/logoionlearnfulltext.png"}
+                src={currentTheme === "dark" ? "/logos/Ionlearnnewfulltext-dark.png" : "/logos/Ionlearnnewfulltext.png"}
                 alt="IOnLearn"
                 className="h-7 sm:h-8 w-auto object-contain"
               />

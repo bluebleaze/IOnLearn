@@ -115,12 +115,12 @@ export function DemoInviteSection({ onDemoMode, language = "ENG" }: DemoInviteSe
                 {/* Brand Logo */}
                 <div className="flex items-center gap-1.5">
                   <img
-                    src="/logos/logoionlearnfulltext.png"
+                    src="/logos/Ionlearnnewfulltext.png"
                     alt="IOnLearn"
                     className="h-4 sm:h-5 w-auto object-contain block dark:hidden"
                   />
                   <img
-                    src="/logos/logoionlearnfulltext-dark.png"
+                    src="/logos/Ionlearnnewfulltext-dark.png"
                     alt="IOnLearn"
                     className="h-4 sm:h-5 w-auto object-contain hidden dark:block"
                   />

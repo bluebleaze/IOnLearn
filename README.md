@@ -1,57 +1,229 @@
-# IOnLearn — Smart Study Companion
+<p align="center">
+  <img src="logos/IOnLearnKawaistyle.png" alt="IOnLearn - Switch ON Your Learning" width="700" />
+</p>
 
-Auto-sync Google Classroom → to-do list + AI resources + chatbot.
+<p align="center">
+  <strong>Free and Open-Source Academic Productivity Suite & Socratic AI Study Companion Connected to Google Classroom</strong>
+</p>
 
-## Setup
+<p align="center">
+  <img src="https://img.shields.io/badge/License-GPLv3-blue.svg?style=flat-square" alt="GPLv3 License" />
+  <img src="https://img.shields.io/badge/Next.js-16+-black?style=flat-square&logo=next.js" alt="Next.js" />
+  <img src="https://img.shields.io/badge/TypeScript-5.0+-blue?style=flat-square&logo=typescript" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/Tailwind_CSS-3.4+-38B2AC?style=flat-square&logo=tailwind-css" alt="Tailwind CSS" />
+  <img src="https://img.shields.io/badge/Firebase-Auth_%26_Firestore-FFCA28?style=flat-square&logo=firebase" alt="Firebase" />
+  <img src="https://img.shields.io/badge/AI_Providers-Gemini_%7C_OpenAI_%7C_Local_LLM-8A2BE2?style=flat-square" alt="AI Providers" />
+  <img src="https://img.shields.io/badge/Open_Source-GPLv3-34A853?style=flat-square" alt="Open Source" />
+</p>
 
-1. **Firebase**: Create a project at [console.firebase.google.com](https://console.firebase.google.com)
-   - Enable **Authentication** → Google sign-in provider
-   - Enable **Cloud Firestore** (start in test mode)
-   - Copy your web app config
+---
 
-2. **Google Cloud**: In your Firebase project's [Google Cloud Console](https://console.cloud.google.com)
-   - Enable **Google Classroom API**
-   - Add your domain to OAuth consent screen authorized domains
+## Overview
 
-3. **Gemini AI**: Get an API key at [aistudio.google.com](https://aistudio.google.com/apikey)
+IOnLearn ("Switch ON Your Learning") is a free, copyleft open-source academic productivity platform and conversational AI study tutor designed for students, self-learners, and educators. It unifies scattered coursework, class announcements, deadlines, and study materials into a single focused dashboard.
 
-4. **Environment**: Copy `.env.local.example` to `.env.local` and fill in the values:
-   ```bash
-   cp .env.local.example .env.local
-   ```
+By integrating directly with Google Classroom through strictly read-only scopes, IOnLearn categorizes upcoming assignments by urgency, parses syllabus attachments, and pairs students with a Socratic AI study companion. Rather than generating direct answers that bypass critical thinking, the AI tutor scaffolds learning step-by-step to build conceptual mastery.
 
-5. **Run**:
-   ```bash
-   npm install
-   npm run dev
-   ```
+IOnLearn is completely open-source under the **GNU General Public License v3 (GPLv3)**. It is model-agnostic, supporting both cloud APIs (Google Gemini) and local or custom-routed LLMs (Ollama, LM Studio, 9router, omnirouter, vLLM).
 
-## How It Works
+---
 
-1. Sign in with Google (grants Classroom read access)
-2. Click "Sync Classroom" to pull assignments
-3. Tasks appear as a to-do list — click any task to see AI-generated study resources
-4. Use the 💬 chatbot (bottom-right) for follow-up questions about your tasks
+## Key Features
+
+- **Google Classroom Integration**: One-click synchronization for enrolled courses, assignments (`courseWork`), instructions, due dates, classroom materials, and submission statuses (`turned in`, `assigned`, `late`).
+- **Socratic AI Study Companion**:
+  - **Step-by-Step Guided Reasoning**: Helps students dissect complex problems, understand core principles, and arrive at answers independently.
+  - **Attachment & Document Ingestion**: Reads PDFs, slide decks, and documents attached to Classroom assignments so tutoring is grounded directly in official course materials.
+  - **Adaptive Study Modes**: Automatically generates topic summaries, review flashcards, practice quizzes, and simplified conceptual breakdowns.
+- **Task & Deadline Management**: Automated sorting into actionable categories: To-Do, Upcoming, Late, and Completed.
+- **Study Notes Workspace**: Markdown-enabled notebook for archiving lecture summaries, AI conversations, and personal study insights grouped by course.
+- **Modern Responsive Interface**: Clean, distraction-free UI with full Dark Mode and Light Mode support, installable as a Progressive Web App (PWA) across desktop, tablet, and mobile.
+- **Strict Read-Only Privacy**: Only requests read-only permissions from Google Classroom and Google Drive. The application never modifies, creates, or deletes user files or submissions.
+
+---
+
+## AI Architecture: Cloud and Local Inference
+
+IOnLearn decouples application logic from specific model providers. You can choose between managed cloud endpoints or completely private, offline execution via any OpenAI-compatible API gateway.
+
+### 1. Default: Google Gemini API
+Native integration using the official `@google/genai` SDK with support for `gemini-2.5-flash`, `gemini-1.5-flash`, `gemini-1.5-pro`, and other Gemini models.
+
+### 2. Local AI and OpenAI-Compatible Routers
+Connect IOnLearn to local inference servers or multi-model gateways by pointing to an OpenAI-compatible endpoint:
+- **Ollama** (`http://localhost:11434/v1`): Run open-weight models (Llama 3, DeepSeek-R1, Qwen 2.5, Mistral, Gemma 2) locally on your own hardware without internet access.
+- **LM Studio** (`http://localhost:1234/v1`): Run local GGUF models with a desktop interface.
+- **AI Gateways & Routers**:
+  - 9router / omnirouter
+  - OpenRouter (`https://openrouter.ai/api/v1`)
+  - vLLM, LocalAI, Jan, or Text Generation WebUI.
+
+#### Environment Configuration for AI (`.env`):
+```env
+# Choose active provider: 'gemini' or 'openai'
+AI_PROVIDER="openai"
+
+# OpenAI-Compatible / Local Router Configuration
+OPENAI_BASE_URL="http://localhost:11434/v1"      # Example: Local Ollama, or your 9router / omnirouter address
+OPENAI_API_KEY="ollama"                         # Arbitrary string for local instances, or router API key
+OPENAI_MODEL="qwen2.5:7b"                       # Model tag available in your local runner
+```
+
+---
 
 ## Tech Stack
 
-Next.js 14 · TypeScript · Tailwind CSS · Firebase Auth + Firestore · Gemini AI
+- **Framework**: Next.js 16+ (App Router), React 19, TypeScript
+- **Styling & UI**: Tailwind CSS, Lucide React, Radix UI, Sonner (Toasts)
+- **Backend & APIs**: Next.js Server Route Handlers, `@google/genai`, standard Fetch API
+- **Authentication & Database**: Firebase Authentication (Google OAuth 2.0) and Cloud Firestore
+- **External APIs**: Google Classroom API (v1), Google Drive API (v3)
 
-## Firestore Rules (production)
+---
 
-```
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /users/{userId}/{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-  }
-}
-```
+## Getting Started
 
-## halo
-## halo juga
+### Prerequisites
+- Node.js 18.18+ or 20+
+- A Google Cloud project with Google Classroom API and Firebase enabled
+- A Google AI Studio API key (for Gemini) or a running local LLM instance (Ollama, LM Studio)
+
+### 1. Clone the Repository
 ```bash
-halo juga juga
+git clone https://github.com/username/IOnLearn.git
+cd IOnLearn
 ```
+
+### 2. Install Dependencies
+```bash
+npm install
+```
+
+### 3. Configure Environment Variables
+Copy `.env.example` to `.env`:
+
+```bash
+cp .env.example .env
+```
+
+Configure the environment variables:
+```env
+# --- 1. AI CONFIGURATION ---
+GEMINI_API_KEY="AIzaSy..."                      # API Key from Google AI Studio
+NEXT_PUBLIC_GEMINI_MODEL="gemini-2.5-flash"     # Default Gemini model
+AI_PROVIDER="gemini"                            # 'gemini' or 'openai'
+
+# (Optional) If using Local AI / Ollama / 9router / omnirouter:
+# AI_PROVIDER="openai"
+# OPENAI_BASE_URL="http://localhost:11434/v1"
+# OPENAI_API_KEY="ollama"
+# OPENAI_MODEL="llama3.1:8b"
+
+# --- 2. BRANDING ---
+NEXT_PUBLIC_APP_NAME="IOnLearn"
+NEXT_PUBLIC_APP_TAGLINE="Academic Productivity & AI Study Companion"
+
+# --- 3. FIREBASE & GOOGLE AUTH ---
+NEXT_PUBLIC_FIREBASE_PROJECT_ID="your-firebase-project-id"
+NEXT_PUBLIC_FIREBASE_APP_ID="1:xxxx:web:xxxx"
+NEXT_PUBLIC_FIREBASE_API_KEY="AIzaSy..."
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="your-project.firebaseapp.com"
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET="your-project.firebasestorage.app"
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID="xxxx"
+NEXT_PUBLIC_FIREBASE_OAUTH_CLIENT_ID="xxxx.apps.googleusercontent.com"
+```
+
+### 4. Firebase and Google Cloud Console Setup
+
+1. **Firebase Authentication**:
+   - In Firebase Console, go to **Authentication** -> **Sign-in method**.
+   - Enable the **Google** provider.
+2. **Google Cloud Console**:
+   - Under **APIs & Services** -> **Library**, enable **Google Classroom API** and **Google Drive API**.
+   - Under **OAuth consent screen**, configure the following read-only scopes:
+     - `.../auth/classroom.courses.readonly`
+     - `.../auth/classroom.student-submissions.me.readonly`
+     - `.../auth/classroom.courseworkmaterials.readonly`
+     - `.../auth/drive.readonly`
+     - `.../auth/userinfo.email`
+     - `.../auth/userinfo.profile`
+3. **Cloud Firestore Security Rules**:
+   Apply these rules to restrict database access to authenticated resource owners:
+   ```javascript
+   rules_version = '2';
+   service cloud.firestore {
+     match /databases/{database}/documents {
+       match /users/{userId}/{document=**} {
+         allow read, write: if request.auth != null && request.auth.uid == userId;
+       }
+     }
+   }
+   ```
+
+### 5. Running the Application
+```bash
+# Development mode
+npm run dev
+
+# Production build and start
+npm run build
+npm run start
+```
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+---
+
+## Data Privacy and Compliance
+
+IOnLearn adheres to strict student data protection guidelines:
+- **Read-Only Operation**: The application requests only read-only scopes for Google Classroom and Drive data. It cannot alter grades, delete files, or modify student submissions.
+- **No Data Commercialization**: User data is never sold, shared, or brokered to advertising networks or third parties.
+- **Limited Use Compliance**: Fully compliant with the [Google API Services User Data Policy](https://developers.google.com/terms/api-services-user-data-policy), including all Limited Use requirements.
+- **No Model Training on User Data**: Classroom and Drive data ingested during tutoring sessions is never used to train or fine-tune public foundation models.
+
+---
+
+## Contributing
+
+Contributions from the open-source community are welcome. To contribute:
+
+1. Fork this repository.
+2. Create a feature branch (`git checkout -b feature/new-capability`).
+3. Commit your changes (`git commit -m 'feat: add custom router support'`).
+4. Push your branch (`git push origin feature/new-capability`).
+5. Open a Pull Request.
+
+All contributions to this project must be released under the terms of the GNU General Public License v3.
+
+---
+
+## Open Source License: GNU GPLv3
+
+IOnLearn is free software licensed under the **GNU General Public License v3.0 (GPLv3)**.
+
+### What GPLv3 Means for You
+
+The GNU General Public License is a strong copyleft license designed to guarantee that the software remains free and open for all users, protecting community rights against proprietary lock-in.
+
+- **Freedom to Run**: You have the unrestricted freedom to run this program for any purpose—educational, personal, research, or commercial.
+- **Freedom to Study and Inspect**: You have full access to the complete source code to inspect how it works, how your data is handled, and how AI prompts are constructed.
+- **Freedom to Modify**: You can adapt, customize, and extend IOnLearn to fit your school, university, or personal workflow.
+- **Freedom to Share and Redistribute**: You may distribute verbatim copies or modified versions of this software, provided that any distributed derivative work is also licensed under the **GPLv3** with its corresponding source code made publicly available.
+- **Anti-Tivoization**: Hardware manufacturers or cloud hosts cannot lock this software to prevent users from installing modified versions.
+- **Patent Grant**: Contributors provide an explicit grant of patent rights, protecting downstream developers and users from patent litigation.
+
+```
+Copyright (C) 2026 IOnLearn Contributors
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+```
+
+For the complete legal text, please refer to the [LICENSE](LICENSE) file.

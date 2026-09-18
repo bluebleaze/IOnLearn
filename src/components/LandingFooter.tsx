@@ -68,13 +68,13 @@ export function LandingFooter({ onConnectGoogle, language = "ENG" }: LandingFoot
           <Link href="#home" className="inline-block transition-opacity hover:opacity-90">
             {/* Light Mode Logo */}
             <img
-              src="/logos/logoionlearnfulltext.png"
+              src="/logos/Ionlearnnewfulltext.png"
               alt="IOnLearn"
               className="h-7 sm:h-8 w-auto object-contain block dark:hidden"
             />
             {/* Dark Mode Logo */}
             <img
-              src="/logos/logoionlearnfulltext-dark.png"
+              src="/logos/Ionlearnnewfulltext-dark.png"
               alt="IOnLearn"
               className="h-7 sm:h-8 w-auto object-contain hidden dark:block"
             />

@@ -324,12 +324,12 @@ export function LandingPage({
           <div className="flex min-w-0 items-center gap-2 sm:gap-3 shrink-0 z-10">
             <a href="#home" className="flex items-center gap-2 sm:gap-3 min-w-0">
               <img
-                src="/logos/logoionlearnfulltext.png"
+                src="/logos/Ionlearnnewfulltext.png"
                 alt="IOnLearn"
                 className="h-7 sm:h-9 w-auto object-contain block dark:hidden"
               />
               <img
-                src="/logos/logoionlearnfulltext-dark.png"
+                src="/logos/Ionlearnnewfulltext-dark.png"
                 alt="IOnLearn"
                 className="h-7 sm:h-9 w-auto object-contain hidden dark:block"
               />
@@ -574,13 +574,13 @@ export function LandingPage({
             <span className="sr-only">IOnLearn - Sinkronkan Tugas Kelas, Taklukkan dengan AI</span>
             {/* Light Mode Logo */}
             <img
-              src="/logos/logoionlearnfulltext.png"
+              src="/logos/Ionlearnnewfulltext.png"
               alt="IOnLearn"
               className="h-16 sm:h-20 md:h-24 lg:h-28 w-auto object-contain block dark:hidden drop-shadow-sm select-none"
             />
             {/* Dark Mode Logo */}
             <img
-              src="/logos/logoionlearnfulltext-dark.png"
+              src="/logos/Ionlearnnewfulltext-dark.png"
               alt="IOnLearn"
               className="h-16 sm:h-20 md:h-24 lg:h-28 w-auto object-contain hidden dark:block drop-shadow-sm select-none"
             />
