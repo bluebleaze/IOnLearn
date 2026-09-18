@@ -10,3 +10,9 @@ firebase-applet-config.json
 .next/
 .user_cache.json
 tsconfig.tsbuildinfo
+.agent/
+.agents/
+.gemini/
+.impeccable/
+.opencode/
+
