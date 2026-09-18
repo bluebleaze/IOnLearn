@@ -14,7 +14,6 @@ import {
   Flame,
   ArrowRight,
   TrendingUp,
-  BrainCircuit,
   Plus,
   RefreshCw,
   Check,
@@ -304,8 +303,12 @@ function HomeContent() {
             className="bg-white dark:bg-[#161616] p-4 sm:p-5 rounded-2xl shadow-2xs border border-slate-200/80 dark:border-[#262626] cursor-pointer hover:border-emerald-300 dark:hover:border-emerald-500/40 hover:shadow-md transition-all group relative overflow-hidden"
           >
             <div className="flex items-center justify-between">
-              <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center transition-transform group-hover:scale-105">
-                <BrainCircuit className="w-4 h-4" />
+              <div className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center transition-transform group-hover:scale-110">
+                <img
+                  src="/logos/IOnLearn_mascot.svg"
+                  alt="AI Tutor Mascot"
+                  className="w-full h-full object-contain"
+                />
               </div>
               <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" />
             </div>

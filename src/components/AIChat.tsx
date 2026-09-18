@@ -3874,11 +3874,11 @@ export const AIChat: React.FC<AIChatProps> = ({
           /* ── EMPTY STATE: CLEAN MINIMALIST CENTERED HERO ── */
           <div className="flex flex-col items-center justify-center min-h-full py-12 px-4 sm:px-6 text-center max-w-2xl mx-auto">
             {/* Logo / Brand Mark */}
-            <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-[#141414] border border-indigo-100 dark:border-[#262626] flex items-center justify-center mb-3.5 shadow-2xs">
+            <div className="w-24 h-24 sm:w-28 sm:h-28 flex items-center justify-center mb-3 select-none">
               <img
-                src="/logos/Ionlearnnewkecil.png"
-                alt="IOnLearn"
-                className="w-7 h-7 object-contain"
+                src="/logos/IOnLearn_mascot.svg"
+                alt="IOnLearn Mascot"
+                className="w-full h-full object-contain drop-shadow-sm transition-transform duration-300 hover:scale-105"
               />
             </div>
 
@@ -3939,8 +3939,14 @@ export const AIChat: React.FC<AIChatProps> = ({
                     }`}
                 >
                   {!isUser && (
-                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-indigo-600 dark:bg-indigo-500 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
-                      <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    <div className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center shrink-0 mt-0.5 select-none">
+                      <img
+                        src="/logos/IOnLearn_mascot.svg"
+                        alt="AI Mascot"
+                        className={`w-full h-full object-contain transition-transform duration-200 ${
+                          m.isStreaming ? "animate-mascot-generating" : ""
+                        }`}
+                      />
                     </div>
                   )}
 
@@ -4834,11 +4840,15 @@ export const AIChat: React.FC<AIChatProps> = ({
 
             {/* Loading Thinking Indicator (only shown if not already rendering inline streaming placeholder) */}
             {isLoading && !messages.some((m) => m.isStreaming) && (
-              <div className="flex gap-3.5 justify-start">
-                <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0">
-                  <Loader2 className="w-4 h-4 animate-spin" />
+              <div className="flex gap-3 items-center justify-start">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center shrink-0 select-none">
+                  <img
+                    src="/logos/IOnLearn_mascot.svg"
+                    alt="AI Mascot"
+                    className="w-full h-full object-contain animate-mascot-generating"
+                  />
                 </div>
-                <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-[#7f7f7f] py-2">
+                <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-[#7f7f7f] py-1">
                   <span>{APP_NAME} sedang menyusun bimbingan</span>
                   <span className="flex gap-1 items-center">
                     <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 dark:bg-indigo-400 animate-pulse" />

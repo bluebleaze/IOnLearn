@@ -90,7 +90,7 @@ OPENAI_MODEL="qwen2.5:7b"                       # Model tag available in your lo
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/username/IOnLearn.git
+git clone https://github.com/bluebleaze/IOnLearn.git
 cd IOnLearn
 ```
 
@@ -185,7 +185,7 @@ IOnLearn adheres to strict student data protection guidelines:
 
 ## Contributing
 
-Contributions from the open-source community are welcome. To contribute:
+Contributions from the open-source community are welcome and **greatly appreciated**. To contribute:
 
 1. Fork this repository.
 2. Create a feature branch (`git checkout -b feature/new-capability`).
@@ -194,6 +194,24 @@ Contributions from the open-source community are welcome. To contribute:
 5. Open a Pull Request.
 
 All contributions to this project must be released under the terms of the GNU General Public License v3.
+
+---
+
+## Contributors
+
+Thank you to everyone who has contributed to the development and improvement of IOnLearn.
+
+<p align="center">
+  <a href="https://github.com/bluebleaze/IOnLearn/graphs/contributors">
+    <img src="https://contrib.rocks/image?repo=bluebleaze/IOnLearn" alt="Contributors" />
+  </a>
+</p>
+
+### Top Contributors
+
+- **[@inihelta](https://github.com/inihelta)** - Frontend Developer & Project Designer Lead
+- **[@bluebleaze](https://github.com/bluebleaze)** - Backend Developer & DevOps Engineer
+- **[@moonelliaven](https://github.com/moonelliaven)** - UI/UX Designer & Project Quality Assurance
 
 ---
 
