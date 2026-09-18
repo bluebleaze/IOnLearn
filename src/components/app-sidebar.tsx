@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/sidebar";
 import { NavUser } from "@/components/nav-user";
 import { AccountModal } from "./AccountModal";
-import { BrandText, APP_TAGLINE } from "@/lib/brand";
+import { APP_TAGLINE } from "@/lib/brand";
 import { UserProfile } from "@/services/classroomService";
 import { cn } from "@/lib/utils";
 

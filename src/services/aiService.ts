@@ -9,7 +9,7 @@ import {
     UserPreferences,
 } from "../types";
 import { ClassroomService } from "./classroomService";
-import { isGoogleWorkspaceUrl, parseGoogleWorkspaceUrl } from "../lib/workspaceUtils";
+import { parseGoogleWorkspaceUrl } from "../lib/workspaceUtils";
 import { extractYouTubeUrls, isYouTubeUrl, parseYouTubeUrl } from "../lib/youtubeUtils";
 
 export async function readDriveFileContent(

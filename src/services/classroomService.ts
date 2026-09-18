@@ -1,4 +1,4 @@
-import { ClassroomCourse, ClassroomCourseWork, ClassroomMaterial, TodoTask, isCourseWorkWithinDateRange, DEFAULT_DATE_RANGE_MONTHS, ClassroomSyncProgress } from '../types';
+import { ClassroomCourse, ClassroomCourseWork, TodoTask, isCourseWorkWithinDateRange, DEFAULT_DATE_RANGE_MONTHS, ClassroomSyncProgress } from '../types';
 import { signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
 import { auth, googleProvider as provider } from '@/lib/firebase';
 

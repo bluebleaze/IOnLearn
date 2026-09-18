@@ -986,7 +986,6 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
 
                     <div className="space-y-4">
                       {activeQuiz.map((q, qIndex) => {
-                        const isAnswered = userAnswers[qIndex] !== undefined;
                         const isCorrect = userAnswers[qIndex] === q.correctAnswer;
 
                         return (

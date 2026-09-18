@@ -28,6 +28,9 @@ import {
   Upload,
   Trash2,
   Building2,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
 } from "lucide-react";
 import {
   DocumentStyleOptions,
@@ -41,6 +44,9 @@ import {
   downloadCreatedSlides,
   DEFAULT_DOCUMENT_STYLE,
   ACCENT_PALETTES,
+  SLIDE_THEMES,
+  parseBulletPoint,
+  cleanLatexMath,
 } from "@/lib/exportUtils";
 
 interface DocumentCustomizerModalProps {
@@ -61,6 +67,14 @@ const EXCEL_THEMES = [
   { id: "amber", label: "Warm Amber", primary: "d97706", bg: "bg-amber-600", light: "bg-amber-50 dark:bg-amber-950/30", desc: "Emas / Oranye Hangat" },
 ] as const;
 
+const SLIDE_FONTS = [
+  { id: "Arial", label: "Arial", desc: "Standar Layar Bersih & Universal" },
+  { id: "Calibri", label: "Calibri", desc: "Modern, Proporsional & Nyaman Dibaca" },
+  { id: "Trebuchet MS", label: "Trebuchet MS", desc: "Tegas, Dinamis & Kontras Tinggi" },
+  { id: "Segoe UI", label: "Segoe UI", desc: "Modern Tech & Tajam di Layar" },
+  { id: "Georgia", label: "Georgia", desc: "Klasik, Anggun & Berwibawa (Serif)" },
+];
+
 export const DocumentCustomizerModal: React.FC<DocumentCustomizerModalProps> = ({
   isOpen,
   onClose,
@@ -73,8 +87,21 @@ export const DocumentCustomizerModal: React.FC<DocumentCustomizerModalProps> = (
   const [isDownloading, setIsDownloading] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [activeTab, setActiveTab] = useState<
-    "identity" | "kop" | "typography" | "layout" | "metadata" | "excel_sheet" | "excel_style" | "excel_columns"
+    | "identity"
+    | "kop"
+    | "typography"
+    | "layout"
+    | "metadata"
+    | "excel_sheet"
+    | "excel_style"
+    | "excel_columns"
+    | "slide_identity"
+    | "slide_theme"
+    | "slide_format"
+    | "slide_logo"
+    | "slide_preview"
   >("identity");
+  const [previewSlideIdx, setPreviewSlideIdx] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load saved preferences on modal open
@@ -99,12 +126,24 @@ export const DocumentCustomizerModal: React.FC<DocumentCustomizerModalProps> = (
         excelTheme: saved.excelTheme || "emerald",
         autoFitColumns: saved.autoFitColumns !== false,
         showGridLines: saved.showGridLines !== false,
+        slideTheme: saved.slideTheme || (slides?.theme as any) || "indigo",
+        slideAspectRatio: saved.slideAspectRatio || "16:9",
+        slideFont: saved.slideFont || "Arial",
+        showSlideNumbers: saved.showSlideNumbers !== false,
+        showSpeakerNotes: saved.showSpeakerNotes !== false,
+        slideSubtitle: saved.slideSubtitle || slides?.subtitle || "",
       }));
-      if (document?.type === "xlsx") {
+
+      if (slides) {
+        setActiveTab("slide_identity");
+        setPreviewSlideIdx(0);
+      } else if (document?.type === "xlsx") {
+        setActiveTab("identity");
+      } else {
         setActiveTab("identity");
       }
     }
-  }, [isOpen, document?.type]);
+  }, [isOpen, document?.type, slides]);
 
   if (!isOpen) return null;
 
@@ -259,7 +298,19 @@ export const DocumentCustomizerModal: React.FC<DocumentCustomizerModalProps> = (
     },
   ];
 
-  const currentAccent = isExcel
+  const currentSlideTheme = SLIDE_THEMES.find(
+    (t) => t.id === (styleOptions.slideTheme || (slides?.theme as any) || "indigo")
+  ) || SLIDE_THEMES[0];
+
+  const currentAccent = isSlide
+    ? {
+        name: currentSlideTheme.name,
+        primary: currentSlideTheme.accentColor,
+        light: "bg-indigo-50 dark:bg-indigo-950/30",
+        border: "border-indigo-200 dark:border-indigo-800",
+        text: "text-indigo-600 dark:text-indigo-400",
+      }
+    : isExcel
     ? (EXCEL_THEMES.find((t) => t.id === (styleOptions.excelTheme || "emerald")) || EXCEL_THEMES[0])
     : (ACCENT_PALETTES[styleOptions.accentColor || "indigo"] || ACCENT_PALETTES.indigo);
 
@@ -277,7 +328,7 @@ export const DocumentCustomizerModal: React.FC<DocumentCustomizerModalProps> = (
             </div>
             <div>
               <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                {isExcel ? "Kustomisasi Spreadsheet Excel" : "Kustomisasi Generator Dokumen"}
+                {isSlide ? "Kustomisasi Presentasi Slide" : isExcel ? "Kustomisasi Spreadsheet Excel" : "Kustomisasi Generator Dokumen"}
                 <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold uppercase">
                   {docType}
                 </span>
@@ -297,7 +348,78 @@ export const DocumentCustomizerModal: React.FC<DocumentCustomizerModalProps> = (
 
         {/* Tab Navigation */}
         <div className="flex border-b border-slate-200 dark:border-slate-800 px-3 sm:px-6 bg-slate-50/50 dark:bg-slate-900/30 overflow-x-auto">
-          {isExcel ? (
+          {isSlide ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setActiveTab("slide_identity")}
+                className={`flex items-center gap-1.5 py-3 px-3 text-xs font-semibold border-b-2 whitespace-nowrap transition cursor-pointer ${
+                  activeTab === "slide_identity"
+                    ? "border-indigo-600 text-indigo-600 dark:text-indigo-400"
+                    : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                }`}
+                style={activeTab === "slide_identity" ? { borderColor: `#${currentAccent.primary}`, color: `#${currentAccent.primary}` } : undefined}
+              >
+                <User className="w-3.5 h-3.5" />
+                Identitas & Judul
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("slide_theme")}
+                className={`flex items-center gap-1.5 py-3 px-3 text-xs font-semibold border-b-2 whitespace-nowrap transition cursor-pointer ${
+                  activeTab === "slide_theme"
+                    ? "border-indigo-600 text-indigo-600 dark:text-indigo-400"
+                    : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                }`}
+                style={activeTab === "slide_theme" ? { borderColor: `#${currentAccent.primary}`, color: `#${currentAccent.primary}` } : undefined}
+              >
+                <Palette className="w-3.5 h-3.5" />
+                Tema Desain ({SLIDE_THEMES.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("slide_format")}
+                className={`flex items-center gap-1.5 py-3 px-3 text-xs font-semibold border-b-2 whitespace-nowrap transition cursor-pointer ${
+                  activeTab === "slide_format"
+                    ? "border-indigo-600 text-indigo-600 dark:text-indigo-400"
+                    : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                }`}
+                style={activeTab === "slide_format" ? { borderColor: `#${currentAccent.primary}`, color: `#${currentAccent.primary}` } : undefined}
+              >
+                <Layout className="w-3.5 h-3.5" />
+                Rasio & Format
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("slide_logo")}
+                className={`flex items-center gap-1.5 py-3 px-3 text-xs font-semibold border-b-2 whitespace-nowrap transition cursor-pointer ${
+                  activeTab === "slide_logo"
+                    ? "border-indigo-600 text-indigo-600 dark:text-indigo-400"
+                    : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                }`}
+                style={activeTab === "slide_logo" ? { borderColor: `#${currentAccent.primary}`, color: `#${currentAccent.primary}` } : undefined}
+              >
+                <Building2 className="w-3.5 h-3.5" />
+                Logo Instansi
+                {styleOptions.logoBase64 && (
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("slide_preview")}
+                className={`flex items-center gap-1.5 py-3 px-3 text-xs font-semibold border-b-2 whitespace-nowrap transition cursor-pointer ${
+                  activeTab === "slide_preview"
+                    ? "border-indigo-600 text-indigo-600 dark:text-indigo-400"
+                    : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                }`}
+                style={activeTab === "slide_preview" ? { borderColor: `#${currentAccent.primary}`, color: `#${currentAccent.primary}` } : undefined}
+              >
+                <Eye className="w-3.5 h-3.5" />
+                Pratinjau Slide ({slides?.slides?.length || 0})
+              </button>
+            </>
+          ) : isExcel ? (
             <>
               <button
                 type="button"
@@ -431,7 +553,572 @@ export const DocumentCustomizerModal: React.FC<DocumentCustomizerModalProps> = (
 
         {/* Modal Body */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
-          {/* TAB 1: IDENTITAS SISWA / PENULIS */}
+          {/* SLIDE TAB 1: IDENTITAS & SUBJUDUL */}
+          {activeTab === "slide_identity" && (
+            <div className="space-y-4">
+              <div className="bg-indigo-50/70 dark:bg-indigo-950/30 p-3 rounded-xl border border-indigo-100 dark:border-indigo-900/50 flex items-start gap-3">
+                <Presentation className="w-4 h-4 text-indigo-600 dark:text-indigo-400 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-indigo-900 dark:text-indigo-200 leading-relaxed">
+                  Kustomisasikan judul sampul, subjudul pengantar, dan identitas presenter untuk slide presentasi PowerPoint (.pptx).
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Subjudul / Deskripsi Singkat Presentasi
+                </label>
+                <input
+                  type="text"
+                  value={styleOptions.slideSubtitle ?? slides?.subtitle ?? ""}
+                  onChange={(e) => handleUpdate("slideSubtitle", e.target.value)}
+                  placeholder="Contoh: Tinjauan Komprehensif & Analisis Strategis"
+                  className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                />
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Ditampilkan tepat di bawah judul utama pada Slide Sampul (Cover).
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Nama Presenter / Pembuat
+                </label>
+                <div className="relative">
+                  <User className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+                  <input
+                    type="text"
+                    value={styleOptions.userName || ""}
+                    onChange={(e) => handleUpdate("userName", e.target.value)}
+                    placeholder="Contoh: Muhammad Budi Santoso"
+                    className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                    Instansi / Universitas / Sekolah
+                  </label>
+                  <div className="relative">
+                    <Building2 className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+                    <input
+                      type="text"
+                      value={styleOptions.institution || ""}
+                      onChange={(e) => handleUpdate("institution", e.target.value)}
+                      placeholder="Contoh: Universitas Indonesia"
+                      className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                    Fakultas / Jurusan / Kelas
+                  </label>
+                  <input
+                    type="text"
+                    value={styleOptions.facultyOrClass || ""}
+                    onChange={(e) => handleUpdate("facultyOrClass", e.target.value)}
+                    placeholder="Contoh: Fakultas Ilmu Komputer"
+                    className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Nomor Induk Siswa / NIM (Opsional)
+                </label>
+                <input
+                  type="text"
+                  value={styleOptions.studentId || ""}
+                  onChange={(e) => handleUpdate("studentId", e.target.value)}
+                  placeholder="Contoh: 2106728190"
+                  className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* SLIDE TAB 2: TEMA DESAIN (8 TEMA) */}
+          {activeTab === "slide_theme" && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Pilih Palet Tema Desain Presentasi
+                </label>
+                <span className="text-[11px] text-slate-400">
+                  8 Pilihan Palet Warna Profesional
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {SLIDE_THEMES.map((theme) => {
+                  const isSelected = (styleOptions.slideTheme || (slides?.theme as any) || "indigo") === theme.id;
+                  return (
+                    <button
+                      key={theme.id}
+                      type="button"
+                      onClick={() => handleUpdate("slideTheme", theme.id)}
+                      className={`p-3 rounded-xl border text-left transition-all cursor-pointer relative flex flex-col justify-between ${
+                        isSelected
+                          ? "border-indigo-600 dark:border-indigo-400 bg-indigo-50/40 dark:bg-indigo-950/30 ring-2 ring-indigo-500/20 shadow-xs"
+                          : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 hover:border-slate-300 dark:hover:border-slate-600"
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-xs font-bold text-slate-800 dark:text-slate-100">
+                            {theme.name}
+                          </span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                            {theme.id.toUpperCase()}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-2.5 leading-snug">
+                          {theme.description}
+                        </p>
+                      </div>
+
+                      {/* Theme Swatch Preview Bar */}
+                      <div className="flex items-center gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-700/50">
+                        <div
+                          className="w-5 h-5 rounded-md border border-slate-200/50 shadow-2xs shrink-0"
+                          style={{ backgroundColor: `#${theme.titleColor}` }}
+                          title={`Warna Primer: #${theme.titleColor}`}
+                        />
+                        <div
+                          className="w-5 h-5 rounded-md border border-slate-200/50 shadow-2xs shrink-0"
+                          style={{ backgroundColor: `#${theme.accentColor}` }}
+                          title={`Warna Aksen: #${theme.accentColor}`}
+                        />
+                        <div
+                          className="w-5 h-5 rounded-md border border-slate-200/50 shadow-2xs shrink-0"
+                          style={{ backgroundColor: `#${theme.bg}` }}
+                          title={`Warna Latar: #${theme.bg}`}
+                        />
+                        <div
+                          className="w-5 h-5 rounded-md border border-slate-200/50 shadow-2xs shrink-0"
+                          style={{ backgroundColor: `#${theme.cardBg}` }}
+                          title={`Warna Kartu: #${theme.cardBg}`}
+                        />
+                        {isSelected && (
+                          <span className="ml-auto text-[11px] font-bold text-indigo-600 dark:text-indigo-400">
+                            ✓ Aktif
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* SLIDE TAB 3: RASIO ASPEK & TIPOGRAFI & TOGGLE */}
+          {activeTab === "slide_format" && (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Rasio Aspek Layar Presentasi
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleUpdate("slideAspectRatio", "16:9")}
+                    className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                      (styleOptions.slideAspectRatio || "16:9") === "16:9"
+                        ? "border-indigo-600 dark:border-indigo-400 bg-indigo-50/40 dark:bg-indigo-950/30 ring-2 ring-indigo-500/20"
+                        : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 hover:border-slate-300"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-100">
+                        16:9 Widescreen (Modern)
+                      </span>
+                      <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-1.5 py-0.5 rounded">
+                        Direkomendasikan
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      Optimal untuk proyektor modern, monitor laptop, TV resolusi HD/4K.
+                    </p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleUpdate("slideAspectRatio", "4:3")}
+                    className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                      styleOptions.slideAspectRatio === "4:3"
+                        ? "border-indigo-600 dark:border-indigo-400 bg-indigo-50/40 dark:bg-indigo-950/30 ring-2 ring-indigo-500/20"
+                        : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 hover:border-slate-300"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-100">
+                        4:3 Standar (Klasik)
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      Sesuai untuk proyektor lama atau format cetak dokumen presentasi.
+                    </p>
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Tipografi Huruf Slide (Font Face)
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {SLIDE_FONTS.map((f) => {
+                    const isSelected = (styleOptions.slideFont || "Arial") === f.id;
+                    return (
+                      <button
+                        key={f.id}
+                        type="button"
+                        onClick={() => handleUpdate("slideFont", f.id)}
+                        className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
+                          isSelected
+                            ? "border-indigo-600 dark:border-indigo-400 bg-indigo-50/40 dark:bg-indigo-950/30 ring-1 ring-indigo-500/20"
+                            : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 hover:border-slate-300"
+                        }`}
+                      >
+                        <div>
+                          <span className="text-xs font-bold text-slate-800 dark:text-slate-100" style={{ fontFamily: f.id }}>
+                            {f.label}
+                          </span>
+                          <p className="text-[10px] text-slate-400">{f.desc}</p>
+                        </div>
+                        {isSelected && <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">✓</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
+                      Nomor Halaman Slide
+                    </span>
+                    <span className="text-[11px] text-slate-400">
+                      Tampilkan indikator nomor urut slide di pojok kanan bawah slide isi.
+                    </span>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={styleOptions.showSlideNumbers !== false}
+                      onChange={(e) => handleUpdate("showSlideNumbers", e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-10 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-slate-600 peer-checked:bg-indigo-600"></div>
+                  </label>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
+                      Catatan Pembicara (Speaker Notes)
+                    </span>
+                    <span className="text-[11px] text-slate-400">
+                      Sertakan panduan narasi pembicara di panel bawah PowerPoint untuk memudahkan presentasi.
+                    </span>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={styleOptions.showSpeakerNotes !== false}
+                      onChange={(e) => handleUpdate("showSpeakerNotes", e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-10 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-slate-600 peer-checked:bg-indigo-600"></div>
+                  </label>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* SLIDE TAB 4: LOGO INSTANSI */}
+          {activeTab === "slide_logo" && (
+            <div className="space-y-4">
+              <div className="bg-indigo-50/70 dark:bg-indigo-950/30 p-3 rounded-xl border border-indigo-100 dark:border-indigo-900/50 flex items-start gap-3">
+                <Building2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-indigo-900 dark:text-indigo-200 leading-relaxed">
+                  Logo instansi akan otomatis disematkan secara proporsional pada Slide Sampul (Cover Slide) serta pada slide presentasi.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/40">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleLogoUpload}
+                  accept="image/png,image/jpeg,image/jpg,image/webp,image/svg+xml"
+                  className="hidden"
+                />
+                {styleOptions.logoBase64 ? (
+                  <div className="flex items-center gap-4">
+                    <div className="w-20 h-20 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-2 flex items-center justify-center shrink-0 shadow-xs">
+                      <img
+                        src={styleOptions.logoBase64}
+                        alt="Logo Instansi"
+                        className="max-h-full max-w-full object-contain"
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-slate-800 dark:text-slate-100">
+                          Logo Berhasil Dimuat
+                        </span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-semibold">
+                          Aktif
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 leading-snug">
+                        Logo akan disisipkan ke slide dengan rasio aspek terkunci dan resolusi jernih.
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={isUploadingLogo}
+                          className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+                        >
+                          Ganti Logo
+                        </button>
+                        <span className="text-slate-300 dark:text-slate-600">•</span>
+                        <button
+                          type="button"
+                          onClick={handleRemoveLogo}
+                          className="text-xs font-semibold text-rose-600 dark:text-rose-400 hover:underline cursor-pointer"
+                        >
+                          Hapus Logo
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-6">
+                    <Upload className="w-8 h-8 mx-auto text-slate-400 mb-2" />
+                    <p className="text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1">
+                      Unggah Logo Instansi / Kampus / Sekolah
+                    </p>
+                    <p className="text-[11px] text-slate-400 max-w-sm mx-auto mb-3">
+                      Mendukung format PNG transparan, JPG, WebP, atau SVG (maksimal 5 MB).
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploadingLogo}
+                      className="px-4 py-2 text-xs font-semibold text-white rounded-xl shadow-xs transition cursor-pointer"
+                      style={{ backgroundColor: `#${currentAccent.primary}` }}
+                    >
+                      {isUploadingLogo ? "Memproses Gambar..." : "Pilih Berkas Gambar"}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* SLIDE TAB 5: PRATINJAU SLIDE LENGKAP DENGAN CAROUSEL */}
+          {activeTab === "slide_preview" && slides && slides.slides && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-100">
+                    Slide {previewSlideIdx + 1} dari {slides.slides.length}
+                  </span>
+                  <span className="text-[11px] text-slate-400 ml-2">
+                    {previewSlideIdx === 0 ? "Slide Sampul" : `Slide ${previewSlideIdx + 1}`}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setPreviewSlideIdx((prev) => Math.max(0, prev - 1))}
+                    disabled={previewSlideIdx === 0}
+                    className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 disabled:opacity-30 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                  >
+                    <ChevronLeft className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewSlideIdx((prev) => Math.min(slides.slides.length - 1, prev + 1))}
+                    disabled={previewSlideIdx === slides.slides.length - 1}
+                    className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 disabled:opacity-30 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                  >
+                    <ChevronRight className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Slide preview canvas */}
+              {(() => {
+                const activeSlide = slides.slides[previewSlideIdx];
+                const isCover = previewSlideIdx === 0;
+                const font = styleOptions.slideFont || "Arial";
+
+                return (
+                  <div
+                    className="w-full rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-md relative flex flex-col justify-between p-5 sm:p-6 text-left transition-all"
+                    style={{
+                      aspectRatio: styleOptions.slideAspectRatio === "4:3" ? "4/3" : "16/9",
+                      backgroundColor: `#${currentSlideTheme.bg}`,
+                      fontFamily: font,
+                    }}
+                  >
+                    {/* Top accent bar */}
+                    <div
+                      className="absolute top-0 left-0 right-0 h-1.5"
+                      style={{ backgroundColor: `#${currentSlideTheme.accentColor}` }}
+                    />
+
+                    {isCover ? (
+                      <div className="flex-1 flex flex-col justify-between py-2">
+                        <div className="flex items-start justify-between">
+                          {styleOptions.logoBase64 ? (
+                            <div className="w-12 h-12 rounded-lg bg-white/90 p-1 border border-slate-200 shadow-2xs">
+                              <img
+                                src={styleOptions.logoBase64}
+                                alt="Logo"
+                                className="max-h-full max-w-full object-contain"
+                              />
+                            </div>
+                          ) : (
+                            <div />
+                          )}
+                          <span
+                            className="text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded-md"
+                            style={{ backgroundColor: `#${currentSlideTheme.accentColor}20`, color: `#${currentSlideTheme.accentColor}` }}
+                          >
+                            IOnLearn Presentation
+                          </span>
+                        </div>
+
+                        <div className="my-auto space-y-2">
+                          <h1
+                            className="text-lg sm:text-xl font-extrabold leading-tight"
+                            style={{ color: `#${currentSlideTheme.titleColor}` }}
+                          >
+                            {slides.title}
+                          </h1>
+                          {(styleOptions.slideSubtitle || slides.subtitle) && (
+                            <p
+                              className="text-xs sm:text-sm font-medium opacity-85"
+                              style={{ color: `#${currentSlideTheme.subColor}` }}
+                            >
+                              {styleOptions.slideSubtitle || slides.subtitle}
+                            </p>
+                          )}
+                        </div>
+
+                        <div
+                          className="pt-3 border-t flex items-center justify-between text-[11px]"
+                          style={{ borderColor: `#${currentSlideTheme.accentColor}40`, color: `#${currentSlideTheme.subColor}` }}
+                        >
+                          <span>
+                            {styleOptions.userName ? `Presenter: ${styleOptions.userName}` : (styleOptions.author || "IOnLearn AI")}
+                            {styleOptions.institution ? ` • ${styleOptions.institution}` : ""}
+                          </span>
+                          <span>{new Date().toLocaleDateString("id-ID", { year: "numeric", month: "short" })}</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex-1 flex flex-col justify-between py-1">
+                        <div>
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span
+                              className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded"
+                              style={{ backgroundColor: `#${currentSlideTheme.accentColor}20`, color: `#${currentSlideTheme.accentColor}` }}
+                            >
+                              {`Slide ${previewSlideIdx + 1}`}
+                            </span>
+                            {styleOptions.showSlideNumbers !== false && (
+                              <span className="text-[10px] font-semibold opacity-60" style={{ color: `#${currentSlideTheme.subColor}` }}>
+                                {previewSlideIdx + 1} / {slides.slides.length}
+                              </span>
+                            )}
+                          </div>
+                          <h2
+                            className="text-base sm:text-lg font-bold mb-3"
+                            style={{ color: `#${currentSlideTheme.titleColor}` }}
+                          >
+                            {cleanLatexMath(activeSlide.title)}
+                          </h2>
+
+                          <div
+                            className="p-3 sm:p-4 rounded-xl border space-y-2"
+                            style={{
+                              backgroundColor: `#${currentSlideTheme.cardBg}`,
+                              borderColor: `#${currentSlideTheme.accentColor}30`,
+                            }}
+                          >
+                            {activeSlide.bullets.map((point, pIdx) => {
+                              const parsed = parseBulletPoint(cleanLatexMath(point));
+                              return (
+                                <div key={pIdx} className="text-xs flex items-start gap-2 leading-relaxed">
+                                  <span className="text-sm font-bold shrink-0 mt-[-2px]" style={{ color: `#${currentSlideTheme.accentColor}` }}>
+                                    •
+                                  </span>
+                                  <span style={{ color: `#${currentSlideTheme.titleColor}` }}>
+                                    {parsed.title && <strong>{parsed.title}: </strong>}
+                                    {parsed.desc}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        <div
+                          className="pt-2 border-t flex items-center justify-between text-[10px] opacity-70"
+                          style={{ borderColor: `#${currentSlideTheme.accentColor}30`, color: `#${currentSlideTheme.subColor}` }}
+                        >
+                          <span className="truncate max-w-[200px]">{slides.title}</span>
+                          <span>{styleOptions.institution || "IOnLearn Study Copilot"}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* Speaker notes display if present and enabled */}
+              {styleOptions.showSpeakerNotes !== false && slides.slides[previewSlideIdx]?.notes && (
+                <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50">
+                  <span className="text-[11px] font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5 mb-1">
+                    💬 Catatan Pembicara (Speaker Notes)
+                  </span>
+                  <p className="text-xs text-amber-900/90 dark:text-amber-200 leading-relaxed italic">
+                    "{slides.slides[previewSlideIdx].notes}"
+                  </p>
+                </div>
+              )}
+
+              {/* Slide Thumbnails Dots */}
+              <div className="flex items-center justify-center gap-1.5 flex-wrap pt-1">
+                {slides.slides.map((_, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setPreviewSlideIdx(idx)}
+                    className={`h-2 rounded-full transition-all cursor-pointer ${
+                      previewSlideIdx === idx
+                        ? "w-6 bg-indigo-600 dark:bg-indigo-400"
+                        : "w-2 bg-slate-300 dark:bg-slate-700 hover:bg-slate-400"
+                    }`}
+                    title={`Slide ${idx + 1}`}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 1: IDENTITAS SISWA / PENULIS (DOCX / PDF / XLSX) */}
           {activeTab === "identity" && (
             <div className="space-y-4">
               <div className="bg-indigo-50/70 dark:bg-indigo-950/30 p-3 rounded-xl border border-indigo-100 dark:border-indigo-900/50 flex items-start gap-3">
@@ -1268,184 +1955,229 @@ export const DocumentCustomizerModal: React.FC<DocumentCustomizerModalProps> = (
           )}
 
           {/* Live Preview Box */}
-          <div className="p-3.5 rounded-xl border border-dashed border-indigo-200 dark:border-indigo-800/60 bg-indigo-50/20 dark:bg-indigo-950/10">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5" />
-                {isExcel ? "Pratinjau Lembar Kerja Excel (.xlsx)" : "Pratinjau Format Dokumen"}
-              </span>
-              <div className="flex items-center gap-1 text-[10px] text-slate-400">
-                {isExcel ? (
-                  <>
-                    <span className="px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-semibold">
-                      Tab: {styleOptions.sheetName || "Sheet1"}
-                    </span>
-                    <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800">
-                      Auto-fit: {styleOptions.autoFitColumns !== false ? "Aktif" : "Mati"}
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-semibold">{styleOptions.pageSize || "A4"}</span>
-                    <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800">{styleOptions.pageMargin || "normal"}</span>
-                    <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800">{styleOptions.fontFamily || "Calibri"}</span>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {isExcel ? (
-              <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-hidden text-xs shadow-2xs">
-                {/* Excel Table Title Bar */}
-                <div
-                  className="px-3 py-2 text-white font-bold flex items-center justify-between"
-                  style={{ backgroundColor: `#${currentAccent.primary}` }}
-                >
-                  <span className="truncate">{styleOptions.tableTitle || docTitle}</span>
-                  <span className="text-[10px] font-normal opacity-85 shrink-0">
-                    Microsoft Excel (.xlsx)
-                  </span>
-                </div>
-                {/* Student Meta Row */}
-                {(styleOptions.userName || styleOptions.studentId || styleOptions.institution) && (
-                  <div className="px-3 py-1 bg-slate-50 dark:bg-slate-800/80 text-[11px] text-slate-600 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700 flex flex-wrap gap-x-2">
-                    {styleOptions.userName && <span>Penyusun: <strong>{styleOptions.userName}</strong></span>}
-                    {styleOptions.studentId && <span>NIM: <strong>{styleOptions.studentId}</strong></span>}
-                    {styleOptions.institution && <span>{styleOptions.institution}</span>}
-                  </div>
-                )}
-                {/* Simulated Table Data */}
-                <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                  <div className="grid grid-cols-4 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 font-semibold text-[11px] text-slate-700 dark:text-slate-300">
-                    <div>No</div>
-                    <div>Parameter / Kategori</div>
-                    <div>Uraian Komparasi</div>
-                    <div className="text-right">Nilai / Metrik</div>
-                  </div>
-                  <div className="grid grid-cols-4 px-3 py-1.5 text-[11px] text-slate-600 dark:text-slate-400">
-                    <div>1</div>
-                    <div>Performa Sistem</div>
-                    <div>Sangat Cepat & Efisien</div>
-                    <div className="text-right font-mono text-emerald-600 dark:text-emerald-400 font-bold">98.5%</div>
-                  </div>
-                  <div className="grid grid-cols-4 px-3 py-1.5 text-[11px] text-slate-600 dark:text-slate-400 bg-slate-50/50 dark:bg-slate-800/30">
-                    <div>2</div>
-                    <div>Estimasi Anggaran</div>
-                    <div>Kebutuhan Implementasi</div>
-                    <div className="text-right font-mono text-emerald-600 dark:text-emerald-400 font-bold">Rp 2.500.000</div>
-                  </div>
-                </div>
-                {/* Bottom Sheet Tab Bar */}
-                <div className="px-3 py-1 bg-slate-100 dark:bg-slate-800/90 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400">
-                  <div className="flex items-center gap-1">
-                    <span className="px-2 py-0.5 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-bold text-slate-800 dark:text-slate-200">
-                      📊 {styleOptions.sheetName || "Sheet1"}
-                    </span>
-                  </div>
-                  <span>Garis Kisi: {styleOptions.showGridLines !== false ? "Aktif" : "Nonaktif"}</span>
-                </div>
-              </div>
-            ) : (
-              <div
-                className="p-3 bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-100 dark:border-slate-700/60 space-y-2 relative overflow-hidden text-left"
-                style={{ fontFamily: styleOptions.fontFamily || "Calibri" }}
-              >
-                {styleOptions.watermark !== false && (
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none opacity-10 rotate-[-15deg] font-bold text-slate-900 dark:text-slate-100 text-base">
-                    {styleOptions.watermarkText || "IOnLearn Study Copilot"}
-                  </div>
-                )}
-
-                {/* Cover badge if enabled */}
-                {styleOptions.includeCoverPage && (
-                  <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
-                    <Bookmark className="w-3 h-3" />
-                    Halaman Sampul Aktif
-                  </div>
-                )}
-
-                {/* Miniature Kop Surat Preview with Logo */}
-                {(styleOptions.logoBase64 || styleOptions.customHeaderText || styleOptions.headerStyle === "formal_academic") && (
-                  <div className="p-2 bg-slate-50 dark:bg-slate-900/60 rounded-md border border-slate-200 dark:border-slate-700/80 mb-2">
-                    <div
-                      className={`flex items-center gap-2 mb-1.5 ${
-                        styleOptions.logoPosition === "center"
-                          ? "flex-col text-center"
-                          : styleOptions.logoPosition === "right"
-                          ? "flex-row-reverse text-right"
-                          : "flex-row text-left"
-                      }`}
-                    >
-                      {styleOptions.logoBase64 && (
-                        <div className="w-8 h-8 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-0.5 flex-shrink-0 flex items-center justify-center">
-                          <img
-                            src={styleOptions.logoBase64}
-                            alt="Logo Preview"
-                            className="max-h-full max-w-full object-contain"
-                          />
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0 text-[10px] leading-tight">
-                        {styleOptions.customHeaderText ? (
-                          styleOptions.customHeaderText
-                            .trim()
-                            .split("\n")
-                            .slice(0, 3)
-                            .map((l, i) => (
-                              <div
-                                key={i}
-                                className={i === 0 ? "font-bold text-slate-900 dark:text-slate-100" : "text-slate-600 dark:text-slate-400"}
-                              >
-                                {l.trim()}
-                              </div>
-                            ))
-                        ) : (
-                          <>
-                            <div className="font-bold text-slate-900 dark:text-slate-100">
-                              {(styleOptions.institution || "NAMA INSTANSI RESMI").toUpperCase()}
-                            </div>
-                            {styleOptions.facultyOrClass && (
-                              <div className="text-slate-600 dark:text-slate-400">
-                                {styleOptions.facultyOrClass.toUpperCase()}
-                              </div>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    </div>
-                    {/* Miniature Kop Surat double divider */}
-                    <div className="border-b border-slate-800 dark:border-slate-200"></div>
-                    <div className="border-b border-slate-800 dark:border-slate-200 mt-[1px]"></div>
-                  </div>
-                )}
-
-                {/* Document title colored by accent */}
-                <div
-                  className="text-sm font-bold truncate"
-                  style={{ color: `#${currentAccent.primary}` }}
-                >
-                  {docTitle}
-                </div>
-
-                {/* Student info tags */}
-                <div className="text-xs text-slate-500 dark:text-slate-400 flex flex-wrap gap-x-2.5 gap-y-1">
-                  {styleOptions.userName && <span>Penyusun: <strong>{styleOptions.userName}</strong></span>}
-                  {styleOptions.studentId && <span>NIM: <strong>{styleOptions.studentId}</strong></span>}
-                  {styleOptions.facultyOrClass && <span>{styleOptions.facultyOrClass}</span>}
-                  {styleOptions.institution && <span>{styleOptions.institution}</span>}
-                  {!styleOptions.userName && !styleOptions.studentId && (
-                    <span className="italic text-slate-400">Identitas penyusun kosong.</span>
+          {(!isSlide || activeTab !== "slide_preview") && (
+            <div className="p-3.5 rounded-xl border border-dashed border-indigo-200 dark:border-indigo-800/60 bg-indigo-50/20 dark:bg-indigo-950/10">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  {isSlide
+                    ? "Ringkasan Presentasi Slide (.pptx)"
+                    : isExcel
+                    ? "Pratinjau Lembar Kerja Excel (.xlsx)"
+                    : "Pratinjau Format Dokumen"}
+                </span>
+                <div className="flex items-center gap-1 text-[10px] text-slate-400">
+                  {isSlide ? (
+                    <>
+                      <span className="px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-semibold">
+                        {currentSlideTheme.name}
+                      </span>
+                      <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800">
+                        {styleOptions.slideAspectRatio || "16:9"}
+                      </span>
+                      <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800">
+                        {styleOptions.slideFont || "Arial"}
+                      </span>
+                    </>
+                  ) : isExcel ? (
+                    <>
+                      <span className="px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-semibold">
+                        Tab: {styleOptions.sheetName || "Sheet1"}
+                      </span>
+                      <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800">
+                        Auto-fit: {styleOptions.autoFitColumns !== false ? "Aktif" : "Mati"}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-semibold">{styleOptions.pageSize || "A4"}</span>
+                      <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800">{styleOptions.pageMargin || "normal"}</span>
+                      <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800">{styleOptions.fontFamily || "Calibri"}</span>
+                    </>
                   )}
                 </div>
-
-                {/* Bottom footer metadata */}
-                <div className="text-[10px] text-slate-400 dark:text-slate-500 pt-1.5 border-t border-slate-100 dark:border-slate-700/50 flex justify-between">
-                  <span>Author: {styleOptions.author || "IOnLearn"}</span>
-                  <span>{styleOptions.includePageNumbers !== false ? "Halaman 1 dari 1" : ""}</span>
-                </div>
               </div>
-            )}
-          </div>
+
+              {isSlide && slides ? (
+                <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-3 shadow-2xs space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+                      {slides.title}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("slide_preview")}
+                      className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      <Eye className="w-3 h-3" />
+                      Buka Pratinjau Penuh ({slides.slides.length} slide)
+                    </button>
+                  </div>
+                  {(styleOptions.slideSubtitle || slides.subtitle) && (
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1">
+                      {styleOptions.slideSubtitle || slides.subtitle}
+                    </p>
+                  )}
+                  <div className="flex flex-wrap gap-2 pt-1 border-t border-slate-100 dark:border-slate-800 text-[10px] text-slate-500 dark:text-slate-400">
+                    <span>Presenter: <strong>{styleOptions.userName || styleOptions.author || "IOnLearn"}</strong></span>
+                    {styleOptions.institution && <span>• {styleOptions.institution}</span>}
+                    {styleOptions.logoBase64 && <span className="text-emerald-600 font-semibold">• Logo Terpasang</span>}
+                    <span>• {styleOptions.showSpeakerNotes !== false ? "Speaker Notes Aktif" : "Speaker Notes Nonaktif"}</span>
+                  </div>
+                </div>
+              ) : isExcel ? (
+                <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-hidden text-xs shadow-2xs">
+                  {/* Excel Table Title Bar */}
+                  <div
+                    className="px-3 py-2 text-white font-bold flex items-center justify-between"
+                    style={{ backgroundColor: `#${currentAccent.primary}` }}
+                  >
+                    <span className="truncate">{styleOptions.tableTitle || docTitle}</span>
+                    <span className="text-[10px] font-normal opacity-85 shrink-0">
+                      Microsoft Excel (.xlsx)
+                    </span>
+                  </div>
+                  {/* Student Meta Row */}
+                  {(styleOptions.userName || styleOptions.studentId || styleOptions.institution) && (
+                    <div className="px-3 py-1 bg-slate-50 dark:bg-slate-800/80 text-[11px] text-slate-600 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700 flex flex-wrap gap-x-2">
+                      {styleOptions.userName && <span>Penyusun: <strong>{styleOptions.userName}</strong></span>}
+                      {styleOptions.studentId && <span>NIM: <strong>{styleOptions.studentId}</strong></span>}
+                      {styleOptions.institution && <span>{styleOptions.institution}</span>}
+                    </div>
+                  )}
+                  {/* Simulated Table Data */}
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                    <div className="grid grid-cols-4 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 font-semibold text-[11px] text-slate-700 dark:text-slate-300">
+                      <div>No</div>
+                      <div>Parameter / Kategori</div>
+                      <div>Uraian Komparasi</div>
+                      <div className="text-right">Nilai / Metrik</div>
+                    </div>
+                    <div className="grid grid-cols-4 px-3 py-1.5 text-[11px] text-slate-600 dark:text-slate-400">
+                      <div>1</div>
+                      <div>Performa Sistem</div>
+                      <div>Sangat Cepat & Efisien</div>
+                      <div className="text-right font-mono text-emerald-600 dark:text-emerald-400 font-bold">98.5%</div>
+                    </div>
+                    <div className="grid grid-cols-4 px-3 py-1.5 text-[11px] text-slate-600 dark:text-slate-400 bg-slate-50/50 dark:bg-slate-800/30">
+                      <div>2</div>
+                      <div>Estimasi Anggaran</div>
+                      <div>Kebutuhan Implementasi</div>
+                      <div className="text-right font-mono text-emerald-600 dark:text-emerald-400 font-bold">Rp 2.500.000</div>
+                    </div>
+                  </div>
+                  {/* Bottom Sheet Tab Bar */}
+                  <div className="px-3 py-1 bg-slate-100 dark:bg-slate-800/90 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400">
+                    <div className="flex items-center gap-1">
+                      <span className="px-2 py-0.5 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-bold text-slate-800 dark:text-slate-200">
+                        📊 {styleOptions.sheetName || "Sheet1"}
+                      </span>
+                    </div>
+                    <span>Garis Kisi: {styleOptions.showGridLines !== false ? "Aktif" : "Nonaktif"}</span>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  className="p-3 bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-100 dark:border-slate-700/60 space-y-2 relative overflow-hidden text-left"
+                  style={{ fontFamily: styleOptions.fontFamily || "Calibri" }}
+                >
+                  {styleOptions.watermark !== false && (
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none opacity-10 rotate-[-15deg] font-bold text-slate-900 dark:text-slate-100 text-base">
+                      {styleOptions.watermarkText || "IOnLearn Study Copilot"}
+                    </div>
+                  )}
+
+                  {/* Cover badge if enabled */}
+                  {styleOptions.includeCoverPage && (
+                    <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
+                      <Bookmark className="w-3 h-3" />
+                      Halaman Sampul Aktif
+                    </div>
+                  )}
+
+                  {/* Miniature Kop Surat Preview with Logo */}
+                  {(styleOptions.logoBase64 || styleOptions.customHeaderText || styleOptions.headerStyle === "formal_academic") && (
+                    <div className="p-2 bg-slate-50 dark:bg-slate-900/60 rounded-md border border-slate-200 dark:border-slate-700/80 mb-2">
+                      <div
+                        className={`flex items-center gap-2 mb-1.5 ${
+                          styleOptions.logoPosition === "center"
+                            ? "flex-col text-center"
+                            : styleOptions.logoPosition === "right"
+                            ? "flex-row-reverse text-right"
+                            : "flex-row text-left"
+                        }`}
+                      >
+                        {styleOptions.logoBase64 && (
+                          <div className="w-8 h-8 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-0.5 flex-shrink-0 flex items-center justify-center">
+                            <img
+                              src={styleOptions.logoBase64}
+                              alt="Logo Preview"
+                              className="max-h-full max-w-full object-contain"
+                            />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0 text-[10px] leading-tight">
+                          {styleOptions.customHeaderText ? (
+                            styleOptions.customHeaderText
+                              .trim()
+                              .split("\n")
+                              .slice(0, 3)
+                              .map((l, i) => (
+                                <div
+                                  key={i}
+                                  className={i === 0 ? "font-bold text-slate-900 dark:text-slate-100" : "text-slate-600 dark:text-slate-400"}
+                                >
+                                  {l.trim()}
+                                </div>
+                              ))
+                          ) : (
+                            <>
+                              <div className="font-bold text-slate-900 dark:text-slate-100">
+                                {(styleOptions.institution || "NAMA INSTANSI RESMI").toUpperCase()}
+                              </div>
+                              {styleOptions.facultyOrClass && (
+                                <div className="text-slate-600 dark:text-slate-400">
+                                  {styleOptions.facultyOrClass.toUpperCase()}
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      {/* Miniature Kop Surat double divider */}
+                      <div className="border-b border-slate-800 dark:border-slate-200"></div>
+                      <div className="border-b border-slate-800 dark:border-slate-200 mt-[1px]"></div>
+                    </div>
+                  )}
+
+                  {/* Document title colored by accent */}
+                  <div
+                    className="text-sm font-bold truncate"
+                    style={{ color: `#${currentAccent.primary}` }}
+                  >
+                    {docTitle}
+                  </div>
+
+                  {/* Student info tags */}
+                  <div className="text-xs text-slate-500 dark:text-slate-400 flex flex-wrap gap-x-2.5 gap-y-1">
+                    {styleOptions.userName && <span>Penyusun: <strong>{styleOptions.userName}</strong></span>}
+                    {styleOptions.studentId && <span>NIM: <strong>{styleOptions.studentId}</strong></span>}
+                    {styleOptions.facultyOrClass && <span>{styleOptions.facultyOrClass}</span>}
+                    {styleOptions.institution && <span>{styleOptions.institution}</span>}
+                    {!styleOptions.userName && !styleOptions.studentId && (
+                      <span className="italic text-slate-400">Identitas penyusun kosong.</span>
+                    )}
+                  </div>
+
+                  {/* Bottom footer metadata */}
+                  <div className="text-[10px] text-slate-400 dark:text-slate-500 pt-1.5 border-t border-slate-100 dark:border-slate-700/50 flex justify-between">
+                    <span>Author: {styleOptions.author || "IOnLearn"}</span>
+                    <span>{styleOptions.includePageNumbers !== false ? "Halaman 1 dari 1" : ""}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Modal Footer */}
@@ -1477,7 +2209,7 @@ export const DocumentCustomizerModal: React.FC<DocumentCustomizerModalProps> = (
               ) : (
                 <>
                   <Download className="w-4 h-4" />
-                  Unduh Dokumen Sekarang
+                  {isSlide ? "Unduh Presentasi (.pptx)" : isExcel ? "Unduh Spreadsheet (.xlsx)" : "Unduh Dokumen Sekarang"}
                 </>
               )}
             </button>

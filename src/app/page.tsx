@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   Sparkles,
@@ -25,8 +25,6 @@ import { ActivityChart } from "../components/ActivityChart";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
 import { TodoTask, PersonalTodo, StudyNote } from "../types";
-import { ClassroomService } from "../services/classroomService";
-import { DBService } from "../services/dbService";
 import {
   loadTasks,
   loadTodos,

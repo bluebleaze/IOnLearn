@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { UserPreferences } from '../types';
 import { Brain, ArrowRight } from 'lucide-react';
 import {

@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import Link from "next/link";
 import { ArrowUp, Github, Mail } from "lucide-react";
 
@@ -206,6 +205,16 @@ export function LandingFooter({ onConnectGoogle, language = "ENG" }: LandingFoot
           >
             <Mail className="w-3.5 h-3.5" />
           </a>
+          <button
+            type="button"
+            onClick={scrollToTop}
+            aria-label={copy.backToTop}
+            title={copy.backToTop}
+            className="h-7 px-2 rounded-md bg-slate-100 dark:bg-zinc-800/80 hover:bg-slate-200 dark:hover:bg-zinc-700 flex items-center gap-1 text-slate-600 dark:text-zinc-300 transition-colors cursor-pointer text-[11px]"
+          >
+            <ArrowUp className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">{copy.backToTop}</span>
+          </button>
         </div>
       </div>
     </footer>

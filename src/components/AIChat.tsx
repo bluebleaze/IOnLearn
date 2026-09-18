@@ -64,7 +64,6 @@ import {
   ChatAttachment,
   ChatMessage,
   CreatedDocument,
-  CreatedImage,
   CreatedSlides,
   TodoTask,
   UserPreferences,
@@ -1239,62 +1238,89 @@ export const AIChat: React.FC<AIChatProps> = ({
     }
   };
 
+  // Extract or parse slide deck from message with rich pedagogical structure
+  const extractSlidesFromMessage = (
+    msg: ChatMessage,
+    activeTaskTitle?: string,
+    courseName?: string
+  ): CreatedSlides => {
+    if (msg.createdSlides) {
+      return msg.createdSlides;
+    }
+
+    const cleanContent = msg.content.replace(/```json[\s\S]*?```/g, "").trim();
+    const lines = cleanContent.split("\n").map((l) => l.trim()).filter(Boolean);
+    const title =
+      activeTaskTitle ||
+      lines.find((l) => l.startsWith("#"))?.replace(/^[#\s*]+/, "").trim() ||
+      "Materi Presentasi AI";
+    const subtitle = courseName
+      ? `Mata Pelajaran: ${courseName}`
+      : lines.find((l) => !l.startsWith("#") && l.length > 15 && l.length < 90)?.replace(/^[-*•]+\s*/, "") ||
+        "Ringkasan Materi Pembelajaran Komprehensif";
+
+    const sections = cleanContent.split(/(?:^|\n)(?=#+\s*)/);
+    const slides: { title: string; bullets: string[]; notes?: string }[] = [];
+
+    for (const sec of sections) {
+      const secLines = sec.trim().split("\n").map((l) => l.trim()).filter(Boolean);
+      if (secLines.length === 0) continue;
+      const slideTitle = secLines[0].replace(/^[#\s*]+/, "").slice(0, 70);
+      const bullets: string[] = [];
+      for (let i = 1; i < secLines.length; i++) {
+        const l = secLines[i];
+        if (/^[-*•\d\.]\s+/.test(l)) {
+          bullets.push(l.replace(/^[-*•\d\.]\s+/, ""));
+        } else if (bullets.length < 5 && l.length > 5 && !l.startsWith("#")) {
+          bullets.push(l);
+        }
+      }
+      if (slideTitle && bullets.length > 0) {
+        slides.push({
+          title: slideTitle,
+          bullets: bullets.slice(0, 5),
+          notes: `Fokus pembahasan: ${slideTitle}. Jelaskan poin-poin penting secara mendalam dan interaktif.`,
+        });
+      }
+    }
+
+    if (slides.length === 0) {
+      slides.push({
+        title: "Ringkasan Materi",
+        bullets: lines.filter((l) => l.length > 10).slice(0, 5),
+        notes: "Ringkasan intisari materi pembelajaran.",
+      });
+    }
+
+    // Prepend an Agenda slide if we have 3 or more slides
+    if (slides.length >= 3 && !slides.some((s) => s.title.toLowerCase().includes("agenda") || s.title.toLowerCase().includes("daftar isi"))) {
+      const agendaBullets = slides.slice(0, 5).map((s, idx) => `**Topik ${idx + 1}**: ${s.title}`);
+      slides.unshift({
+        title: "Agenda Pembahasan",
+        bullets: agendaBullets,
+        notes: "Tinjauan singkat pokok bahasan yang akan dipelajari pada sesi presentasi ini.",
+      });
+    }
+
+    const fileName = `${title.toLowerCase().replace(/[^a-z0-9]+/g, "_")}.pptx`;
+    return {
+      title,
+      subtitle,
+      theme: "indigo",
+      slides,
+      fileName,
+      subject: courseName || "Presentasi Materi",
+    };
+  };
+
   // Quick Action: Export AI message to PowerPoint presentation (.pptx)
   const handleExportSlides = async (msg: ChatMessage) => {
     try {
       setExportingFormat(`${msg.id}-pptx`);
-      if (msg.createdSlides) {
-        await downloadCreatedSlides(msg.createdSlides);
-        toast.success("📊 Presentasi PowerPoint (.pptx) Berhasil Diunduh!");
-        return;
-      }
-
-      const cleanContent = msg.content.replace(/```json[\s\S]*?```/g, "").trim();
-      const lines = cleanContent.split("\n").map((l) => l.trim()).filter(Boolean);
-      const title =
-        activeTask?.title ||
-        lines.find((l) => l.startsWith("#"))?.replace(/^[#\s*]+/, "").trim() ||
-        "Materi Presentasi AI";
-
-      const sections = cleanContent.split(/(?:^|\n)(?=#+\s*)/);
-      const slides: { title: string; bullets: string[] }[] = [];
-
-      for (const sec of sections) {
-        const secLines = sec.trim().split("\n").map((l) => l.trim()).filter(Boolean);
-        if (secLines.length === 0) continue;
-        const slideTitle = secLines[0].replace(/^[#\s*]+/, "").slice(0, 70);
-        const bullets: string[] = [];
-        for (let i = 1; i < secLines.length; i++) {
-          const l = secLines[i];
-          if (/^[-*•\d\.]\s+/.test(l)) {
-            bullets.push(l.replace(/^[-*•\d\.]\s+/, ""));
-          } else if (bullets.length < 5 && l.length > 5 && !l.startsWith("#")) {
-            bullets.push(l);
-          }
-        }
-        if (slideTitle && bullets.length > 0) {
-          slides.push({ title: slideTitle, bullets: bullets.slice(0, 5) });
-        }
-      }
-
-      if (slides.length === 0) {
-        slides.push({
-          title: "Ringkasan Materi",
-          bullets: lines.filter((l) => l.length > 10).slice(0, 5),
-        });
-      }
-
-      const fileName = `${title.toLowerCase().replace(/[^a-z0-9]+/g, "_")}.pptx`;
-      const blob = await generatePptxPresentation({
-        title,
-        theme: "indigo",
-        slides,
-        fileName,
-        subject: activeTask?.courseName,
-      });
-      triggerFileDownload(blob, fileName);
-      toast.success("📊 File Presentasi (.pptx) Berhasil Dibuat!", {
-        description: `Tersimpan sebagai ${fileName}`,
+      const slideDeck = extractSlidesFromMessage(msg, activeTask?.title, activeTask?.courseName);
+      await downloadCreatedSlides(slideDeck);
+      toast.success("📊 Presentasi PowerPoint (.pptx) Berhasil Diunduh!", {
+        description: `Tersimpan sebagai ${slideDeck.fileName || "presentasi.pptx"}`,
       });
     } catch (err: any) {
       console.error("Export slides error:", err);
@@ -1311,51 +1337,8 @@ export const AIChat: React.FC<AIChatProps> = ({
   const handleCustomizeExport = (msg: ChatMessage, format: "pdf" | "docx" | "xlsx" | "pptx") => {
     setActiveExportMenuMsgId(null);
     if (format === "pptx") {
-      if (msg.createdSlides) {
-        setCustomizingSlides(msg.createdSlides);
-        return;
-      }
-
-      const cleanContent = msg.content.replace(/```json[\s\S]*?```/g, "").trim();
-      const lines = cleanContent.split("\n").map((l) => l.trim()).filter(Boolean);
-      const title =
-        activeTask?.title ||
-        lines.find((l) => l.startsWith("#"))?.replace(/^[#\s*]+/, "").trim() ||
-        "Materi Presentasi AI";
-
-      const sections = cleanContent.split(/(?:^|\n)(?=#+\s*)/);
-      const slides: { title: string; bullets: string[] }[] = [];
-
-      for (const sec of sections) {
-        const secLines = sec.trim().split("\n").map((l) => l.trim()).filter(Boolean);
-        if (secLines.length === 0) continue;
-        const slideTitle = secLines[0].replace(/^[#\s*]+/, "").slice(0, 70);
-        const bullets: string[] = [];
-        for (let i = 1; i < secLines.length; i++) {
-          const l = secLines[i];
-          if (/^[-*•\d\.]\s+/.test(l)) {
-            bullets.push(l.replace(/^[-*•\d\.]\s+/, ""));
-          } else if (bullets.length < 5 && l.length > 5 && !l.startsWith("#")) {
-            bullets.push(l);
-          }
-        }
-        if (slideTitle && bullets.length > 0) {
-          slides.push({ title: slideTitle, bullets: bullets.slice(0, 5) });
-        }
-      }
-
-      if (slides.length === 0) {
-        slides.push({
-          title: "Ringkasan Materi",
-          bullets: lines.filter((l) => l.length > 10).slice(0, 5),
-        });
-      }
-
-      setCustomizingSlides({
-        title,
-        slides,
-        subject: activeTask?.courseName || "Presentasi Materi",
-      });
+      const slideDeck = extractSlidesFromMessage(msg, activeTask?.title, activeTask?.courseName);
+      setCustomizingSlides(slideDeck);
       return;
     }
 
@@ -4238,16 +4221,22 @@ export const AIChat: React.FC<AIChatProps> = ({
                                     <Presentation className="w-4 h-4" />
                                   </div>
                                   <div className="min-w-0">
-                                    <div className="flex items-center gap-1.5">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
                                       <span className="text-xs font-bold text-slate-900 dark:text-[#f3f3f3]">
                                         Slide Presentasi ({slides.length} Slide)
                                       </span>
                                       <span className="px-1.5 py-0.2 rounded text-[10px] font-bold uppercase bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300">
                                         PPTX
                                       </span>
+                                      {m.createdSlides.theme && (
+                                        <span className="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 capitalize">
+                                          {m.createdSlides.theme}
+                                        </span>
+                                      )}
                                     </div>
                                     <p className="text-[11px] text-slate-500 dark:text-[#888] truncate max-w-[200px] sm:max-w-xs">
                                       {cleanLatexMath(m.createdSlides.title)}
+                                      {m.createdSlides.subtitle ? ` — ${cleanLatexMath(m.createdSlides.subtitle)}` : ""}
                                     </p>
                                   </div>
                                 </div>

@@ -184,7 +184,6 @@ export interface ChatMessage {
   }[];
   createdDocument?: CreatedDocument;
   createdSlides?: CreatedSlides;
-  createdImage?: CreatedImage;
   groundingSources?: { title: string; url: string }[];
   groundingQueries?: string[];
 }
@@ -229,12 +228,20 @@ export interface DocumentStyleOptions {
   excelTheme?: 'emerald' | 'teal' | 'indigo' | 'blue' | 'slate' | 'amber'; // Tema Warna Excel
   autoFitColumns?: boolean; // Auto-fit lebar kolom (default true)
   showGridLines?: boolean; // Tampilkan garis kisi gridlines (default true)
+  // PowerPoint / Slides specific customization options
+  slideTheme?: 'indigo' | 'dark' | 'emerald' | 'amber' | 'slate' | 'rose' | 'teal' | 'violet';
+  slideAspectRatio?: '16:9' | '4:3';
+  slideFont?: string;
+  showSlideNumbers?: boolean; // Default true
+  showSpeakerNotes?: boolean; // Default true
+  slideSubtitle?: string;
 }
 
 export interface CreatedSlides {
   id?: string;
   title: string;
-  theme?: 'indigo' | 'dark' | 'emerald' | 'amber' | 'slate';
+  subtitle?: string;
+  theme?: 'indigo' | 'dark' | 'emerald' | 'amber' | 'slate' | 'rose' | 'teal' | 'violet';
   slides: {
     title: string;
     bullets: string[];
@@ -242,14 +249,6 @@ export interface CreatedSlides {
   }[];
   fileName?: string;
   subject?: string;
-}
-
-export interface CreatedImage {
-  id?: string;
-  url: string;
-  prompt: string;
-  caption?: string;
-  aspectRatio?: '1:1' | '16:9' | '4:3' | '9:16';
 }
 
 export type ToastPosition =

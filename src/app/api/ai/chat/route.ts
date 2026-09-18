@@ -431,6 +431,7 @@ function extractFallbackActions(
             const baseTitle = (taskContext?.title || parsedSlides[0]?.title || "Materi Presentasi").slice(0, 60);
             createdSlides = {
                 title: baseTitle,
+                subtitle: taskContext?.courseName ? `Mata Pelajaran: ${taskContext.courseName}` : "Ringkasan Materi Presentasi",
                 theme: "indigo",
                 slides: parsedSlides.slice(0, 8),
                 fileName: `${baseTitle.toLowerCase().replace(/[^a-z0-9]+/g, "_").slice(0, 50)}.pptx`,
@@ -734,6 +735,9 @@ function processAiChatResponse(
         if (finalSlides.title) {
             finalSlides.title = cleanLatexMath(finalSlides.title.slice(0, 80));
         }
+        if (finalSlides.subtitle) {
+            finalSlides.subtitle = cleanLatexMath(finalSlides.subtitle.slice(0, 120));
+        }
         if (finalSlides.fileName) {
             const baseName = (finalSlides.title || "presentasi").toLowerCase().replace(/[^a-z0-9]+/g, "_").slice(0, 50);
             finalSlides.fileName = `${baseName}.pptx`;
@@ -920,18 +924,29 @@ ${personalizationInstruction}
 
 2. 📊 **SLIDE PRESENTASI PROFESIONAL POWERPOINT (.PPTX)**:
    *Pemicu: Ketika pengguna meminta slide, presentasi, ppt, pptx, powerpoint, bahan tayang, atau deck presentasi.*
-   🚨 ATURAN MUTLAK PPTX: Jika pengguna meminta format PPTX/presentasi/slide, Anda WAJIB mengisi field \`createdSlides\` secara lengkap dengan array \`slides\` (minimal 4 hingga 8 slide).
+   🚨 ATURAN MUTLAK PPTX: Jika pengguna meminta format PPTX/presentasi/slide, Anda WAJIB mengisi field \`createdSlides\` secara lengkap dengan array \`slides\` (minimal 5 hingga 8 slide).
    Isi field \`createdSlides\` dengan objek:
-   - \`title\`: Judul utama topik presentasi (RINGKAS & PADAT, MAKSIMAL 8-10 KATA, DILARANG MENGULANG KATA BERKALI-KALI).
-   - \`theme\`: \`"indigo"\` (umum/akademik), \`"emerald"\` (lingkungan/kesehatan), \`"dark"\` (teknologi/koding), \`"amber"\` (kreatif/sejarah), atau \`"slate"\` (formal).
+   - \`title\`: Judul utama topik presentasi (RINGKAS, TANGKAS & PADAT, MAKSIMAL 8-10 KATA).
+   - \`subtitle\`: Subjudul deskriptif atau cakupan materi (contoh: "Tinjauan Komprehensif, Studi Kasus & Implikasi Praktis").
+   - \`theme\`: Pilih salah satu dari 8 tema warna yang paling selaras:
+     * \`"indigo"\`: Biru-ungu profesional (sains, umum, akademik).
+     * \`"dark"\`: Cyber dark contrast (teknologi, pemrograman, robotika).
+     * \`"emerald"\`: Hijau segar (biologi, lingkungan, kesehatan, kedokteran).
+     * \`"amber"\`: Emas hangat (sejarah, seni, humaniora, sastra).
+     * \`"slate"\`: Abu-abu minimalis elegan (manajemen, hukum, kebijakan).
+     * \`"rose"\`: Merah mawar modern (komunikasi, psikologi, desain).
+     * \`"teal"\`: Biru toska segar (inovasi, startup, farmasi).
+     * \`"violet"\`: Ungu kreatif (edukasi interaktif, teknologi AI, matematika).
    - \`fileName\`: Nama file rapi berakhiran \`.pptx\` (contoh: \`dampak_revolusi_industri.pptx\`).
    - \`subject\`: Mata pelajaran atau topik relevan.
-   - \`slides\`: Array berisi 4 sampai 8 slide terstruktur:
-     * Slide 1: Judul Utama & Sub-judul Pembuka.
-     * Slide 2: Latar Belakang & Urgensi Topik.
-     * Slide 3-N: Pembahasan Inti (buat 3-4 poin bullet informatif). PENTING: Setiap poin bullet WAJIB diawali dengan judul poin tebal (contoh: "**Judul Poin**: Penjelasan ringkas dan padat 8-20 kata...") agar otomatis tersusun menjadi kartu visual modern.
-     * Slide Terakhir: Rangkuman Kunci & Kesimpulan / Call-to-Action (gunakan juga format "**Poin Kunci**: Ringkasan...").
-     * \`notes\`: Catatan pemateri (*speaker notes*) berisi arahan narasi presenter saat membawakan slide tersebut.
+   - \`slides\`: Array berisi 5 sampai 8 slide dengan urutan pedagogis profesional:
+     * Slide 1: **Slide Sampul (Cover)**: Judul & subjudul pengantar.
+     * Slide 2: **Agenda / Roadmap Materi**: Poin-poin bab/topik yang akan dibahas secara berurutan.
+     * Slide 3: **Latar Belakang & Konteks**: Masalah mendasar, urgensi, atau definisi konsep.
+     * Slide 4 s/d N-2: **Pembahasan Inti (Deep Dive)**: 3-4 poin bullet informatif per slide. PENTING: Setiap poin bullet WAJIB diawali dengan judul poin tebal (contoh: "**Judul Poin**: Penjelasan ringkas dan padat 8-20 kata...") agar otomatis dirender menjadi kartu visual modern.
+     * Slide N-1: **Kesimpulan & Takeaways**: Rangkuman temuan utama atau rekomendasi aksi.
+     * Slide Terakhir: **Tanya Jawab & Diskusi (Q&A)**: Pertanyaan pemantik reflektif untuk audiens dan penutup presentasi.
+   - \`notes\`: Catatan pemateri (*speaker notes*) 2-4 kalimat berisi panduan narasi, analogi, atau poin penekanan bagi presenter saat membawakan slide tersebut.
 
 3. 📊 **PANDUAN DIAGRAM ALUR (FLOWCHART) & TABEL DATA**:
    - **JIKA PENGGUNA MEMINTA "ALUR", "DIAGRAM ALUR", "FLOWCHART", ATAU "PROSES"**:
@@ -992,7 +1007,7 @@ ${personalizationInstruction}
                     role: "system",
                     content:
                         systemInstruction +
-                        '\n\nKEMBALIKAN OUTPUT HARUS HANYA DALAM BENTUK JSON OBJECT YANG VALID SESUAI SKEMA BERIKUT:\n{\n  "thoughtProcess": "Penalaran kritis, verifikasi keabsahan data/rumus, langkah kalkulasi step-by-step, dan evaluasi anti-halusinasi sebelum menulis jawaban",\n  "reply": "Jawaban Markdown",\n  "suggestedPrompts": ["Pertanyaan 1", "Pertanyaan 2"],\n  "createdNote": { "title": "Judul Singkat", "content": "Isi Markdown", "subject": "Nama Mata Kuliah", "tags": ["Label"] },\n  "createdTodo": { "title": "Judul Rencana", "description": "Deskripsi", "priority": "medium", "category": "Materi", "subtasks": [{ "title": "Langkah 1" }] },\n  "createdDocument": { "type": "docx" | "pdf" | "xlsx", "title": "Judul Dokumen", "content": "Isi Markdown / Tabel Data Markdown", "fileName": "dokumen.docx/dokumen.pdf/tabel.xlsx" },\n  "createdSlides": { "title": "Judul Presentasi", "theme": "indigo", "slides": [{ "title": "Slide 1", "bullets": ["Poin 1"], "notes": "Catatan" }], "fileName": "presentasi.pptx" }\n}',
+                        '\n\nKEMBALIKAN OUTPUT HARUS HANYA DALAM BENTUK JSON OBJECT YANG VALID SESUAI SKEMA BERIKUT:\n{\n  "thoughtProcess": "Penalaran kritis, verifikasi keabsahan data/rumus, langkah kalkulasi step-by-step, dan evaluasi anti-halusinasi sebelum menulis jawaban",\n  "reply": "Jawaban Markdown",\n  "suggestedPrompts": ["Pertanyaan 1", "Pertanyaan 2"],\n  "createdNote": { "title": "Judul Singkat", "content": "Isi Markdown", "subject": "Nama Mata Kuliah", "tags": ["Label"] },\n  "createdTodo": { "title": "Judul Rencana", "description": "Deskripsi", "priority": "medium", "category": "Materi", "subtasks": [{ "title": "Langkah 1" }] },\n  "createdDocument": { "type": "docx" | "pdf" | "xlsx", "title": "Judul Dokumen", "content": "Isi Markdown / Tabel Data Markdown", "fileName": "dokumen.docx/dokumen.pdf/tabel.xlsx" },\n  "createdSlides": { "title": "Judul Presentasi", "subtitle": "Subjudul Singkat", "theme": "indigo" | "dark" | "emerald" | "amber" | "slate" | "rose" | "teal" | "violet", "slides": [{ "title": "Slide 1", "bullets": ["Poin 1"], "notes": "Catatan" }], "fileName": "presentasi.pptx" }\n}',
                 },
                 ...messages.map((m: any) => {
                     if (m.attachments && Array.isArray(m.attachments) && m.attachments.length > 0) {
@@ -1220,18 +1235,19 @@ TUGAS ANDA:
                             description: "HANYA isi jika pengguna SECARA EKSPLISIT meminta presentasi/slide/ppt/pptx/powerpoint/bahan tayang/deck. JANGAN isi jika pengguna minta dokumen word/pdf atau penjelasan biasa.",
                             properties: {
                                 title: { type: Type.STRING, description: "Judul utama presentasi ringkas dan padat (maksimal 8-10 kata)" },
-                                theme: { type: Type.STRING, description: "Tema warna: indigo, dark, emerald, amber, atau slate" },
+                                subtitle: { type: Type.STRING, description: "Subjudul atau deskripsi singkat pengantar presentasi" },
+                                theme: { type: Type.STRING, description: "Tema warna: indigo, dark, emerald, amber, slate, rose, teal, atau violet" },
                                 fileName: { type: Type.STRING, description: "Nama file dengan ekstensi .pptx (contoh: presentasi_materi.pptx)" },
                                 subject: { type: Type.STRING, description: "Mata kuliah atau topik" },
                                 slides: {
                                     type: Type.ARRAY,
-                                    description: "Daftar 4-8 slide materi terstruktur",
+                                    description: "Daftar 5-8 slide materi terstruktur dengan alur cover, agenda, latar belakang, materi inti, kesimpulan, dan tanya jawab (Q&A)",
                                     items: {
                                         type: Type.OBJECT,
                                         properties: {
                                             title: { type: Type.STRING, description: "Judul slide (maks 8 kata)" },
-                                            bullets: { type: Type.ARRAY, items: { type: Type.STRING }, description: "3-5 poin bullet materi informatif" },
-                                            notes: { type: Type.STRING, description: "Catatan narasi presenter" },
+                                            bullets: { type: Type.ARRAY, items: { type: Type.STRING }, description: "3-5 poin bullet materi informatif dengan format '**Judul**: Penjelasan'" },
+                                            notes: { type: Type.STRING, description: "Catatan narasi presenter (speaker notes) 2-4 kalimat" },
                                         },
                                         required: ["title", "bullets"],
                                     },

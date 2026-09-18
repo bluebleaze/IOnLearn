@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { CheckCircle2, Settings, RefreshCw, LogOut, ShieldCheck, Mail, User } from "lucide-react";
+import { CheckCircle2, Settings, RefreshCw, LogOut, Mail } from "lucide-react";
 import { UserProfile } from "@/services/classroomService";
 
 interface AccountModalProps {

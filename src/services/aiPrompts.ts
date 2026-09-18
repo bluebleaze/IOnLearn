@@ -1,4 +1,4 @@
-import { TodoTask, UserPreferences } from '../types';
+import { UserPreferences } from '../types';
 
 export function getAnalyzeTaskPrompt(
   title: string,

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Shell } from "../../components/Shell";
 import { AIChat } from "../../components/AIChat";
 import { TodoTask, UserPreferences, AIConfig, StudyNote } from "../../types";
