@@ -47,7 +47,7 @@ IOnLearn is completely open-source under the **GNU General Public License v3 (GP
 IOnLearn decouples application logic from specific model providers. You can choose between managed cloud endpoints or completely private, offline execution via any OpenAI-compatible API gateway.
 
 ### 1. Default: Google Gemini API
-Native integration using the official `@google/genai` SDK with support for `gemini-2.5-flash`, `gemini-1.5-flash`, `gemini-1.5-pro`, and other Gemini models.
+Native integration using the official `@google/genai` SDK with support for `gemini-3.6-flash`, `gemini-3.5-flash`, `gemini-3.1-flash-lite`, and newer Gemini models.
 
 ### 2. Local AI and OpenAI-Compatible Routers
 Connect IOnLearn to local inference servers or multi-model gateways by pointing to an OpenAI-compatible endpoint:
@@ -110,7 +110,7 @@ Configure the environment variables:
 ```env
 # --- 1. AI CONFIGURATION ---
 GEMINI_API_KEY="AIzaSy..."                      # API Key from Google AI Studio
-NEXT_PUBLIC_GEMINI_MODEL="gemini-2.5-flash"     # Default Gemini model
+NEXT_PUBLIC_GEMINI_MODEL="gemini-3.6-flash"     # Default / recommended model (or gemini-3.1-flash-lite)
 AI_PROVIDER="gemini"                            # 'gemini' or 'openai'
 
 # (Optional) If using Local AI / Ollama / 9router / omnirouter:
