@@ -1,8 +1,7 @@
 "use client";
-
-import "drawably/style.css";
 import React from "react";
 import { DrawablyHighlight } from "drawably/react";
+import "drawably/style.css";
 
 interface WhyChooseUsSectionProps {
   language?: "ENG" | "IND";
@@ -43,7 +42,7 @@ export function WhyChooseUsSection({ language = "ENG" }: WhyChooseUsSectionProps
             {copy.heading.map((part, index) => (
               <React.Fragment key={part + index}>
                 {index === 1 ? (
-                  <><DrawablyHighlight seed={633236430} roughness={0.8} boil={1} color="purple">{part}</DrawablyHighlight>{" "}</>
+                  <><DrawablyHighlight seed={633236430} roughness={0.8} boil={1} stroke="#131313" className="px-2">{part}</DrawablyHighlight>{" "}</>
                 ) : (
                   <>{part}{" "}</>
                 )}

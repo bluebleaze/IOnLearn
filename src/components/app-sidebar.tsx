@@ -115,7 +115,7 @@ export function AppSidebar({
       {...props}
     >
       {/* Header with Brand */}
-      <SidebarHeader className="border-0 h-14 p-2 group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:px-0 flex flex-col justify-center overflow-hidden whitespace-nowrap">
+      <SidebarHeader className="border-0 min-h-[3.75rem] p-2 group-data-[collapsible=icon]:h-14 group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:px-0 flex flex-col justify-center overflow-hidden whitespace-nowrap">
         <SidebarMenu className="overflow-hidden group-data-[collapsible=icon]:items-center">
           <SidebarMenuItem className="overflow-hidden group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:justify-center">
             <SidebarMenuButton
@@ -125,7 +125,7 @@ export function AppSidebar({
                 if (isMobile) setOpenMobile(false);
                 router.push("/");
               }}
-              className="cursor-pointer hover:bg-slate-100/80 dark:hover:bg-[#141416] transition-colors rounded-xl overflow-hidden whitespace-nowrap group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:mx-auto"
+              className="cursor-pointer hover:bg-slate-100/80 dark:hover:bg-[#141416] transition-colors rounded-xl overflow-hidden whitespace-nowrap h-auto py-1.5 px-2 group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:mx-auto"
             >
               {isCollapsed ? (
                 /* Collapsed Icon: logoionlearnkecil */
@@ -137,7 +137,7 @@ export function AppSidebar({
                   />
                 </div>
               ) : (
-                <div className="flex flex-col gap-0.5 text-left leading-tight overflow-hidden whitespace-nowrap transition-[opacity,transform,max-width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] max-w-full px-1">
+                <div className="flex flex-col gap-0.5 text-left leading-tight overflow-hidden whitespace-nowrap transition-[opacity,transform,max-width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] max-w-full">
                   <div className="flex items-center">
                     <img
                       src={isDark ? "/logos/logoionlearnfulltext-dark.png" : "/logos/logoionlearnfulltext.png"}
@@ -145,7 +145,7 @@ export function AppSidebar({
                       className="h-6 w-auto object-contain"
                     />
                   </div>
-                  <span className="truncate whitespace-nowrap text-xs text-slate-500 dark:text-[#737373]">
+                  <span className="truncate whitespace-nowrap text-[11px] font-normal leading-normal text-slate-500 dark:text-[#888]">
                     {APP_TAGLINE}
                   </span>
                 </div>
