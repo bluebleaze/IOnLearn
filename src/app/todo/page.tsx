@@ -45,9 +45,11 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/sonner";
 import confetti from "canvas-confetti";
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function TodoPage() {
   const router = useRouter();
+  const { language, isEn, t } = useLanguage();
   const [todos, setTodos] = useState<PersonalTodo[]>([]);
   const [classroomTasks, setClassroomTasks] = useState<TodoTask[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -110,7 +112,7 @@ export default function TodoPage() {
     setNewDueDate("");
     setNewSubject("");
     setShowAddForm(false);
-    toast.success("To-Do Ditambahkan", { description: item.title });
+    toast.success(t.todo.toastAdded, { description: item.title });
   };
 
   const handleToggleTodo = (todoId: string) => {
@@ -125,7 +127,7 @@ export default function TodoPage() {
           colors: ["#6366f1", "#10b981", "#f59e0b"],
         });
       } catch {}
-      toast.success("Selesai!", { description: res.title });
+      toast.success(isEn ? "Done!" : "Selesai!", { description: res.title });
     }
   };
 
@@ -149,7 +151,7 @@ export default function TodoPage() {
   const handleDeleteTodo = (todoId: string) => {
     deleteTodo(todoId);
     setTodos(loadTodos());
-    toast.info("To-Do Dihapus");
+    toast.info(t.todo.toastDeleted);
   };
 
   const handleGenerateClassroomBreakdown = async () => {
@@ -172,7 +174,7 @@ export default function TodoPage() {
 
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.error || "Gagal memproses AI breakdown");
+        throw new Error(err.error || (isEn ? "Failed to process AI breakdown" : "Gagal memproses AI breakdown"));
       }
 
       const { data } = await res.json();
@@ -180,13 +182,13 @@ export default function TodoPage() {
       const newTodo: PersonalTodo = {
         id: `todo-${Date.now()}`,
         title: data.title || target.title,
-        description: data.description || `Pecahan tugas Classroom: ${target.title}`,
+        description: data.description || (isEn ? `Classroom task breakdown: ${target.title}` : `Pecahan tugas Classroom: ${target.title}`),
         isCompleted: false,
         priority: target.priority || "high",
         dueDate: target.dueDateStr,
         courseName: target.courseName,
         courseWorkId: target.courseWorkId || target.id,
-        category: target.courseName || "Kuliah",
+        category: target.courseName || (isEn ? "Course" : "Kuliah"),
         subtasks: data.subtasks || [],
         createdAt: now,
         updatedAt: now,
@@ -198,12 +200,14 @@ export default function TodoPage() {
       setSelectedClassroomId("");
       setExpandedMap((prev) => ({ ...prev, [newTodo.id]: true }));
 
-      toast.success("To-Do dari Classroom Berhasil Dibuat!", {
-        description: `Tugas "${target.title}" telah dipecah menjadi ${newTodo.subtasks?.length || 0} sub-langkah.`,
+      toast.success(isEn ? "Classroom To-Do Created!" : "To-Do dari Classroom Berhasil Dibuat!", {
+        description: isEn
+          ? `Task "${target.title}" broken down into ${newTodo.subtasks?.length || 0} sub-steps.`
+          : `Tugas "${target.title}" telah dipecah menjadi ${newTodo.subtasks?.length || 0} sub-langkah.`,
       });
     } catch (err: any) {
-      toast.error("Gagal Mengimpor Tugas", {
-        description: err.message || "Periksa konfigurasi AI Anda.",
+      toast.error(isEn ? "Failed to Import Task" : "Gagal Mengimpor Tugas", {
+        description: err.message || (isEn ? "Check your AI configuration." : "Periksa konfigurasi AI Anda."),
       });
     } finally {
       setIsGeneratingBreakdown(false);
@@ -243,10 +247,10 @@ export default function TodoPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold font-[family-name:var(--font-lexend)] tracking-tight text-slate-900 dark:text-[#f3f3f3]">
-              To-Do List
+              {t.todo.pageTitle}
             </h1>
             <p className="text-sm text-slate-500 dark:text-[#a3a3a3] mt-1">
-              Catat rencana harian, target belajar, atau pecah tugas kuliah dengan bantuan AI.
+              {t.todo.pageSubtitle}
             </p>
           </div>
 
@@ -258,7 +262,7 @@ export default function TodoPage() {
               className="gap-2 rounded-xl text-xs font-medium border-slate-200 dark:border-[#2b2b2b] bg-white dark:bg-[#181818] hover:bg-slate-100 dark:hover:bg-[#222] text-slate-800 dark:text-[#f3f3f3] shadow-2xs"
             >
               <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
-              <span>Impor Classroom (AI)</span>
+              <span>{t.todo.importClassroomBtn}</span>
             </Button>
             <Button
               size="sm"
@@ -266,7 +270,7 @@ export default function TodoPage() {
               className="gap-1.5 rounded-xl text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 shadow-2xs"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Tambah To-Do</span>
+              <span>{t.todo.addBtn}</span>
             </Button>
           </div>
         </div>
@@ -276,10 +280,12 @@ export default function TodoPage() {
           <div className="flex items-center justify-between text-xs mb-2">
             <span className="font-semibold text-slate-700 dark:text-[#d4d4d4] flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-              Progress Harian
+              {t.todo.dailyProgress}
             </span>
             <span className="text-slate-500 dark:text-[#8e8e8e]">
-              {completedCount} dari {totalCount} terselesaikan ({progressPercent}%)
+              {isEn
+                ? `${completedCount} of ${totalCount} ${t.todo.progressCompleted} (${progressPercent}%)`
+                : `${completedCount} dari ${totalCount} ${t.todo.progressCompleted} (${progressPercent}%)`}
             </span>
           </div>
           <div className="w-full h-2 bg-slate-100 dark:bg-[#202020] rounded-full overflow-hidden">
@@ -296,8 +302,8 @@ export default function TodoPage() {
             hideCloseButton
             className="w-[calc(100%-1.5rem)] sm:w-full max-w-lg p-5 sm:p-6 space-y-4 rounded-2xl bg-white dark:bg-[#171717] border border-slate-100 dark:border-[#262626] shadow-2xl"
           >
-            <DialogTitle className="sr-only">Tambah Rencana / Target Baru</DialogTitle>
-            <DialogDescription className="sr-only">Catat target belajar atau tugas harianmu.</DialogDescription>
+            <DialogTitle className="sr-only">{t.todo.dialogAddTitle}</DialogTitle>
+            <DialogDescription className="sr-only">{t.todo.dialogAddDesc}</DialogDescription>
 
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
@@ -306,10 +312,10 @@ export default function TodoPage() {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-slate-900 dark:text-[#f3f3f3]">
-                    Tambah Rencana / Target Baru
+                    {t.todo.dialogAddTitle}
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-[#888]">
-                    Catat target belajar atau tugas harianmu.
+                    {t.todo.dialogAddDesc}
                   </p>
                 </div>
               </div>
@@ -318,7 +324,7 @@ export default function TodoPage() {
                 onClick={() => setShowAddForm(false)}
                 className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-[#ccc] hover:bg-slate-100 dark:hover:bg-[#222] transition cursor-pointer"
               >
-                <span className="sr-only">Tutup</span>
+                <span className="sr-only">{isEn ? "Close" : "Tutup"}</span>
                 ✕
               </button>
             </div>
@@ -326,12 +332,12 @@ export default function TodoPage() {
             <form onSubmit={handleAddQuickTodo} className="space-y-3.5">
               <div>
                 <label htmlFor="todo-title-input" className="text-xs font-semibold text-slate-700 dark:text-[#ccc] block mb-1">
-                  Judul To-Do
+                  {isEn ? "To-Do Title" : "Judul To-Do"}
                 </label>
                 <input
                   id="todo-title-input"
                   type="text"
-                  placeholder="Apa yang ingin kamu selesaikan? (Contoh: Selesaikan bab 3 kalkulus)"
+                  placeholder={isEn ? "What do you want to achieve? (e.g. Finish calculus chapter 3)" : "Apa yang ingin kamu selesaikan? (Contoh: Selesaikan bab 3 kalkulus)"}
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
                   className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-slate-50 dark:bg-[#1f1f1f] border border-slate-200/80 dark:border-[#2b2b2b] text-slate-900 dark:text-[#f3f3f3] placeholder:text-slate-400 dark:placeholder:text-[#666] focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
@@ -342,7 +348,7 @@ export default function TodoPage() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
                 <div>
                   <label htmlFor="todo-priority-select" className="text-xs font-medium text-slate-600 dark:text-[#a3a3a3] block mb-1">
-                    Prioritas
+                    {t.todo.priorityLabel}
                   </label>
                   <select
                     id="todo-priority-select"
@@ -350,15 +356,15 @@ export default function TodoPage() {
                     onChange={(e) => setNewPriority(e.target.value as any)}
                     className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-[#1f1f1f] border border-slate-200/80 dark:border-[#2b2b2b] text-slate-800 dark:text-[#e5e5e5] focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
                   >
-                    <option value="high">Tinggi (Penting & Mendesak)</option>
-                    <option value="medium">Sedang (Standar)</option>
-                    <option value="low">Rendah (Fleksibel)</option>
+                    <option value="high">{t.todo.priorityHigh}</option>
+                    <option value="medium">{t.todo.priorityMedium}</option>
+                    <option value="low">{t.todo.priorityLow}</option>
                   </select>
                 </div>
 
                 <div>
                   <label htmlFor="todo-due-date-input" className="text-xs font-medium text-slate-600 dark:text-[#a3a3a3] block mb-1">
-                    Batas Waktu (Opsional)
+                    {t.todo.dueDateLabel} {isEn ? "(Optional)" : "(Opsional)"}
                   </label>
                   <input
                     id="todo-due-date-input"
@@ -371,12 +377,12 @@ export default function TodoPage() {
 
                 <div>
                   <label htmlFor="todo-category-input" className="text-xs font-medium text-slate-600 dark:text-[#a3a3a3] block mb-1">
-                    Kategori / Matkul
+                    {t.todo.categoryLabel}
                   </label>
                   <input
                     id="todo-category-input"
                     type="text"
-                    placeholder="e.g. Algoritma"
+                    placeholder={isEn ? "e.g. Algorithms" : "e.g. Algoritma"}
                     value={newSubject}
                     onChange={(e) => setNewSubject(e.target.value)}
                     className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-[#1f1f1f] border border-slate-200/80 dark:border-[#2b2b2b] text-slate-800 dark:text-[#e5e5e5] focus:outline-none focus:ring-2 focus:ring-indigo-500/30 placeholder:text-slate-400 dark:placeholder:text-[#666]"
@@ -392,14 +398,14 @@ export default function TodoPage() {
                   onClick={() => setShowAddForm(false)}
                   className="text-xs text-slate-600 dark:text-[#888] rounded-xl"
                 >
-                  Batal
+                  {t.todo.cancelBtn}
                 </Button>
                 <Button
                   type="submit"
                   size="sm"
                   className="text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-2xs"
                 >
-                  Simpan To-Do
+                  {t.todo.saveBtn}
                 </Button>
               </div>
             </form>
@@ -417,7 +423,7 @@ export default function TodoPage() {
                   : "text-slate-500 dark:text-[#888] hover:text-slate-800 dark:hover:text-[#eee]"
               }`}
             >
-              <span>Semua</span>
+              <span>{t.todo.tabAll}</span>
               <span className="opacity-60 text-xs">({totalCount})</span>
             </button>
 
@@ -429,7 +435,7 @@ export default function TodoPage() {
                   : "text-slate-500 dark:text-[#888] hover:text-slate-800 dark:hover:text-[#eee]"
               }`}
             >
-              <span>Belum Selesai</span>
+              <span>{t.todo.tabActive}</span>
               <span className="opacity-60 text-xs">({activeCount})</span>
             </button>
 
@@ -441,7 +447,7 @@ export default function TodoPage() {
                   : "text-slate-500 dark:text-[#888] hover:text-slate-800 dark:hover:text-[#eee]"
               }`}
             >
-              <span>Selesai</span>
+              <span>{t.todo.tabCompleted}</span>
               <span className="opacity-60 text-xs">({completedCount})</span>
             </button>
 
@@ -454,7 +460,7 @@ export default function TodoPage() {
               }`}
             >
               <Flame className="w-3.5 h-3.5 text-rose-500" />
-              <span>Prioritas Tinggi</span>
+              <span>{t.todo.tabHigh}</span>
             </button>
           </div>
 
@@ -462,7 +468,7 @@ export default function TodoPage() {
             <Search className="w-3.5 h-3.5 text-slate-400 dark:text-[#737373] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none transition-colors group-focus-within:text-indigo-600 dark:group-focus-within:text-indigo-400" />
             <input
               type="text"
-              placeholder="Cari to-do..."
+              placeholder={isEn ? "Search to-dos..." : "Cari to-do..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-8.5 pr-8 py-1.5 text-xs rounded-xl bg-slate-100/90 hover:bg-slate-100 dark:bg-[#181818] dark:hover:bg-[#1c1c1c] border border-slate-200/80 dark:border-[#262626] text-slate-900 dark:text-[#f3f3f3] placeholder:text-slate-400 dark:placeholder:text-[#666] focus:outline-none focus:bg-white dark:focus:bg-[#1e1e1e] focus:border-indigo-500/50 dark:focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/10 transition-all"
@@ -472,7 +478,7 @@ export default function TodoPage() {
                 type="button"
                 onClick={() => setSearchQuery("")}
                 className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-[#ccc] rounded-md transition cursor-pointer"
-                title="Hapus pencarian"
+                title={isEn ? "Clear search" : "Hapus pencarian"}
               >
                 <X className="w-3 h-3" />
               </button>
@@ -489,10 +495,12 @@ export default function TodoPage() {
                 <Search className="w-5 h-5" />
               </div>
               <h3 className="text-base font-semibold text-slate-900 dark:text-[#f3f3f3]">
-                Tidak Ada To-Do Ditemukan
+                {t.todo.searchEmptyTitle}
               </h3>
               <p className="text-xs text-slate-500 dark:text-[#888] max-w-sm mx-auto">
-                Tidak ada rencana to-do atau sub-langkah yang cocok dengan kata kunci &quot;<span className="font-semibold text-slate-800 dark:text-slate-200">{searchQuery}</span>&quot;.
+                {isEn
+                  ? `No to-do plans or subtasks match "${searchQuery}".`
+                  : `Tidak ada rencana to-do atau sub-langkah yang cocok dengan kata kunci "${searchQuery}".`}
               </p>
               <div className="pt-1">
                 <Button
@@ -501,7 +509,7 @@ export default function TodoPage() {
                   onClick={() => setSearchQuery("")}
                   className="min-h-[40px] sm:min-h-0 text-xs rounded-xl cursor-pointer"
                 >
-                  Reset Pencarian
+                  {t.todo.resetSearch}
                 </Button>
               </div>
             </div>
@@ -513,10 +521,10 @@ export default function TodoPage() {
               </div>
               <div className="max-w-md mx-auto space-y-1.5">
                 <h3 className="text-lg font-bold text-slate-900 dark:text-[#f3f3f3] font-heading">
-                  Luar biasa! Semua rencana to-do selesai 🎉
+                  {t.todo.celebrationTitle}
                 </h3>
                 <p className="text-xs sm:text-sm text-slate-500 dark:text-[#888] leading-relaxed">
-                  Kamu telah menyelesaikan seluruh target harian. Waktunya istirahat atau buat rencana baru untuk besok!
+                  {t.todo.celebrationDesc}
                 </p>
               </div>
               <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
@@ -526,7 +534,7 @@ export default function TodoPage() {
                   onClick={() => setFilterTab("all")}
                   className="min-h-[44px] sm:min-h-0 text-xs rounded-xl"
                 >
-                  Lihat Semua To-Do ({totalCount})
+                  {t.todo.viewAllBtn} ({totalCount})
                 </Button>
                 <Button
                   size="sm"
@@ -534,7 +542,7 @@ export default function TodoPage() {
                   className="min-h-[44px] sm:min-h-0 text-xs font-semibold bg-slate-900 hover:bg-slate-800 dark:bg-[#f0f0f0] dark:hover:bg-white text-white dark:text-slate-900 shadow-2xs"
                 >
                   <Plus className="w-3.5 h-3.5 mr-1" />
-                  Tambah Rencana Baru
+                  {t.todo.newPlanBtn}
                 </Button>
               </div>
             </div>
@@ -545,10 +553,10 @@ export default function TodoPage() {
                 <ListTodo className="w-6 h-6" />
               </div>
               <h3 className="text-base font-semibold text-slate-900 dark:text-[#f3f3f3]">
-                Belum Ada To-Do
+                {t.todo.emptyTitle}
               </h3>
               <p className="text-xs text-slate-500 dark:text-[#888] mt-1 max-w-sm mx-auto">
-                Mulai buat to-do harianmu sendiri atau impor tugas dari Google Classroom untuk dipecah secara otomatis oleh AI.
+                {t.todo.emptyDesc}
               </p>
               <div className="mt-4 flex items-center justify-center gap-2">
                 <Button
@@ -557,7 +565,7 @@ export default function TodoPage() {
                   className="min-h-[44px] sm:min-h-0 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-2xs"
                 >
                   <Plus className="w-3.5 h-3.5 mr-1" />
-                  Tambah To-Do
+                  {t.todo.addBtn}
                 </Button>
               </div>
             </div>
@@ -582,8 +590,8 @@ export default function TodoPage() {
                       type="button"
                       onClick={() => handleToggleTodo(item.id)}
                       className="min-w-[44px] min-h-[44px] -m-2.5 flex items-center justify-center cursor-pointer shrink-0 focus-visible:outline-none"
-                      title={item.isCompleted ? "Tandai belum selesai" : "Tandai selesai"}
-                      aria-label={item.isCompleted ? `Tandai "${item.title}" belum selesai` : `Tandai "${item.title}" selesai`}
+                      title={item.isCompleted ? (isEn ? "Mark as uncompleted" : "Tandai belum selesai") : (isEn ? "Mark as completed" : "Tandai selesai")}
+                      aria-label={item.isCompleted ? (isEn ? `Mark "${item.title}" uncompleted` : `Tandai "${item.title}" belum selesai`) : (isEn ? `Mark "${item.title}" completed` : `Tandai "${item.title}" selesai`)}
                     >
                       <span
                         className={`w-5 h-5 rounded-lg flex items-center justify-center transition-all focus-visible:ring-2 focus-visible:ring-emerald-500 ${
@@ -612,12 +620,12 @@ export default function TodoPage() {
                         {/* Priority Badge */}
                         {item.priority === "high" && (
                           <span className="px-2 py-0.5 rounded-md text-xs font-bold bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400">
-                            Penting
+                            {isEn ? "High" : "Penting"}
                           </span>
                         )}
                         {item.priority === "medium" && (
                           <span className="px-2 py-0.5 rounded-md text-xs font-medium bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400">
-                            Sedang
+                            {isEn ? "Medium" : "Sedang"}
                           </span>
                         )}
 
@@ -651,7 +659,7 @@ export default function TodoPage() {
                             onClick={() => toggleExpand(item.id)}
                             className="inline-flex items-center gap-1.5 min-h-[36px] sm:min-h-0 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
                             aria-expanded={isExpanded}
-                            aria-label={`${isExpanded ? "Tutup" : "Buka"} sub-langkah ${item.title}`}
+                            aria-label={`${isExpanded ? (isEn ? "Collapse" : "Tutup") : (isEn ? "Expand" : "Buka")} ${isEn ? "sub-steps for" : "sub-langkah"} ${item.title}`}
                           >
                             {isExpanded ? (
                               <ChevronDown className="w-3.5 h-3.5" />
@@ -659,7 +667,7 @@ export default function TodoPage() {
                               <ChevronRight className="w-3.5 h-3.5" />
                             )}
                             <span>
-                              Sub-langkah ({completedSubtasks}/{item.subtasks?.length})
+                              {t.todo.subtasksLabel} ({completedSubtasks}/{item.subtasks?.length})
                             </span>
                           </button>
 
@@ -675,8 +683,8 @@ export default function TodoPage() {
                                     type="button"
                                     onClick={() => handleToggleSubtask(item.id, subtask.id)}
                                     className="min-w-[44px] min-h-[44px] -my-2.5 -ml-2.5 flex items-center justify-center cursor-pointer shrink-0 focus-visible:outline-none"
-                                    title={subtask.isCompleted ? "Tandai subtask belum selesai" : "Tandai subtask selesai"}
-                                    aria-label={subtask.isCompleted ? `Tandai subtask "${subtask.title}" belum selesai` : `Tandai subtask "${subtask.title}" selesai`}
+                                    title={subtask.isCompleted ? (isEn ? "Mark subtask uncompleted" : "Tandai subtask belum selesai") : (isEn ? "Mark subtask completed" : "Tandai subtask selesai")}
+                                    aria-label={subtask.isCompleted ? (isEn ? `Mark subtask "${subtask.title}" uncompleted` : `Tandai subtask "${subtask.title}" belum selesai`) : (isEn ? `Mark subtask "${subtask.title}" completed` : `Tandai subtask "${subtask.title}" selesai`)}
                                   >
                                     <span
                                       className={`w-4 h-4 rounded flex items-center justify-center transition-all focus-visible:ring-1 focus-visible:ring-emerald-500 ${
@@ -713,8 +721,8 @@ export default function TodoPage() {
                         type="button"
                         onClick={() => handleDeleteTodo(item.id)}
                         className="min-w-[44px] min-h-[44px] -m-2 flex items-center justify-center rounded-xl text-slate-400 hover:text-rose-600 dark:text-[#737373] dark:hover:text-rose-400 hover:bg-slate-100 dark:hover:bg-[#202020] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
-                        title="Hapus To-Do"
-                        aria-label={`Hapus to-do "${item.title}"`}
+                        title={isEn ? "Delete To-Do" : "Hapus To-Do"}
+                        aria-label={isEn ? `Delete to-do "${item.title}"` : `Hapus to-do "${item.title}"`}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -732,8 +740,8 @@ export default function TodoPage() {
             hideCloseButton
             className="w-[calc(100%-1.5rem)] sm:w-full max-w-lg p-5 space-y-4 rounded-2xl bg-white dark:bg-[#171717] border border-slate-100 dark:border-[#262626] shadow-2xl"
           >
-            <DialogTitle className="sr-only">Impor & Pecah Tugas Classroom</DialogTitle>
-            <DialogDescription className="sr-only">Pilih tugas kuliah dan AI akan memecahnya menjadi langkah kerja harian.</DialogDescription>
+            <DialogTitle className="sr-only">{t.todo.modalClassroomTitle}</DialogTitle>
+            <DialogDescription className="sr-only">{t.todo.modalClassroomDesc}</DialogDescription>
 
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -742,10 +750,10 @@ export default function TodoPage() {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-slate-900 dark:text-[#f3f3f3]">
-                    Impor & Pecah Tugas Classroom
+                    {t.todo.modalClassroomTitle}
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-[#888]">
-                    Pilih tugas kuliah dan AI akan memecahnya menjadi langkah kerja harian.
+                    {t.todo.modalClassroomDesc}
                   </p>
                 </div>
               </div>
@@ -754,18 +762,18 @@ export default function TodoPage() {
                 onClick={() => setShowClassroomModal(false)}
                 className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-[#ccc] hover:bg-slate-100 dark:hover:bg-[#222] transition cursor-pointer"
               >
-                <span className="sr-only">Tutup</span>
+                <span className="sr-only">{isEn ? "Close" : "Tutup"}</span>
                 ✕
               </button>
             </div>
 
             <div className="space-y-2">
               <label className="text-xs font-semibold text-slate-700 dark:text-[#ccc] block">
-                Pilih Tugas dari Classroom:
+                {t.todo.modalClassroomSelect}
               </label>
               {classroomTasks.filter((t) => !t.isCompleted).length === 0 ? (
                 <p className="text-xs text-slate-500 dark:text-[#888] italic py-2">
-                  Tidak ada tugas pending di Classroom.
+                  {t.todo.modalClassroomEmpty}
                 </p>
               ) : (
                 <div className="max-h-56 overflow-y-auto space-y-1.5 pr-1">
@@ -802,7 +810,7 @@ export default function TodoPage() {
                 disabled={isGeneratingBreakdown}
                 className="text-xs text-slate-600 dark:text-[#888] rounded-xl"
               >
-                Batal
+                {t.todo.cancelBtn}
               </Button>
               <Button
                 size="sm"
@@ -813,12 +821,12 @@ export default function TodoPage() {
                 {isGeneratingBreakdown ? (
                   <>
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    <span>Sedang Menganalisis...</span>
+                    <span>{t.todo.modalClassroomAnalyzing}</span>
                   </>
                 ) : (
                   <>
                     <Sparkles className="w-3.5 h-3.5" />
-                    <span>Pecah dengan AI</span>
+                    <span>{t.todo.modalClassroomBreakdownBtn}</span>
                   </>
                 )}
               </Button>

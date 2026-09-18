@@ -36,6 +36,7 @@ import { CheckCircle2, RefreshCw, Sun, Moon } from "lucide-react";
 import { toggleThemeWithCircularAnimation } from "../lib/theme";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebase";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface ShellContextValue {
   userProfile: UserProfile | null;
@@ -73,6 +74,7 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
   const [loginError, setLoginError] = useState<string | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [isDark, setIsDark] = useState(false);
+  const { isEn, t } = useLanguage();
 
   useEffect(() => {
     setHydrated(true);
@@ -105,11 +107,11 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
   useEffect(() => {
     const onSessionExpired = (e: any) => {
       const reason =
-        e.detail?.reason || "Sesi Google Classroom Anda telah berakhir. Silakan masuk kembali.";
+        e.detail?.reason || t.nav.sessionExpiredDesc;
       setToken(null);
       setUserProfile(null);
       router.replace("/");
-      toast.warning("Sesi Berakhir", {
+      toast.warning(t.nav.sessionExpiredTitle, {
         description: reason,
       });
     };
@@ -278,8 +280,8 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
     ClassroomService.logout();
     setToken(null);
     setUserProfile(null);
-    toast.info("Koneksi Google Diputuskan", {
-      description: "Akun Google Classroom telah keluar dan sesi ditutup.",
+    toast.info(t.nav.logoutConfirmTitle, {
+      description: t.nav.logoutConfirmDesc,
     });
   };
 
@@ -331,14 +333,14 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
   }
 
   const getPageTitle = (path: string) => {
-    if (path === "/") return "Dashboard";
-    if (path.startsWith("/tasks")) return "Semua Tugas";
-    if (path.startsWith("/chat")) return "Tanya AI";
-    if (path.startsWith("/todo")) return "To-Do List";
-    if (path.startsWith("/notes")) return "Catatan Materi";
-    if (path === "/settings") return "Pengaturan";
-    if (path.startsWith("/tugas")) return "Detail Tugas";
-    return "Halaman";
+    if (path === "/") return t.nav.dashboard;
+    if (path.startsWith("/tasks")) return t.nav.allTasks;
+    if (path.startsWith("/chat")) return t.nav.askAI;
+    if (path.startsWith("/todo")) return t.nav.todoList;
+    if (path.startsWith("/notes")) return t.nav.studyNotes;
+    if (path === "/settings") return t.nav.settings;
+    if (path.startsWith("/tugas")) return t.nav.taskDetails;
+    return isEn ? "Page" : "Halaman";
   };
 
   const pageTitle = getPageTitle(pathname);
@@ -410,7 +412,7 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
                   {pathname === "/" && (
                     <BreadcrumbItem>
                       <BreadcrumbPage className="text-xs font-semibold text-slate-900 dark:text-[#f5f5f5]">
-                        Dashboard
+                        {t.nav.dashboard}
                       </BreadcrumbPage>
                     </BreadcrumbItem>
                   )}
@@ -420,16 +422,16 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
 
             {/* Quick Actions in Header */}
             <div className="flex items-center gap-2 sm:gap-2.5">
-              {/* Refresh Sinkronisasi Button (Sesuai QA #8) */}
+              {/* Refresh Sinkronisasi Button */}
               <button
                 onClick={syncClassroom}
                 disabled={isSyncing}
                 title={
                   isSyncing
-                    ? syncProgress?.message || "Sedang menyinkronkan data Google Classroom..."
+                    ? syncProgress?.message || (isEn ? "Syncing Google Classroom data..." : "Sedang menyinkronkan data Google Classroom...")
                     : lastSyncedAt
-                    ? `Terakhir disinkronkan: ${new Date(lastSyncedAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })} (Klik untuk refresh)`
-                    : "Refresh Sinkronisasi data Google Classroom"
+                    ? `${t.nav.lastSynced}: ${new Date(lastSyncedAt).toLocaleTimeString(isEn ? "en-US" : "id-ID", { hour: "2-digit", minute: "2-digit" })}`
+                    : (isEn ? "Refresh Google Classroom sync" : "Refresh Sinkronisasi data Google Classroom")
                 }
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-[#18181f] text-slate-700 dark:text-[#ccc] hover:text-slate-900 dark:hover:text-[#fff] border border-slate-200/80 dark:border-[#282834] shadow-2xs hover:bg-slate-200/60 dark:hover:bg-[#22222c] transition-all cursor-pointer disabled:opacity-50"
               >
@@ -441,9 +443,9 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
                 <span className="hidden sm:inline">
                   {isSyncing
                     ? syncProgress?.percent
-                      ? `Sinkron (${syncProgress.percent}%)`
-                      : "Menyinkronkan..."
-                    : "Refresh Sinkronisasi"}
+                      ? `${isEn ? "Sync" : "Sinkron"} (${syncProgress.percent}%)`
+                      : t.nav.syncing
+                    : t.nav.refreshSync}
                 </span>
               </button>
 

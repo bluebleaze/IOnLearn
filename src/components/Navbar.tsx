@@ -16,6 +16,7 @@ import { UserProfile } from "../services/classroomService";
 import { Button } from "@/components/ui/button";
 import { APP_TAGLINE } from "@/lib/brand";
 import { Theme, toggleThemeWithCircularAnimation } from "@/lib/theme";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface NavbarProps {
   userProfile: UserProfile | null;
@@ -38,6 +39,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onSimulateNewTask,
   onOpenMobileNav,
 }) => {
+  const { isEn, t } = useLanguage();
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [currentTheme, setCurrentTheme] = useState<Theme>("light");
   const profileMenuRef = useRef<HTMLDivElement>(null);
@@ -93,10 +95,10 @@ export const Navbar: React.FC<NavbarProps> = ({
             </a>
             <div className="hidden sm:block min-w-0 pl-2 border-l border-slate-200 dark:border-[#2b2b2b]">
               <h1 className="text-sm font-bold font-heading tracking-tight text-slate-900 dark:text-[#f5f5f5] truncate">
-                Dashboard
+                {t.nav.dashboard}
               </h1>
               <p className="text-xs text-slate-500 dark:text-[#737373] truncate">
-                {APP_TAGLINE}
+                {isEn ? "Academic Productivity & Study Assistant" : APP_TAGLINE}
               </p>
             </div>
           </div>

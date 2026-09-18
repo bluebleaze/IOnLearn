@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
 import { loadPreferences } from "@/lib/taskStore";
 import { TaskCompleteConfirmModal } from "./TaskCompleteConfirmModal";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface TaskDetailModalProps {
   task: TodoTask | null;
@@ -56,46 +57,28 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   const [isSavedNotes, setIsSavedNotes] = useState(false);
   const [copiedConcept, setCopiedConcept] = useState<string | null>(null);
   const [showConfirmComplete, setShowConfirmComplete] = useState(false);
+  const { isEn, t } = useLanguage();
   const [modalStyle, setModalStyle] = useState<"drawer" | "modal">(() => {
     if (typeof window !== "undefined") {
       const prefs = loadPreferences();
-      if (prefs?.taskModalStyle) {
-        return prefs.taskModalStyle;
-      }
+      return prefs?.taskModalStyle || "drawer";
     }
     return "drawer";
   });
 
   useEffect(() => {
-    const syncStyle = (e?: Event) => {
-      const customEvent = e as CustomEvent<{ style?: "drawer" | "modal" }>;
-      if (customEvent?.detail?.style) {
-        setModalStyle(customEvent.detail.style);
-        return;
-      }
-      const prefs = loadPreferences();
-      if (prefs?.taskModalStyle) {
-        setModalStyle(prefs.taskModalStyle);
-      }
-    };
-
-    syncStyle();
-    window.addEventListener("taskStoreChange", syncStyle as EventListener);
-    window.addEventListener("task-modal-style-changed", syncStyle as EventListener);
-    window.addEventListener("storage", syncStyle as EventListener);
-
-    return () => {
-      window.removeEventListener("taskStoreChange", syncStyle as EventListener);
-      window.removeEventListener("task-modal-style-changed", syncStyle as EventListener);
-      window.removeEventListener("storage", syncStyle as EventListener);
-    };
-  }, [isOpen]);
+    setNotes(task?.customNotes || "");
+  }, [task?.id, task?.customNotes]);
 
   useEffect(() => {
-    if (task?.customNotes !== undefined) {
-      setNotes(task.customNotes);
-    }
-  }, [task?.id, task?.customNotes]);
+    const handleStyleChange = (e: any) => {
+      if (e.detail?.style) {
+        setModalStyle(e.detail.style);
+      }
+    };
+    window.addEventListener("task-modal-style-changed", handleStyleChange as EventListener);
+    return () => window.removeEventListener("task-modal-style-changed", handleStyleChange as EventListener);
+  }, []);
 
   // Handle ESC key
   useEffect(() => {
@@ -114,8 +97,8 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     onSaveNotes(task.id, notes);
     setIsSavedNotes(true);
     setTimeout(() => setIsSavedNotes(false), 2000);
-    toast.success("Catatan Disimpan", {
-      description: "Catatan belajar personal Anda berhasil diperbarui.",
+    toast.success(isEn ? "Notes Saved" : "Catatan Disimpan", {
+      description: isEn ? "Your personal study notes have been updated." : "Catatan belajar personal Anda berhasil diperbarui.",
     });
   };
 
@@ -146,7 +129,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     navigator.clipboard.writeText(text);
     setCopiedConcept(label);
     setTimeout(() => setCopiedConcept(null), 2000);
-    toast.success("Teks Disalin", { description: `"${label}" disalin ke clipboard.` });
+    toast.success(isEn ? "Text Copied" : "Teks Disalin", { description: `"${label}" ${isEn ? "copied to clipboard." : "disalin ke clipboard."}` });
   };
 
   const ai = task.aiAnalysis;
@@ -173,7 +156,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
               }`}
           >
             <FileText className="w-3.5 h-3.5 text-indigo-500" />
-            <span>Rangkuman</span>
+            <span>{isEn ? "Summary" : "Rangkuman"}</span>
           </button>
 
           <button
@@ -184,7 +167,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
               }`}
           >
             <ListChecks className="w-3.5 h-3.5 text-emerald-500" />
-            <span>Langkah ({checklistDone}/{checklistTotal})</span>
+            <span>{isEn ? "Steps" : "Langkah"} ({checklistDone}/{checklistTotal})</span>
           </button>
 
           <button
@@ -206,7 +189,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
               }`}
           >
             <BookOpen className="w-3.5 h-3.5 text-indigo-500" />
-            <span>Catatan</span>
+            <span>{isEn ? "Notes" : "Catatan"}</span>
           </button>
         </div>
 
@@ -214,7 +197,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
         <button
           onClick={onClose}
           className="size-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-[#fff] hover:bg-slate-200/70 dark:hover:bg-[#25252e] transition cursor-pointer mb-1 shrink-0"
-          title="Tutup (Esc)"
+          title={isEn ? "Close (Esc)" : "Tutup (Esc)"}
           aria-label="Tutup"
         >
           <X className="w-4 h-4" />
@@ -234,13 +217,13 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
               {task.dueDateStr && (
                 <>
                   <span>•</span>
-                  <span>Tenggat: {task.dueDateStr}</span>
+                  <span>{isEn ? "Due: " : "Tenggat: "}{task.dueDateStr}</span>
                 </>
               )}
               {task.points !== undefined && (
                 <>
                   <span>•</span>
-                  <span>{task.points} Poin</span>
+                  <span>{task.points} {isEn ? "Pts" : "Poin"}</span>
                 </>
               )}
             </p>
@@ -261,7 +244,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                 }`}
             >
               <Check className="w-3.5 h-3.5 stroke-[3]" />
-              <span>{task.isCompleted ? "Selesai (Klik Buka)" : "Tandai Selesai"}</span>
+              <span>{task.isCompleted ? (isEn ? "Completed (Reopen)" : "Selesai (Klik Buka)") : (isEn ? "Mark Complete" : "Tandai Selesai")}</span>
             </Button>
           )}
 
@@ -276,7 +259,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
             className="text-xs rounded-xl border-slate-200 dark:border-[#2b2b35] hover:bg-slate-100 dark:hover:bg-[#202028] gap-1.5 cursor-pointer"
           >
             <MessageSquareText className="w-3.5 h-3.5 text-indigo-500" />
-            <span>Tanya AI</span>
+            <span>{isEn ? "Ask AI" : "Tanya AI"}</span>
           </Button>
 
           {/* Link Classroom */}
@@ -288,7 +271,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl border border-slate-200 dark:border-[#2b2b35] bg-slate-50 dark:bg-[#1c1c24] hover:bg-slate-100 dark:hover:bg-[#242430] text-slate-700 dark:text-[#ccc] transition cursor-pointer"
             >
               <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
-              <span>Buka di Classroom</span>
+              <span>Classroom</span>
             </a>
           )}
         </div>
@@ -302,7 +285,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
           <div className="p-4 rounded-2xl bg-slate-50/70 dark:bg-[#181820] border border-slate-200/80 dark:border-[#262632] space-y-2">
             <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#888] flex items-center gap-1.5">
               <FileText className="w-3.5 h-3.5 text-indigo-500" />
-              Deskripsi & Instruksi Tugas
+              {isEn ? "Task Description & Instructions" : "Deskripsi & Instruksi Tugas"}
             </h4>
             <p className="text-xs sm:text-sm text-slate-700 dark:text-[#d4d4d8] whitespace-pre-wrap leading-relaxed">
               {task.description}
@@ -310,7 +293,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
           </div>
         ) : (
           <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#181820] text-xs text-slate-400 border border-slate-200/60 dark:border-[#262630]">
-            Tidak ada deskripsi tertulis dari pengajar untuk tugas ini.
+            {isEn ? "No written description provided by the instructor for this task." : "Tidak ada deskripsi tertulis dari pengajar untuk tugas ini."}
           </div>
         )}
 
@@ -319,7 +302,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
           <div className="space-y-2.5 p-4 rounded-2xl bg-white dark:bg-[#181820] border border-slate-200/80 dark:border-[#262632]">
             <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-[#ccc] flex items-center gap-1.5">
               <Paperclip className="w-3.5 h-3.5 text-indigo-500" />
-              File Lampiran Tugas ({task.materials.length})
+              {isEn ? "Task Attachments" : "File Lampiran Tugas"} ({task.materials.length})
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {task.materials.map((mat, idx) => {
@@ -328,7 +311,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                   mat.youtubeVideo?.title ||
                   mat.link?.title ||
                   mat.form?.title ||
-                  "Dokumen Materi";
+                  (isEn ? "Study Material" : "Dokumen Materi");
                 const link =
                   mat.driveFile?.driveFile?.alternateLink ||
                   mat.youtubeVideo?.alternateLink ||
@@ -373,7 +356,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
               <div className="text-center py-12 space-y-3 bg-slate-50 dark:bg-[#181820] rounded-2xl border border-slate-200/80 dark:border-[#262632]">
                 <Loader2 className="w-7 h-7 mx-auto animate-spin text-indigo-600 dark:text-[#818cf8]" />
                 <p className="text-xs font-semibold text-indigo-700 dark:text-[#a5b4fc]">
-                  Sedang menganalisis materi & menyusun panduan AI...
+                  {isEn ? "Analyzing material & compiling AI guide..." : "Sedang menganalisis materi & menyusun panduan AI..."}
                 </p>
               </div>
             ) : ai ? (
@@ -381,23 +364,31 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                 {/* Meta Highlights Row */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   <div className="p-3.5 bg-slate-50 dark:bg-[#181820] rounded-xl border border-slate-200/80 dark:border-[#262632]">
-                    <span className="text-xs text-slate-500 dark:text-[#888] block">Estimasi Waktu</span>
+                    <span className="text-xs text-slate-500 dark:text-[#888] block">
+                      {isEn ? "Estimated Time" : "Estimasi Waktu"}
+                    </span>
                     <span className="text-sm font-bold text-slate-900 dark:text-[#f3f3f3]">
-                      ~{ai.estimatedMinutes || 45} Menit
+                      ~{ai.estimatedMinutes || 45} {isEn ? "Mins" : "Menit"}
                     </span>
                   </div>
 
                   <div className="p-3.5 bg-slate-50 dark:bg-[#181820] rounded-xl border border-slate-200/80 dark:border-[#262632]">
-                    <span className="text-xs text-slate-500 dark:text-[#888] block">Tingkat Kesulitan</span>
+                    <span className="text-xs text-slate-500 dark:text-[#888] block">
+                      {isEn ? "Difficulty Level" : "Tingkat Kesulitan"}
+                    </span>
                     <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">
-                      {ai.difficulty || "Sedang"}
+                      {isEn
+                        ? (ai.difficulty === "Mudah" ? "Easy" : ai.difficulty === "Menantang" ? "Challenging" : "Medium")
+                        : (ai.difficulty || "Sedang")}
                     </span>
                   </div>
 
                   <div className="p-3.5 bg-slate-50 dark:bg-[#181820] rounded-xl border border-slate-200/80 dark:border-[#262632] col-span-2 sm:col-span-1">
-                    <span className="text-xs text-slate-500 dark:text-[#888] block">Langkah Selesai</span>
+                    <span className="text-xs text-slate-500 dark:text-[#888] block">
+                      {isEn ? "Steps Completed" : "Langkah Selesai"}
+                    </span>
                     <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
-                      {checklistDone} dari {checklistTotal} ({checklistPercent}%)
+                      {checklistDone} {isEn ? "of" : "dari"} {checklistTotal} ({checklistPercent}%)
                     </span>
                   </div>
                 </div>
@@ -406,7 +397,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                 <div className="p-4 bg-slate-50 dark:bg-[#181820] rounded-xl border border-slate-200/80 dark:border-[#262632] space-y-2">
                   <h4 className="text-xs font-bold text-slate-900 dark:text-[#f3f3f3] flex items-center gap-1.5">
                     <FileText className="w-3.5 h-3.5 text-indigo-600 dark:text-[#818cf8]" />
-                    Intisari Materi:
+                    {isEn ? "Core Material Summary:" : "Intisari Materi:"}
                   </h4>
                   <p className="text-xs sm:text-sm text-slate-700 dark:text-[#d4d4d8] leading-relaxed">
                     {ai.summary}
@@ -417,7 +408,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                 {ai.keyConcepts && ai.keyConcepts.length > 0 && (
                   <div className="space-y-2">
                     <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#888]">
-                      Konsep Kunci yang Dipelajari:
+                      {isEn ? "Key Concepts Learned:" : "Konsep Kunci yang Dipelajari:"}
                     </h4>
                     <div className="flex flex-wrap gap-2">
                       {ai.keyConcepts.map((concept, idx) => (
@@ -426,7 +417,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                           type="button"
                           onClick={() => copyToClipboard(concept, concept)}
                           className="px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 dark:bg-[#202028] dark:hover:bg-[#282834] text-slate-800 dark:text-[#eee] border border-slate-200/80 dark:border-[#2c2c38] transition cursor-pointer flex items-center gap-1.5"
-                          title="Klik untuk menyalin konsep"
+                          title={isEn ? "Click to copy concept" : "Klik untuk menyalin konsep"}
                         >
                           <span>{concept}</span>
                           {copiedConcept === concept ? (
@@ -445,7 +436,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                   <div className="space-y-2 pt-2 border-t border-slate-200/70 dark:border-[#282834]">
                     <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#888] flex items-center gap-1.5">
                       <Globe className="w-3.5 h-3.5 text-indigo-500" />
-                      Tautan & Sumber Referensi Pembelajaran:
+                      {isEn ? "Learning References & Sources:" : "Tautan & Sumber Referensi Pembelajaran:"}
                     </h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {ai.sources.map((src, idx) => (
@@ -471,16 +462,18 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
               <div className="text-center py-10 px-4 bg-slate-50 dark:bg-[#181820] rounded-2xl border border-slate-200/80 dark:border-[#262632] space-y-3">
                 <FileText className="w-8 h-8 mx-auto text-indigo-500 opacity-60" />
                 <h4 className="text-sm font-semibold text-slate-900 dark:text-[#f3f3f3]">
-                  Belum ada rangkuman untuk tugas ini
+                  {isEn ? "No summary yet for this task" : "Belum ada rangkuman untuk tugas ini"}
                 </h4>
                 <p className="text-xs text-slate-500 dark:text-[#888] max-w-sm mx-auto">
-                  Analisis AI akan merangkum materi, memecah langkah pengerjaan, dan mencarikan video rekomendasi.
+                  {isEn
+                    ? "AI analysis will summarize materials, break down steps, and find recommended videos."
+                    : "Analisis AI akan merangkum materi, memecah langkah pengerjaan, dan mencarikan video rekomendasi."}
                 </p>
                 <Button
                   onClick={() => onAnalyzeWithAI(task.id)}
                   className="text-xs rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer"
                 >
-                  Mulai Analisis AI Sekarang
+                  {isEn ? "Start AI Analysis Now" : "Mulai Analisis AI Sekarang"}
                 </Button>
               </div>
             )}
@@ -492,8 +485,12 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
           <div className="space-y-4 pt-2">
             <div className="p-4 bg-slate-50 dark:bg-[#181820] rounded-xl border border-slate-200/80 dark:border-[#262632] space-y-2">
               <div className="flex items-center justify-between text-xs font-bold">
-                <span className="text-slate-700 dark:text-[#ccc]">Kemajuan Pengerjaan:</span>
-                <span className="text-indigo-600 dark:text-indigo-400">{checklistDone} dari {checklistTotal} Langkah ({checklistPercent}%)</span>
+                <span className="text-slate-700 dark:text-[#ccc]">
+                  {isEn ? "Completion Progress:" : "Kemajuan Pengerjaan:"}
+                </span>
+                <span className="text-indigo-600 dark:text-indigo-400">
+                  {checklistDone} {isEn ? "of" : "dari"} {checklistTotal} {isEn ? "Steps" : "Langkah"} ({checklistPercent}%)
+                </span>
               </div>
               <div className="w-full bg-slate-200 dark:bg-[#252530] h-2 rounded-full overflow-hidden">
                 <div
@@ -537,9 +534,11 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
               </div>
             ) : (
               <div className="text-center py-10 px-4 bg-slate-50 dark:bg-[#181820] rounded-2xl border border-slate-200/80 dark:border-[#262632] space-y-2">
-                <p className="text-xs text-slate-500">Belum ada langkah pengerjaan yang dibuat.</p>
+                <p className="text-xs text-slate-500">
+                  {isEn ? "No action steps generated yet." : "Belum ada langkah pengerjaan yang dibuat."}
+                </p>
                 <Button size="sm" onClick={() => onAnalyzeWithAI(task.id)} className="text-xs rounded-xl">
-                  Buat Checklist dengan AI
+                  {isEn ? "Generate Checklist with AI" : "Buat Checklist dengan AI"}
                 </Button>
               </div>
             )}
@@ -560,7 +559,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                       <div className="space-y-0.5 min-w-0 flex-1">
                         <span className="text-xs font-semibold text-rose-600 dark:text-rose-400 flex items-center gap-1">
                           <Youtube className="w-3.5 h-3.5 shrink-0" />
-                          <span className="truncate">{video.channel || "YouTube Edukasi"}</span>
+                          <span className="truncate">{video.channel || (isEn ? "Educational YouTube" : "YouTube Edukasi")}</span>
                         </span>
                         <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-[#f3f3f3] break-words">
                           {video.title}
@@ -572,7 +571,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                         rel="noopener noreferrer"
                         className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white flex items-center justify-center gap-1.5 shrink-0 shadow-2xs transition w-full sm:w-auto"
                       >
-                        <span>Tonton Video</span>
+                        <span>{isEn ? "Watch Video" : "Tonton Video"}</span>
                         <ExternalLink className="w-3 h-3" />
                       </a>
                     </div>
@@ -587,9 +586,11 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
             ) : (
               <div className="text-center py-10 px-4 bg-slate-50 dark:bg-[#181820] rounded-2xl border border-slate-200/80 dark:border-[#262632] space-y-2">
                 <Youtube className="w-8 h-8 mx-auto text-rose-500 opacity-60" />
-                <p className="text-xs text-slate-500">Belum ada video rekomendasi.</p>
+                <p className="text-xs text-slate-500">
+                  {isEn ? "No recommended videos yet." : "Belum ada video rekomendasi."}
+                </p>
                 <Button size="sm" onClick={() => onAnalyzeWithAI(task.id)} className="text-xs rounded-xl w-full sm:w-auto">
-                  Cari Video dengan AI
+                  {isEn ? "Find Videos with AI" : "Cari Video dengan AI"}
                 </Button>
               </div>
             )}
@@ -601,17 +602,19 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
           <div className="space-y-3 pt-2">
             <div className="space-y-1">
               <label className="text-xs font-bold text-slate-700 dark:text-[#ccc] block">
-                Catatan Belajar & Draf Pengerjaan Anda:
+                {isEn ? "Your Study Notes & Task Draft:" : "Catatan Belajar & Draf Pengerjaan Anda:"}
               </label>
               <p className="text-xs text-slate-500 dark:text-[#888]">
-                Tuliskan poin penting, rumus, atau draf pengerjaan tugas di sini. Tersimpan otomatis di perangkat Anda.
+                {isEn
+                  ? "Write down key points, formulas, or task drafts here. Saved automatically on your device."
+                  : "Tuliskan poin penting, rumus, atau draf pengerjaan tugas di sini. Tersimpan otomatis di perangkat Anda."}
               </p>
             </div>
 
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Tulis catatan Anda di sini..."
+              placeholder={isEn ? "Write your notes here..." : "Tulis catatan Anda di sini..."}
               rows={9}
               className="w-full p-3.5 text-xs sm:text-sm rounded-xl bg-slate-50 dark:bg-[#181820] border border-slate-200/80 dark:border-[#2b2b35] text-slate-900 dark:text-[#f3f3f3] placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500/40 leading-relaxed font-mono"
             />
@@ -623,7 +626,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                 className="gap-1.5 text-xs rounded-xl font-semibold bg-indigo-600 hover:bg-indigo-700 text-white w-full sm:w-auto cursor-pointer"
               >
                 {isSavedNotes ? <Check className="w-3.5 h-3.5" /> : <Save className="w-3.5 h-3.5" />}
-                <span>{isSavedNotes ? "Tersimpan!" : "Simpan Catatan"}</span>
+                <span>{isSavedNotes ? (isEn ? "Saved!" : "Tersimpan!") : (isEn ? "Save Notes" : "Simpan Catatan")}</span>
               </Button>
             </div>
           </div>
@@ -641,7 +644,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
           onClick={onClose}
           className="text-xs rounded-xl border-slate-200/80 dark:border-[#2b2b35] px-4 shrink-0 cursor-pointer"
         >
-          Tutup
+          {isEn ? "Close" : "Tutup"}
         </Button>
       </div>
 

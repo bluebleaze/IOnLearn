@@ -66,6 +66,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/sonner";
 import confetti from "canvas-confetti";
+import { useLanguage } from "@/context/LanguageContext";
 
 // Custom Markdown Code Block with Language Tag & Copy Action
 const CodeBlock = ({ inline, className, children, ...props }: any) => {
@@ -88,7 +89,7 @@ const CodeBlock = ({ inline, className, children, ...props }: any) => {
   const handleCopy = () => {
     navigator.clipboard.writeText(codeString);
     setCopied(true);
-    toast.success("Kode berhasil disalin");
+    toast.success(typeof window !== "undefined" && document.documentElement.lang === "en" ? "Code copied to clipboard" : "Kode berhasil disalin");
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -108,7 +109,7 @@ const CodeBlock = ({ inline, className, children, ...props }: any) => {
           ) : (
             <Copy className="w-3 h-3" />
           )}
-          <span>{copied ? "Tersalin" : "Salin Kode"}</span>
+          <span>{copied ? "Copied" : "Copy Code"}</span>
         </button>
       </div>
       <div className="p-3.5 overflow-x-auto text-xs font-mono leading-relaxed text-slate-200">
@@ -236,6 +237,7 @@ const noteMarkdownComponents = {
 
 export default function NotesPage() {
   const router = useRouter();
+  const { language, isEn, t } = useLanguage();
   const [notes, setNotes] = useState<StudyNote[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -636,7 +638,7 @@ export default function NotesPage() {
     }
 
     if (!formTitle.trim() || !contentToSave.trim()) {
-      toast.error("Judul dan isi catatan wajib diisi.");
+      toast.error(isEn ? "Note title and content are required." : "Judul dan isi catatan wajib diisi.");
       return;
     }
 
@@ -658,7 +660,7 @@ export default function NotesPage() {
         tags: tagsArray,
         updatedAt: now,
       });
-      toast.success("Catatan berhasil diperbarui.");
+      toast.success(t.notes.toastSaved);
     } else {
       const newNote: StudyNote = {
         id: `note-${Date.now()}`,
@@ -671,7 +673,7 @@ export default function NotesPage() {
       };
       addNote(newNote);
       setActiveNoteId(newNote.id);
-      toast.success("Catatan baru berhasil disimpan.");
+      toast.success(t.notes.toastCreated);
     }
 
     setNotes(loadNotes());
@@ -679,7 +681,7 @@ export default function NotesPage() {
   };
 
   const handleDeleteNote = (id: string) => {
-    if (confirm("Apakah kamu yakin ingin menghapus catatan materi ini?")) {
+    if (confirm(t.notes.deleteConfirm)) {
       deleteNote(id);
       setNotes(loadNotes());
       if (activeNoteId === id) {
@@ -687,7 +689,7 @@ export default function NotesPage() {
         setIsEditing(false);
         setActiveQuiz(null);
       }
-      toast.success("Catatan berhasil dihapus.");
+      toast.success(t.notes.toastDeleted);
     }
   };
 
@@ -728,10 +730,10 @@ export default function NotesPage() {
           updatedAt: new Date().toISOString(),
         });
         setNotes(loadNotes());
-        toast.success("Rangkuman Berhasil Dibuat!");
+        toast.success(isEn ? "Summary Generated Successfully!" : "Rangkuman Berhasil Dibuat!");
       }
     } catch (err: any) {
-      toast.error("Gagal Merangkum", { description: err.message });
+      toast.error(isEn ? "Summarization Failed" : "Gagal Merangkum", { description: err.message });
     } finally {
       setIsSummarizing(false);
     }
@@ -748,7 +750,9 @@ export default function NotesPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          systemPrompt: `Kamu adalah pembuat soal kuis akademik evaluatif. Berdasarkan materi yang diberikan, buatlah 3-5 soal pilihan ganda (4 opsi A, B, C, D) untuk menguji pemahaman siswa.
+          systemPrompt: isEn
+            ? `You are an academic quiz creator. Based on the provided notes, create 3-5 multiple choice questions (4 options A, B, C, D) to test student comprehension. RETURN ONLY A VALID JSON ARRAY without markdown backticks, in format: [{"question": "...", "options": ["A", "B", "C", "D"], "correctAnswer": 0, "explanation": "..."}]`
+            : `Kamu adalah pembuat soal kuis akademik evaluatif. Berdasarkan materi yang diberikan, buatlah 3-5 soal pilihan ganda (4 opsi A, B, C, D) untuk menguji pemahaman siswa.
 KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan format:
 [
   {
@@ -771,7 +775,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || "Gagal membuat kuis AI.");
+        throw new Error(errorData.error || (isEn ? "Failed to create AI quiz." : "Gagal membuat kuis AI."));
       }
 
       const data = await res.json();
@@ -795,12 +799,14 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
         setActiveQuiz(quizItems);
         setUserAnswers({});
         setQuizSubmitted(false);
-        toast.success("Kuis Latihan Siap!", {
-          description: `${quizItems.length} soal latihan telah digenerate dari catatan ini.`,
+        toast.success(isEn ? "Practice Quiz Ready!" : "Kuis Latihan Siap!", {
+          description: isEn
+            ? `${quizItems.length} practice questions generated from this note.`
+            : `${quizItems.length} soal latihan telah digenerate dari catatan ini.`,
         });
       }
     } catch (err: any) {
-      toast.error("Gagal Membuat Kuis", { description: err.message });
+      toast.error(isEn ? "Failed to Create Quiz" : "Gagal Membuat Kuis", { description: err.message });
     } finally {
       setIsGeneratingQuiz(false);
     }
@@ -819,10 +825,10 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold font-[family-name:var(--font-lexend)] tracking-tight text-slate-900 dark:text-zinc-100">
-              Catatan Materi
+              {t.notes.pageTitle}
             </h1>
             <p className="text-sm text-slate-500 dark:text-zinc-400 mt-1">
-              Ruang belajar mandiri untuk menyimpan materi kuliah berbasis Markdown, membuat rangkuman, dan latihan kuis interaktif.
+              {t.notes.pageSubtitle}
             </p>
           </div>
 
@@ -833,7 +839,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
               className="gap-1.5 rounded-[10px] text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Tulis Catatan Baru</span>
+              <span>{t.notes.newNoteBtn}</span>
             </Button>
           </div>
         </div>
@@ -844,7 +850,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-zinc-500" />
             <input
               type="text"
-              placeholder="Cari materi kuliah, topik pembelajaran, atau isi catatan secara instan..."
+              placeholder={t.notes.searchPlaceholder}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-20 py-2.5 text-xs sm:text-sm rounded-xl bg-slate-50 dark:bg-[#1c1c20] border border-slate-200/80 dark:border-[#2c2c32] text-slate-900 dark:text-zinc-100 placeholder:text-slate-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition"
@@ -862,7 +868,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
           {/* Subject Pills Filter underneath search input */}
           <div className="flex items-center justify-between gap-3 pt-1 flex-wrap">
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
-              <span className="text-xs font-medium text-slate-400 dark:text-zinc-400 mr-1 hidden sm:inline">Mata Kuliah:</span>
+              <span className="text-xs font-medium text-slate-400 dark:text-zinc-400 mr-1 hidden sm:inline">{isEn ? "Course:" : "Mata Kuliah:"}</span>
               <button
                 onClick={() => setSelectedSubject("all")}
                 className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${selectedSubject === "all"
@@ -870,7 +876,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                     : "bg-slate-100 dark:bg-[#202026] text-slate-700 dark:text-zinc-300 border border-transparent dark:border-[#2e2e36] hover:bg-slate-200 dark:hover:bg-[#282830] dark:hover:text-zinc-100"
                   }`}
               >
-                Semua ({notes.length})
+                {t.notes.allSubjects} ({notes.length})
               </button>
               {subjects.map((subj) => (
                 <button
@@ -887,7 +893,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
             </div>
 
             <span className="text-xs text-slate-500 dark:text-zinc-400">
-              Menampilkan <strong className="text-slate-800 dark:text-zinc-200">{filteredNotes.length}</strong> catatan
+              {isEn ? "Showing " : "Menampilkan "}<strong className="text-slate-800 dark:text-zinc-200">{filteredNotes.length}</strong> {isEn ? "notes" : "catatan"}
             </span>
           </div>
         </div>
@@ -900,7 +906,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
             <div className="flex items-center justify-between px-1">
               <div className="flex items-center gap-2">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-zinc-300">
-                  Hasil Catatan
+                  {isEn ? "Notes List" : "Hasil Catatan"}
                 </h3>
                 <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-[#202026] text-slate-600 dark:text-zinc-400 border border-transparent dark:border-[#2e2e36] text-xs font-semibold">
                   {filteredNotes.length}
@@ -916,7 +922,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                       ? "bg-white dark:bg-[#282830] text-indigo-600 dark:text-indigo-400 shadow-2xs font-semibold"
                       : "text-slate-500 dark:text-zinc-400 hover:text-slate-800 dark:hover:text-zinc-200"
                     }`}
-                  title="Tampilan List"
+                  title={isEn ? "List View" : "Tampilan List"}
                 >
                   <List className="w-3.5 h-3.5" />
                   <span className="text-[11px]">List</span>
@@ -928,7 +934,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                       ? "bg-white dark:bg-[#282830] text-indigo-600 dark:text-indigo-400 shadow-2xs font-semibold"
                       : "text-slate-500 dark:text-zinc-400 hover:text-slate-800 dark:hover:text-zinc-200"
                     }`}
-                  title="Tampilan Grid"
+                  title={isEn ? "Grid View" : "Tampilan Grid"}
                 >
                   <LayoutGrid className="w-3.5 h-3.5" />
                   <span className="text-[11px]">Grid</span>
@@ -941,9 +947,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
               <div className="text-center py-12 px-4 bg-slate-50/50 dark:bg-[#151518] rounded-2xl border border-dashed border-slate-200 dark:border-[#2b2b32]">
                 <NotebookPen className="w-8 h-8 text-slate-400 dark:text-zinc-500 mx-auto mb-2" />
                 <p className="text-xs text-slate-500 dark:text-zinc-400">
-                  {notes.length === 0
-                    ? "Belum ada catatan. Buat catatan pertamamu!"
-                    : "Tidak ada catatan yang cocok dengan filter pencarian."}
+                  {notes.length === 0 ? t.notes.emptyDesc : t.notes.searchEmptyDesc}
                 </p>
               </div>
             ) : sidebarLayout === "grid" ? (
@@ -1045,15 +1049,15 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                             )}
                             {note.summary && (
                               <span className="px-1.5 py-0.5 rounded text-xs font-medium bg-purple-50 dark:bg-purple-500/15 text-purple-600 dark:text-purple-300 border border-transparent dark:border-purple-500/30 flex items-center">
-                                Rangkuman
+                                {isEn ? "Summary" : "Rangkuman"}
                               </span>
                             )}
                           </div>
                           <h3 className="text-xs font-semibold text-slate-900 dark:text-zinc-100 truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                            {note.title || "Tanpa Judul"}
+                            {note.title || (isEn ? "Untitled" : "Tanpa Judul")}
                           </h3>
                           <p className="text-xs text-slate-500 dark:text-zinc-400 line-clamp-2 mt-1 leading-relaxed">
-                            {(note.content || "").replace(/\|/g, " ").replace(/[#*`~_\[\]()>-]/g, "").replace(/\s+/g, " ").trim() || "Catatan kosong..."}
+                            {(note.content || "").replace(/\|/g, " ").replace(/[#*`~_\[\]()>-]/g, "").replace(/\s+/g, " ").trim() || (isEn ? "Empty note..." : "Catatan kosong...")}
                           </p>
                         </div>
                       </div>
@@ -1062,14 +1066,14 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                         <div className="flex items-center gap-1">
                           <Clock className="w-3 h-3" />
                           <span>
-                            {new Date(note.updatedAt || note.createdAt).toLocaleDateString("id-ID", {
+                            {new Date(note.updatedAt || note.createdAt).toLocaleDateString(isEn ? "en-US" : "id-ID", {
                               day: "numeric",
                               month: "short",
                             })}
                           </span>
                         </div>
                         <div className="flex items-center gap-1 font-semibold text-indigo-600 dark:text-indigo-400 group-hover:translate-x-0.5 transition-transform">
-                          <span>Lihat Catatan</span>
+                          <span>{isEn ? "View Note" : "Lihat Catatan"}</span>
                           <ChevronRight className="w-3 h-3" />
                         </div>
                       </div>
@@ -1090,7 +1094,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="px-2 py-0.5 rounded text-xs font-semibold bg-indigo-50 dark:bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 border border-transparent dark:border-indigo-500/30">
-                        {activeNote.subject || "Catatan Umum"}
+                        {activeNote.subject || (isEn ? "General Note" : "Catatan Umum")}
                       </span>
                       {activeNote.tags?.map((t) => (
                         <span
@@ -1145,7 +1149,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                     ) : (
                       <FileText className="w-3 h-3" />
                     )}
-                    <span>{activeNote.summary ? "Rangkum Ulang" : "Rangkum Catatan"}</span>
+                    <span>{isSummarizing ? t.notes.summarizing : (activeNote.summary ? t.notes.resummarizeBtn : t.notes.summarizeBtn)}</span>
                   </Button>
 
                   <Button
@@ -1160,9 +1164,9 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                       <BrainCircuit className="w-3 h-3" />
                     )}
                     <span>
-                      {activeNote.aiQuiz && activeNote.aiQuiz.length > 0
-                        ? `Latihan Kuis (${activeNote.aiQuiz.length} Soal)`
-                        : "Buat Kuis Latihan"}
+                      {isGeneratingQuiz ? t.notes.generatingQuiz : (activeNote.aiQuiz && activeNote.aiQuiz.length > 0
+                        ? (isEn ? `Practice Quiz (${activeNote.aiQuiz.length} Questions)` : `Latihan Kuis (${activeNote.aiQuiz.length} Soal)`)
+                        : t.notes.quizBtn)}
                     </span>
                   </Button>
 
@@ -1172,7 +1176,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                     className="h-7 text-xs font-semibold bg-white hover:bg-slate-50 text-slate-800 shadow-sm border border-transparent dark:border-[#363642] dark:bg-[#26262e] dark:hover:bg-[#2e2e38] dark:text-zinc-100 rounded-lg gap-1.5"
                   >
                     <MessageSquareText className="w-3 h-3 text-indigo-500" />
-                    <span>Tanya AI Tutor</span>
+                    <span>{t.notes.askAITutor}</span>
                   </Button>
                 </div>
 
@@ -1181,7 +1185,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                   <div className="bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-800/40 rounded-xl p-4 space-y-2">
                     <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-700 dark:text-indigo-300">
                       <FileText className="w-3.5 h-3.5" />
-                      <span>Rangkuman</span>
+                      <span>{isEn ? "AI Summary" : "Rangkuman AI"}</span>
                     </div>
                     <div className="prose prose-sm dark:prose-invert max-w-none text-xs text-slate-700 dark:text-zinc-300 leading-relaxed">
                       <Markdown
@@ -1211,11 +1215,11 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                       <div className="flex items-center gap-2">
                         <BrainCircuit className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                         <h4 className="text-sm font-bold text-slate-900 dark:text-zinc-100">
-                          Kuis Evaluasi Pemahaman
+                          {isEn ? "Comprehension Evaluation Quiz" : "Kuis Evaluasi Pemahaman"}
                         </h4>
                       </div>
                       <span className="text-xs text-slate-500 dark:text-zinc-400">
-                        {activeQuiz.length} Pertanyaan
+                        {activeQuiz.length} {isEn ? "Questions" : "Pertanyaan"}
                       </span>
                     </div>
 
@@ -1271,7 +1275,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
 
                             {quizSubmitted && q.explanation && (
                               <div className="p-2.5 rounded-lg bg-indigo-50/50 dark:bg-indigo-950/30 text-xs text-indigo-900 dark:text-indigo-200 leading-relaxed border border-indigo-100 dark:border-indigo-900/40">
-                                <span className="font-bold">Penjelasan: </span>
+                                <span className="font-bold">{isEn ? "Explanation: " : "Penjelasan: "}</span>
                                 {q.explanation}
                               </div>
                             )}
@@ -1304,17 +1308,17 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                           disabled={Object.keys(userAnswers).length < activeQuiz.length}
                           className="text-xs font-semibold bg-purple-600 hover:bg-purple-700 text-white rounded-xl"
                         >
-                          Periksa Jawaban
+                          {isEn ? "Check Answers" : "Periksa Jawaban"}
                         </Button>
                       ) : (
                         <div className="flex items-center gap-3">
                           <span className="text-xs font-bold text-slate-800 dark:text-zinc-100">
-                            Skor:{" "}
+                            {isEn ? "Score: " : "Skor: "}
                             {
                               activeQuiz.filter((q, i) => userAnswers[i] === q.correctAnswer)
                                 .length
                             }{" "}
-                            / {activeQuiz.length} Benar
+                            / {activeQuiz.length} {isEn ? "Correct" : "Benar"}
                           </span>
                           <Button
                             size="sm"
@@ -1325,7 +1329,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                             }}
                             className="text-xs rounded-xl"
                           >
-                            Coba Lagi
+                            {isEn ? "Try Again" : "Coba Lagi"}
                           </Button>
                         </div>
                       )}
@@ -1341,10 +1345,10 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                 </div>
                 <div className="space-y-1">
                   <h3 className="text-base font-semibold text-slate-900 dark:text-zinc-100">
-                    Pilih Catatan untuk Membaca
+                    {t.notes.selectNoteToRead}
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-zinc-400 max-w-sm mx-auto leading-relaxed">
-                    Pilih salah satu catatan materi di kolom kiri untuk melihat isinya, menghasilkan rangkuman cerdas, atau mulai latihan kuis.
+                    {t.notes.selectNoteToReadDesc}
                   </p>
                 </div>
                 <Button
@@ -1353,7 +1357,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                   className="text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-xs"
                 >
                   <Plus className="w-3.5 h-3.5 mr-1" />
-                  Tulis Catatan Baru
+                  {t.notes.newNoteBtn}
                 </Button>
               </div>
             )}
@@ -1368,10 +1372,10 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
               className="w-[calc(100%-1.5rem)] sm:w-full max-w-3xl max-h-[90vh] p-0 flex flex-col shadow-2xl rounded-2xl bg-white dark:bg-[#151518] border border-slate-200/80 dark:border-[#27272a] font-inter overflow-hidden"
             >
               <DialogTitle className="sr-only">
-                {activeNoteId ? "Edit Catatan Materi" : "Tulis Catatan Materi Baru"}
+                {activeNoteId ? t.notes.dialogTitleEdit : t.notes.dialogTitleNew}
               </DialogTitle>
               <DialogDescription className="sr-only">
-                Simpan materi belajar, rumus, dan konsep berbasis Markdown.
+                {t.notes.dialogDesc}
               </DialogDescription>
 
               {/* Form Header with Action Buttons */}
@@ -1382,10 +1386,10 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                   </div>
                   <div>
                     <h3 className="text-sm font-bold text-slate-900 dark:text-zinc-100 font-inter">
-                      {activeNoteId ? "Edit Catatan Materi" : "Tulis Catatan Materi Baru"}
+                      {activeNoteId ? t.notes.dialogTitleEdit : t.notes.dialogTitleNew}
                     </h3>
                     <p className="text-xs text-slate-500 dark:text-zinc-400 font-inter">
-                      Simpan materi belajar, rumus, dan konsep berbasis Markdown.
+                      {t.notes.dialogDesc}
                     </p>
                   </div>
                 </div>
@@ -1398,7 +1402,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                     onClick={() => setIsEditing(false)}
                     className="text-xs rounded-xl text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-100 dark:hover:bg-[#202026]"
                   >
-                    Batal
+                    {t.notes.cancelBtn}
                   </Button>
                   <Button
                     type="button"
@@ -1406,7 +1410,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                     onClick={(e) => handleSaveNote(e as any)}
                     className="text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-xs"
                   >
-                    Simpan Catatan
+                    {t.notes.saveBtn}
                   </Button>
                 </div>
               </div>
@@ -1416,11 +1420,11 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                 {/* Title Input */}
                 <div>
                   <label className="text-xs font-semibold text-slate-700 dark:text-zinc-300 block mb-1">
-                    Judul Catatan / Topik Materi
+                    {t.notes.formTitleLabel}
                   </label>
                   <input
                     type="text"
-                    placeholder="Contoh: Algoritma Pencarian Binary Search & Kompleksitas Waktu"
+                    placeholder={t.notes.formTitlePlaceholder}
                     value={formTitle}
                     onChange={(e) => setFormTitle(e.target.value)}
                     className="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-50 dark:bg-[#1c1c22] border border-slate-200/80 dark:border-[#2c2c34] text-slate-900 dark:text-zinc-100 placeholder:text-slate-400 dark:placeholder:text-zinc-500 focus:outline-none focus:border-indigo-500/80 font-inter"
@@ -1432,11 +1436,11 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs font-semibold text-slate-700 dark:text-zinc-300 block mb-1">
-                      Mata Pelajaran / Mata Kuliah
+                      {t.notes.formSubjectLabel}
                     </label>
                     <input
                       type="text"
-                      placeholder="Contoh: Algoritma & Pemrograman"
+                      placeholder={t.notes.formSubjectPlaceholder}
                       value={formSubject}
                       onChange={(e) => setFormSubject(e.target.value)}
                       className="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-50 dark:bg-[#1c1c22] border border-slate-200/80 dark:border-[#2c2c34] text-slate-900 dark:text-zinc-100 placeholder:text-slate-400 dark:placeholder:text-zinc-500 focus:outline-none focus:border-indigo-500/80 font-inter"
@@ -1444,11 +1448,11 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                   </div>
                   <div>
                     <label className="text-xs font-semibold text-slate-700 dark:text-zinc-300 block mb-1">
-                      Label / Tag (Pisahkan koma)
+                      {t.notes.formTagsLabel}
                     </label>
                     <input
                       type="text"
-                      placeholder="Contoh: uas, sorting, search"
+                      placeholder={t.notes.formTagsPlaceholder}
                       value={formTags}
                       onChange={(e) => setFormTags(e.target.value)}
                       className="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-50 dark:bg-[#1c1c22] border border-slate-200/80 dark:border-[#2c2c34] text-slate-900 dark:text-zinc-100 placeholder:text-slate-400 dark:placeholder:text-zinc-500 focus:outline-none focus:border-indigo-500/80 font-inter"
@@ -1469,10 +1473,10 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                             ? "bg-white dark:bg-[#151518] text-indigo-600 dark:text-indigo-400 shadow-xs font-semibold"
                             : "text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-100"
                           }`}
-                        title="Mode visual langsung berbentuk"
+                        title={isEn ? "Live visual WYSIWYG mode" : "Mode visual langsung berbentuk"}
                       >
                         <Sparkles className="w-3 h-3 text-indigo-500" />
-                        <span>Visual</span>
+                        <span>{t.notes.tabVisual}</span>
                       </button>
                       <button
                         type="button"
@@ -1481,10 +1485,10 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                             ? "bg-white dark:bg-[#151518] text-indigo-600 dark:text-indigo-400 shadow-xs font-semibold"
                             : "text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-100"
                           }`}
-                        title="Mode sintaks Markdown mentah"
+                        title={isEn ? "Raw Markdown syntax mode" : "Mode sintaks Markdown mentah"}
                       >
                         <Code className="w-3 h-3" />
-                        <span>Markdown</span>
+                        <span>{t.notes.tabMarkdown}</span>
                       </button>
                       <button
                         type="button"
@@ -1493,10 +1497,10 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                             ? "bg-white dark:bg-[#151518] text-indigo-600 dark:text-indigo-400 shadow-xs font-semibold"
                             : "text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-100"
                           }`}
-                        title="Pratinjau hasil akhir"
+                        title={isEn ? "Preview final rendered output" : "Pratinjau hasil akhir"}
                       >
                         <Eye className="w-3 h-3" />
-                        <span>Pratinjau</span>
+                        <span>{t.notes.tabPreview}</span>
                       </button>
                     </div>
 
@@ -1506,7 +1510,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                         <button
                           type="button"
                           onClick={() => applyFormat("bold")}
-                          title="Tebal / Bold (Ctrl+B)"
+                          title={isEn ? "Bold (Ctrl+B)" : "Tebal / Bold (Ctrl+B)"}
                           className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-[#26262e] hover:text-indigo-600 dark:hover:text-indigo-400 transition cursor-pointer"
                         >
                           <Bold className="w-3.5 h-3.5 font-bold" />
@@ -1514,7 +1518,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                         <button
                           type="button"
                           onClick={() => applyFormat("italic")}
-                          title="Miring / Italic (Ctrl+I)"
+                          title={isEn ? "Italic (Ctrl+I)" : "Miring / Italic (Ctrl+I)"}
                           className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-[#26262e] hover:text-indigo-600 dark:hover:text-indigo-400 transition cursor-pointer"
                         >
                           <Italic className="w-3.5 h-3.5 italic" />
@@ -1522,7 +1526,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                         <button
                           type="button"
                           onClick={() => applyFormat("strikethrough")}
-                          title="Coret / Strikethrough"
+                          title={isEn ? "Strikethrough" : "Coret / Strikethrough"}
                           className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-[#26262e] hover:text-indigo-600 dark:hover:text-indigo-400 transition cursor-pointer"
                         >
                           <Strikethrough className="w-3.5 h-3.5" />
@@ -1533,7 +1537,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                         <button
                           type="button"
                           onClick={() => applyFormat("h1")}
-                          title="Judul Utama H1"
+                          title={isEn ? "Main Heading H1" : "Judul Utama H1"}
                           className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-[#26262e] hover:text-indigo-600 dark:hover:text-indigo-400 transition cursor-pointer"
                         >
                           <Heading1 className="w-3.5 h-3.5" />
@@ -1541,7 +1545,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                         <button
                           type="button"
                           onClick={() => applyFormat("h2")}
-                          title="Sub Judul H2"
+                          title={isEn ? "Sub Heading H2" : "Sub Judul H2"}
                           className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-[#26262e] hover:text-indigo-600 dark:hover:text-indigo-400 transition cursor-pointer"
                         >
                           <Heading2 className="w-3.5 h-3.5" />
@@ -1549,7 +1553,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                         <button
                           type="button"
                           onClick={() => applyFormat("h3")}
-                          title="Poin H3"
+                          title={isEn ? "Point H3" : "Poin H3"}
                           className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-[#26262e] hover:text-indigo-600 dark:hover:text-indigo-400 transition cursor-pointer"
                         >
                           <Heading3 className="w-3.5 h-3.5" />
@@ -1560,7 +1564,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                         <button
                           type="button"
                           onClick={() => applyFormat("bullet")}
-                          title="Daftar Poin"
+                          title={isEn ? "Bullet List" : "Daftar Poin"}
                           className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-[#26262e] hover:text-indigo-600 dark:hover:text-indigo-400 transition cursor-pointer"
                         >
                           <List className="w-3.5 h-3.5" />
@@ -1568,7 +1572,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                         <button
                           type="button"
                           onClick={() => applyFormat("number")}
-                          title="Daftar Nomor"
+                          title={isEn ? "Numbered List" : "Daftar Nomor"}
                           className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-[#26262e] hover:text-indigo-600 dark:hover:text-indigo-400 transition cursor-pointer"
                         >
                           <ListOrdered className="w-3.5 h-3.5" />
@@ -1579,7 +1583,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                         <button
                           type="button"
                           onClick={() => applyFormat("quote")}
-                          title="Kutipan"
+                          title={isEn ? "Quote" : "Kutipan"}
                           className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-[#26262e] hover:text-indigo-600 dark:hover:text-indigo-400 transition cursor-pointer"
                         >
                           <Quote className="w-3.5 h-3.5" />
@@ -1587,7 +1591,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                         <button
                           type="button"
                           onClick={() => applyFormat("code")}
-                          title="Blok / Teks Kode"
+                          title={isEn ? "Code Block / Text" : "Blok / Teks Kode"}
                           className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-[#26262e] hover:text-indigo-600 dark:hover:text-indigo-400 transition cursor-pointer"
                         >
                           <Code className="w-3.5 h-3.5" />
@@ -1595,7 +1599,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                         <button
                           type="button"
                           onClick={() => applyFormat("link")}
-                          title="Tautan Link"
+                          title={isEn ? "Hyperlink" : "Tautan Link"}
                           className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-[#26262e] hover:text-indigo-600 dark:hover:text-indigo-400 transition cursor-pointer"
                         >
                           <Link2 className="w-3.5 h-3.5" />
@@ -1603,7 +1607,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                         <button
                           type="button"
                           onClick={() => applyFormat("image")}
-                          title="Sisipkan Foto / Gambar URL"
+                          title={isEn ? "Insert Image URL" : "Sisipkan Foto / Gambar URL"}
                           className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-[#26262e] hover:text-indigo-600 dark:hover:text-indigo-400 transition cursor-pointer"
                         >
                           <ImageIcon className="w-3.5 h-3.5" />
@@ -1611,7 +1615,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                         <button
                           type="button"
                           onClick={() => applyFormat("table")}
-                          title="Tabel"
+                          title={isEn ? "Table" : "Tabel"}
                           className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-[#26262e] hover:text-indigo-600 dark:hover:text-indigo-400 transition cursor-pointer"
                         >
                           <Table className="w-3.5 h-3.5" />
@@ -1635,7 +1639,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                         }}
                         onKeyDown={handleVisualKeyDown}
                         onPaste={handleVisualPaste}
-                        data-placeholder="Tulis materi, rumus, atau informasi penting di sini..."
+                        data-placeholder={isEn ? "Write coursework notes, formulas, or key concepts here..." : "Tulis materi, rumus, atau informasi penting di sini..."}
                         className="w-full p-4 min-h-[280px] bg-transparent border-0 text-slate-900 dark:text-zinc-100 focus:outline-none leading-relaxed font-inter prose prose-sm dark:prose-invert max-w-none empty:before:content-[attr(data-placeholder)] empty:before:text-slate-400 dark:empty:before:text-zinc-500 empty:before:pointer-events-none [&_h1]:text-xl [&_h1]:font-bold [&_h2]:text-lg [&_h2]:font-bold [&_h3]:text-base [&_h3]:font-bold [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_blockquote]:border-l-4 [&_blockquote]:border-indigo-500 [&_blockquote]:pl-3 [&_blockquote]:italic [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:bg-slate-200 [&_code]:dark:bg-zinc-800 [&_code]:text-indigo-600 [&_code]:dark:text-indigo-400 [&_code]:font-mono [&_code]:text-xs [&_img]:max-h-96 [&_img]:rounded-xl [&_img]:border [&_img]:border-slate-200 dark:[&_img]:border-zinc-800 [&_img]:my-2"
                       />
                     </div>
@@ -1644,7 +1648,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                       ref={textareaRef}
                       rows={12}
                       onKeyDown={handleKeyDown}
-                      placeholder="Tuliskan materi kuliah, rumus, konsep penting, atau tempelkan catatan di sini... Gunakan Markdown seperti **tebal**, *miring*, # Judul, ![foto](url), ``` kode, atau gunakan toolbar di atas."
+                      placeholder={isEn ? "Write course notes, formulas, key concepts, or paste study materials here... Use Markdown like **bold**, *italic*, # Heading, ![image](url), ``` code, or use the toolbar above." : "Tuliskan materi kuliah, rumus, konsep penting, atau tempelkan catatan di sini... Gunakan Markdown seperti **tebal**, *miring*, # Judul, ![foto](url), ``` kode, atau gunakan toolbar di atas."}
                       value={formContent}
                       onChange={(e) => setFormContent(e.target.value)}
                       className="w-full p-4 text-xs sm:text-sm bg-transparent border-0 text-slate-900 dark:text-zinc-100 placeholder:text-slate-400 dark:placeholder:text-zinc-500 focus:outline-none leading-relaxed font-inter"
@@ -1663,7 +1667,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                       ) : (
                         <div className="flex flex-col items-center justify-center py-12 text-slate-400 dark:text-zinc-500 text-xs font-inter">
                           <NotebookPen className="w-6 h-6 mb-2 opacity-50" />
-                          <span>Belum ada isi catatan untuk dipratinjau.</span>
+                          <span>{isEn ? "No content to preview yet." : "Belum ada isi catatan untuk dipratinjau."}</span>
                         </div>
                       )}
                     </div>
@@ -1673,7 +1677,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                 {/* Footer Info */}
                 <div className="flex items-center justify-end text-xs text-slate-500 dark:text-zinc-400 pt-1">
                   <span>
-                    {formContent.length} karakter • {formContent.trim() ? formContent.trim().split(/\s+/).length : 0} kata
+                    {formContent.length} {isEn ? "characters" : "karakter"} • {formContent.trim() ? formContent.trim().split(/\s+/).length : 0} {isEn ? "words" : "kata"}
                   </span>
                 </div>
               </form>

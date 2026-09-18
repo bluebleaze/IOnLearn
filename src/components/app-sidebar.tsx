@@ -32,6 +32,8 @@ import { APP_TAGLINE } from "@/lib/brand";
 import { UserProfile } from "@/services/classroomService";
 import { cn } from "@/lib/utils";
 
+import { useLanguage } from "@/context/LanguageContext";
+
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   userProfile?: UserProfile | null;
   isConnected?: boolean;
@@ -54,6 +56,7 @@ export function AppSidebar({
   const isCollapsed = state === "collapsed" && !isMobile;
   const [isDark, setIsDark] = React.useState(false);
   const [showAccountModal, setShowAccountModal] = React.useState(false);
+  const { t, isEn } = useLanguage();
 
   React.useEffect(() => {
     if (typeof window !== "undefined") {
@@ -71,31 +74,31 @@ export function AppSidebar({
 
   const navItems = [
     {
-      title: "Dashboard",
+      title: t.nav.dashboard,
       url: "/",
       icon: LayoutDashboard,
       isActive: pathname === "/",
     },
     {
-      title: "Semua Tugas",
+      title: t.nav.allTasks,
       url: "/tasks",
       icon: BookOpen,
       isActive: pathname.startsWith("/tasks") || pathname.startsWith("/tugas"),
     },
     {
-      title: "Tanya AI",
+      title: t.nav.askAI,
       url: "/chat",
       icon: MessageSquareText,
       isActive: pathname.startsWith("/chat"),
     },
     {
-      title: "To-Do List",
+      title: t.nav.todoList,
       url: "/todo",
       icon: ListTodo,
       isActive: pathname.startsWith("/todo"),
     },
     {
-      title: "Catatan Materi",
+      title: t.nav.studyNotes,
       url: "/notes",
       icon: NotebookPen,
       isActive: pathname.startsWith("/notes"),
@@ -103,7 +106,7 @@ export function AppSidebar({
   ];
 
   const user = {
-    name: userProfile?.name || "Pelajar",
+    name: userProfile?.name || (isEn ? "Student" : "Pelajar"),
     email: userProfile?.email || "pelajar@classroom.id",
     avatar: userProfile?.picture,
   };
@@ -146,7 +149,7 @@ export function AppSidebar({
                     />
                   </div>
                   <span className="truncate whitespace-nowrap text-[11px] font-normal leading-normal text-slate-500 dark:text-[#888]">
-                    {APP_TAGLINE}
+                    {isEn ? "Academic Productivity & Study Assistant" : APP_TAGLINE}
                   </span>
                 </div>
               )}
@@ -159,7 +162,7 @@ export function AppSidebar({
       <SidebarContent className="px-2 group-data-[collapsible=icon]:px-0 py-2 overflow-hidden whitespace-nowrap transition-[padding] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]">
         <SidebarGroup className="p-0 overflow-hidden">
           <SidebarGroupLabel className="text-xs font-semibold tracking-wider text-slate-500 dark:text-[#6e6e73] uppercase px-2 mb-1.5 whitespace-nowrap truncate select-none">
-            Menu Utama
+            {t.nav.mainMenu}
           </SidebarGroupLabel>
           <SidebarGroupContent className="overflow-hidden">
             <SidebarMenu className="space-y-1 overflow-hidden group-data-[collapsible=icon]:items-center">

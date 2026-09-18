@@ -40,6 +40,7 @@ import {
   Brain,
   Zap,
   HelpCircle,
+  Globe,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -63,12 +64,12 @@ const OPENAI_MODELS = [
 ];
 
 const DATE_RANGE_OPTIONS = [
-  { value: 1, label: "1 Bulan", desc: "Tugas paling baru" },
-  { value: 2, label: "2 Bulan", desc: "Rekomendasi ideal (Bawaan)" },
-  { value: 3, label: "3 Bulan", desc: "1 Semester berjalan" },
-  { value: 6, label: "6 Bulan", desc: "Setengah tahun ajaran" },
-  { value: 12, label: "1 Tahun", desc: "1 Tahun penuh" },
-  { value: 0, label: "Semua", desc: "Tanpa batas tanggal" },
+  { value: 1, labelId: "1 Bulan", labelEn: "1 Month", descId: "Tugas paling baru", descEn: "Most recent tasks" },
+  { value: 2, labelId: "2 Bulan", labelEn: "2 Months", descId: "Rekomendasi ideal (Bawaan)", descEn: "Recommended (Default)" },
+  { value: 3, labelId: "3 Bulan", labelEn: "3 Months", descId: "1 Semester berjalan", descEn: "1 Current semester" },
+  { value: 6, labelId: "6 Bulan", labelEn: "6 Months", descId: "Setengah tahun ajaran", descEn: "Half academic year" },
+  { value: 12, labelId: "1 Tahun", labelEn: "1 Year", descId: "1 Tahun penuh", descEn: "1 Full year" },
+  { value: 0, labelId: "Semua", labelEn: "All", descId: "Tanpa batas tanggal", descEn: "No date restrictions" },
 ];
 
 const TOAST_POSITIONS: { id: ToastPosition; label: string; dotPos: string }[] = [
@@ -80,11 +81,14 @@ const TOAST_POSITIONS: { id: ToastPosition; label: string; dotPos: string }[] = 
   { id: "bottom-right", label: "Kanan Bawah", dotPos: "bottom-0.5 right-0.5" },
 ];
 
+import { useLanguage } from "@/context/LanguageContext";
+
 export default function SettingsPage() {
   const router = useRouter();
   const [isDark, setIsDark] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
   const [isCustomModel, setIsCustomModel] = useState(false);
+  const { isEn, t, setLanguage: setGlobalLanguage } = useLanguage();
 
   const [initialPrefs, setInitialPrefs] = useState<UserPreferences>({
     learningStyle: "Netral",
@@ -93,6 +97,7 @@ export default function SettingsPage() {
     defaultStudyMode: "socratic",
     classroomDateRangeMonths: DEFAULT_DATE_RANGE_MONTHS,
     toastPosition: "top-right",
+    language: "id",
   });
 
   const [initialConfig, setInitialConfig] = useState<AIConfig>({
@@ -109,6 +114,7 @@ export default function SettingsPage() {
     defaultStudyMode: "socratic",
     classroomDateRangeMonths: DEFAULT_DATE_RANGE_MONTHS,
     toastPosition: "top-right",
+    language: "id",
   });
 
   const [config, setConfig] = useState<AIConfig>({
@@ -242,6 +248,11 @@ export default function SettingsPage() {
     setPrefs((prev) => ({ ...prev, chatLayout: layout }));
   };
 
+  const handleLanguageChange = (lang: "id" | "en") => {
+    setPrefs((prev) => ({ ...prev, language: lang }));
+    setGlobalLanguage(lang);
+  };
+
   const handleProviderChange = (
     provider: "gemini" | "gemini_custom" | "openai"
   ) => {
@@ -279,15 +290,19 @@ export default function SettingsPage() {
       );
       window.dispatchEvent(new Event("taskStoreChange"));
     }
-    toast.success("Pengaturan Berhasil Disimpan", {
-      description:
-        "Semua preferensi belajar, filter waktu, dan konfigurasi AI telah diperbarui.",
+    toast.success(isEn ? "Settings Saved Successfully" : "Pengaturan Berhasil Disimpan", {
+      description: isEn
+        ? "All learning preferences, date filters, and AI configurations have been updated."
+        : "Semua preferensi belajar, filter waktu, dan konfigurasi AI telah diperbarui.",
     });
   };
 
   const handleDiscard = () => {
     setPrefs(initialPrefs);
     setConfig(initialConfig);
+    if (initialPrefs.language) {
+      setGlobalLanguage(initialPrefs.language);
+    }
     if (typeof window !== "undefined") {
       window.dispatchEvent(
         new CustomEvent("toast-position-changed", {
@@ -311,8 +326,10 @@ export default function SettingsPage() {
       );
       setIsCustomModel(!isStandard && Boolean(initialConfig.model));
     }
-    toast.info("Perubahan Dibatalkan", {
-      description: "Pengaturan dikembalikan ke kondisi tersimpan sebelumnya.",
+    toast.info(isEn ? "Changes Discarded" : "Perubahan Dibatalkan", {
+      description: isEn
+        ? "Settings restored to previous saved state."
+        : "Pengaturan dikembalikan ke kondisi tersimpan sebelumnya.",
     });
   };
 
@@ -320,7 +337,9 @@ export default function SettingsPage() {
     months: number = DEFAULT_DATE_RANGE_MONTHS
   ) => {
     if (!months || months <= 0) {
-      return "Menampilkan seluruh riwayat tugas Google Classroom tanpa batasan tanggal waktu.";
+      return isEn
+        ? "Displaying all Google Classroom task history without date restrictions."
+        : "Menampilkan seluruh riwayat tugas Google Classroom tanpa batasan tanggal waktu.";
     }
     const d = new Date();
     d.setMonth(d.getMonth() - months);
@@ -338,8 +357,24 @@ export default function SettingsPage() {
       "November",
       "Desember",
     ];
-    return `Menampilkan tugas dengan tenggat atau dibuat sejak ${d.getDate()} ${monthsIndo[d.getMonth()]
-      } ${d.getFullYear()} hingga sekarang.`;
+    const monthsEn = [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December",
+    ];
+    const monthName = isEn ? monthsEn[d.getMonth()] : monthsIndo[d.getMonth()];
+    return isEn
+      ? `Displaying tasks due or assigned since ${monthName} ${d.getDate()}, ${d.getFullYear()} to present.`
+      : `Menampilkan tugas dengan tenggat atau dibuat sejak ${d.getDate()} ${monthName} ${d.getFullYear()} hingga sekarang.`;
   };
 
   return (
@@ -349,10 +384,10 @@ export default function SettingsPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-200/70 dark:border-white/[0.08]">
           <div className="space-y-1">
             <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-[#f5f5f5] font-heading">
-              Pengaturan
+              {t.settings.pageTitle}
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 dark:text-[#a3a3a3]">
-              Sesuaikan tampilan antarmuka, preferensi belajar, filter Classroom, dan integrasi AI.
+              {t.settings.pageSubtitle}
             </p>
           </div>
 
@@ -370,7 +405,7 @@ export default function SettingsPage() {
             className="self-start sm:self-auto h-9 px-3 rounded-[10px] gap-1.5 text-xs text-slate-600 dark:text-[#a3a3a3] hover:text-slate-900 dark:hover:text-[#f5f5f5] border-slate-200/80 dark:border-white/[0.08] dark:bg-[#141414] cursor-pointer"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Kembali ke Dashboard</span>
+            <span>{isEn ? "Back to Dashboard" : "Kembali ke Dashboard"}</span>
           </Button>
         </div>
 
@@ -382,10 +417,10 @@ export default function SettingsPage() {
             </div>
             <div>
               <h2 className="text-sm font-semibold text-slate-900 dark:text-[#f5f5f5]">
-                Tema & Tampilan
+                {t.settings.secThemeTitle}
               </h2>
               <p className="text-xs text-slate-500 dark:text-[#a3a3a3]">
-                Pilih skema warna yang nyaman untuk pengalaman belajar Anda.
+                {t.settings.secThemeDesc}
               </p>
             </div>
           </div>
@@ -406,10 +441,10 @@ export default function SettingsPage() {
                 </div>
                 <div>
                   <div className="text-xs font-semibold text-slate-900 dark:text-[#f5f5f5]">
-                    Mode Terang (Light)
+                    {t.settings.themeLight}
                   </div>
                   <div className="text-xs text-slate-500 dark:text-[#a3a3a3]">
-                    Kontras bersih dan cerah di siang hari
+                    {t.settings.themeLightDesc}
                   </div>
                 </div>
               </div>
@@ -435,15 +470,101 @@ export default function SettingsPage() {
                 </div>
                 <div>
                   <div className="text-xs font-semibold text-slate-900 dark:text-[#f5f5f5]">
-                    Mode Gelap (Dark)
+                    {t.settings.themeDark}
                   </div>
                   <div className="text-xs text-slate-500 dark:text-[#a3a3a3]">
-                    Nyaman di mata untuk sesi belajar malam
+                    {t.settings.themeDarkDesc}
                   </div>
                 </div>
               </div>
               {isDark && (
                 <div className="w-4 h-4 rounded-full bg-slate-100 text-[#0c0c0c] flex items-center justify-center shrink-0">
+                  <Check className="w-2.5 h-2.5 stroke-[3]" />
+                </div>
+              )}
+            </button>
+          </div>
+        </section>
+
+        <hr className="border-slate-200/60 dark:border-white/[0.06]" />
+
+        {/* SECTION: Bahasa Antarmuka (Language) */}
+        <section className="space-y-3.5">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400">
+              <Globe className="w-4 h-4" />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-[#f5f5f5]">
+                {prefs.language === "en" ? "Interface Language" : "Bahasa Antarmuka"}
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-[#a3a3a3]">
+                {prefs.language === "en"
+                  ? "Select your preferred language for the Dashboard and platform navigation."
+                  : "Pilih bahasa tampilan untuk Dashboard dan navigasi antarmuka."}
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            {/* Bahasa Indonesia */}
+            <button
+              type="button"
+              onClick={() => handleLanguageChange("id")}
+              className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                (prefs.language || "id") === "id"
+                  ? "border-indigo-600 bg-indigo-50/60 dark:bg-indigo-950/30 text-indigo-950 dark:text-indigo-200 ring-1 ring-indigo-500/20 shadow-2xs"
+                  : "border-slate-200/80 dark:border-white/[0.08] hover:bg-slate-50 dark:hover:bg-[#161616] text-slate-700 dark:text-[#a3a3a3]"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-[#202020] text-lg flex items-center justify-center shrink-0 shadow-2xs">
+                  🇮🇩
+                </div>
+                <div>
+                  <div className="text-xs font-semibold text-slate-900 dark:text-[#f5f5f5] flex items-center gap-1.5">
+                    <span>Bahasa Indonesia</span>
+                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 font-medium">
+                      Bawaan
+                    </span>
+                  </div>
+                  <div className="text-xs text-slate-500 dark:text-[#a3a3a3]">
+                    Bahasa standar dengan istilah akademik lokal
+                  </div>
+                </div>
+              </div>
+              {(prefs.language || "id") === "id" && (
+                <div className="w-4 h-4 rounded-full bg-indigo-600 text-white flex items-center justify-center shrink-0">
+                  <Check className="w-2.5 h-2.5 stroke-[3]" />
+                </div>
+              )}
+            </button>
+
+            {/* English */}
+            <button
+              type="button"
+              onClick={() => handleLanguageChange("en")}
+              className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                prefs.language === "en"
+                  ? "border-indigo-600 bg-indigo-50/60 dark:bg-indigo-950/30 text-indigo-950 dark:text-indigo-200 ring-1 ring-indigo-500/20 shadow-2xs"
+                  : "border-slate-200/80 dark:border-white/[0.08] hover:bg-slate-50 dark:hover:bg-[#161616] text-slate-700 dark:text-[#a3a3a3]"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-[#202020] text-lg flex items-center justify-center shrink-0 shadow-2xs">
+                  🇬🇧
+                </div>
+                <div>
+                  <div className="text-xs font-semibold text-slate-900 dark:text-[#f5f5f5]">
+                    English
+                  </div>
+                  <div className="text-xs text-slate-500 dark:text-[#a3a3a3]">
+                    Standard English interface for dashboard & controls
+                  </div>
+                </div>
+              </div>
+              {prefs.language === "en" && (
+                <div className="w-4 h-4 rounded-full bg-indigo-600 text-white flex items-center justify-center shrink-0">
                   <Check className="w-2.5 h-2.5 stroke-[3]" />
                 </div>
               )}
@@ -462,10 +583,10 @@ export default function SettingsPage() {
               </div>
               <div>
                 <h2 className="text-sm font-semibold text-slate-900 dark:text-[#f5f5f5]">
-                  Posisi Notifikasi Pop-up (Toast)
+                  {t.settings.secToastTitle}
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-[#a3a3a3]">
-                  Tentukan sudut layar tempat pesan status dan pemberitahuan muncul.
+                  {t.settings.secToastDesc}
                 </p>
               </div>
             </div>
@@ -479,20 +600,27 @@ export default function SettingsPage() {
                   TOAST_POSITIONS.find(
                     (p) => p.id === (prefs.toastPosition || "top-right")
                   )?.label || "Kanan Atas";
-                toast.info(`Uji Coba Notifikasi (${currentLabel})`, {
-                  description: `Preview posisi notifikasi pop-up di sudut ${currentLabel}.`,
+                toast.info(isEn ? `Toast Notification Test (${currentLabel})` : `Uji Coba Notifikasi (${currentLabel})`, {
+                  description: isEn ? `Preview notification position at ${currentLabel}.` : `Preview posisi notifikasi pop-up di sudut ${currentLabel}.`,
                 });
               }}
               className="h-8 px-2.5 rounded-[8px] gap-1 text-xs text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 border-indigo-200/60 dark:border-indigo-900/40 cursor-pointer"
             >
               <Bell className="w-3 h-3" />
-              <span>Uji Coba</span>
+              <span>{isEn ? "Test Toast" : "Uji Coba"}</span>
             </Button>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-1">
             {TOAST_POSITIONS.map((pos) => {
               const isSelected = (prefs.toastPosition || "top-right") === pos.id;
+              const posLabel = isEn ? (
+                pos.id === "top-left" ? "Top Left" :
+                pos.id === "top-center" ? "Top Center" :
+                pos.id === "top-right" ? "Top Right (Default)" :
+                pos.id === "bottom-left" ? "Bottom Left" :
+                pos.id === "bottom-center" ? "Bottom Center" : "Bottom Right"
+              ) : pos.label;
               return (
                 <button
                   key={pos.id}
@@ -513,7 +641,7 @@ export default function SettingsPage() {
                     />
                   </div>
 
-                  <span className="truncate text-left flex-1">{pos.label}</span>
+                  <span className="truncate text-left flex-1">{posLabel}</span>
 
                   {isSelected && (
                     <Check className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
@@ -534,10 +662,10 @@ export default function SettingsPage() {
             </div>
             <div>
               <h2 className="text-sm font-semibold text-slate-900 dark:text-[#f5f5f5]">
-                Gaya Pop-up Detail Tugas
+                {t.settings.secModalTitle}
               </h2>
               <p className="text-xs text-slate-500 dark:text-[#a3a3a3]">
-                Pilih format jendela yang muncul saat membuka detail tugas & materi AI.
+                {t.settings.secModalDesc}
               </p>
             </div>
           </div>
@@ -564,7 +692,7 @@ export default function SettingsPage() {
                     Slide-over Drawer
                   </div>
                   <div className="text-xs text-slate-500 dark:text-[#a3a3a3]">
-                    Panel samping kanan, daftar tugas tetap terlihat
+                    {isEn ? "Right sidebar panel, task list stays visible" : "Panel samping kanan, daftar tugas tetap terlihat"}
                   </div>
                 </div>
               </div>
@@ -593,10 +721,10 @@ export default function SettingsPage() {
                 </div>
                 <div>
                   <div className="text-xs font-semibold text-slate-900 dark:text-[#f5f5f5]">
-                    Centered Modal (Rekomendasi)
+                    {isEn ? "Centered Modal (Recommended)" : "Centered Modal (Rekomendasi)"}
                   </div>
                   <div className="text-xs text-slate-500 dark:text-[#a3a3a3]">
-                    Jendela dialog fokus di tengah layar
+                    {isEn ? "Focused dialog window at center of screen" : "Jendela dialog fokus di tengah layar"}
                   </div>
                 </div>
               </div>
@@ -619,10 +747,12 @@ export default function SettingsPage() {
             </div>
             <div>
               <h2 className="text-sm font-semibold text-slate-900 dark:text-[#f5f5f5]">
-                Tata Letak AI Chat & Workspace
+                {isEn ? "AI Chat & Workspace Layout" : "Tata Letak AI Chat & Workspace"}
               </h2>
               <p className="text-xs text-slate-500 dark:text-[#a3a3a3]">
-                Pilih format tampilan ruang percakapan dan bimbingan belajar AI (/chat).
+                {isEn
+                  ? "Choose your preferred layout for conversation and study guidance (/chat)."
+                  : "Pilih format tampilan ruang percakapan dan bimbingan belajar AI (/chat)."}
               </p>
             </div>
           </div>
@@ -650,10 +780,12 @@ export default function SettingsPage() {
               </div>
               <div>
                 <div className="text-xs font-semibold text-slate-900 dark:text-[#f5f5f5]">
-                  Sidebar + Feed (Standar)
+                  {isEn ? "Sidebar + Feed (Standard)" : "Sidebar + Feed (Standar)"}
                 </div>
                 <div className="text-xs text-slate-500 dark:text-[#a3a3a3] mt-0.5 leading-relaxed">
-                  Sidebar riwayat di kiri dan feed percakapan fokus di tengah.
+                  {isEn
+                    ? "History sidebar on left and focused chat feed in center."
+                    : "Sidebar riwayat di kiri dan feed percakapan fokus di tengah."}
                 </div>
               </div>
             </button>
@@ -680,10 +812,12 @@ export default function SettingsPage() {
               </div>
               <div>
                 <div className="text-xs font-semibold text-slate-900 dark:text-[#f5f5f5]">
-                  Dual Split Workspace
+                  {isEn ? "Dual Split Workspace" : "Dual Split Workspace"}
                 </div>
                 <div className="text-xs text-slate-500 dark:text-[#a3a3a3] mt-0.5 leading-relaxed">
-                  Chat AI di kiri dan panel materi / catatan berdampingan di kanan.
+                  {isEn
+                    ? "AI chat on left and study materials / notes side-by-side on right."
+                    : "Chat AI di kiri dan panel materi / catatan berdampingan di kanan."}
                 </div>
               </div>
             </button>
@@ -712,10 +846,12 @@ export default function SettingsPage() {
               </div>
               <div>
                 <div className="text-xs font-semibold text-slate-900 dark:text-[#f5f5f5]">
-                  Minimalis Terfokus
+                  {isEn ? "Minimalist Focused" : "Minimalis Terfokus"}
                 </div>
                 <div className="text-xs text-slate-500 dark:text-[#a3a3a3] mt-0.5 leading-relaxed">
-                  Ruang chat bersih maksimal, riwayat percakapan dalam menu geser.
+                  {isEn
+                    ? "Cleanest workspace, conversation history in slide-over menu."
+                    : "Ruang chat bersih maksimal, riwayat percakapan dalam menu geser."}
                 </div>
               </div>
             </button>
@@ -732,10 +868,12 @@ export default function SettingsPage() {
             </div>
             <div>
               <h2 className="text-sm font-semibold text-slate-900 dark:text-[#f5f5f5]">
-                Rentang Waktu Tugas Google Classroom
+                {isEn ? "Google Classroom Date Range" : "Rentang Waktu Tugas Google Classroom"}
               </h2>
               <p className="text-xs text-slate-500 dark:text-[#a3a3a3]">
-                Batasi tugas lampau agar sinkronisasi tetap rapi dan fokus pada semester ini.
+                {isEn
+                  ? "Limit past assignments so synchronization stays neat and focused on the current semester."
+                  : "Batasi tugas lampau agar sinkronisasi tetap rapi dan fokus pada semester ini."}
               </p>
             </div>
           </div>
@@ -745,6 +883,8 @@ export default function SettingsPage() {
               const isSelected =
                 (prefs.classroomDateRangeMonths ?? DEFAULT_DATE_RANGE_MONTHS) ===
                 opt.value;
+              const optLabel = isEn ? opt.labelEn : opt.labelId;
+              const optDesc = isEn ? opt.descEn : opt.descId;
               return (
                 <button
                   key={opt.value}
@@ -764,7 +904,7 @@ export default function SettingsPage() {
                         : "text-slate-900 dark:text-[#f5f5f5]"
                         }`}
                     >
-                      {opt.label}
+                      {optLabel}
                     </div>
                     <div
                       className={`text-xs truncate ${isSelected
@@ -772,7 +912,7 @@ export default function SettingsPage() {
                         : "text-slate-500 dark:text-[#a3a3a3]"
                         } mt-0.5`}
                     >
-                      {opt.desc}
+                      {optDesc}
                     </div>
                   </div>
                   {isSelected && (
@@ -787,7 +927,7 @@ export default function SettingsPage() {
 
           <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#141414] border border-slate-200/60 dark:border-white/[0.06] text-xs text-slate-600 dark:text-[#a3a3a3] leading-relaxed">
             <span className="font-semibold text-slate-900 dark:text-[#f5f5f5]">
-              Cakupan Aktif:{" "}
+              {isEn ? "Active Coverage: " : "Cakupan Aktif: "}
             </span>
             {getCutoffDescription(
               prefs.classroomDateRangeMonths ?? DEFAULT_DATE_RANGE_MONTHS
@@ -805,10 +945,12 @@ export default function SettingsPage() {
             </div>
             <div>
               <h2 className="text-sm font-semibold text-slate-900 dark:text-[#f5f5f5]">
-                Preferensi Belajar & Karakter AI
+                {isEn ? "Learning Preferences & AI Character" : "Preferensi Belajar & Karakter AI"}
               </h2>
               <p className="text-xs text-slate-500 dark:text-[#a3a3a3]">
-                Sesuaikan pendekatan penjelasan dan gaya tutur AI tutor saat mendampingi Anda.
+                {isEn
+                  ? "Customize explanation approach and tone of voice when AI tutor guides you."
+                  : "Sesuaikan pendekatan penjelasan dan gaya tutur AI tutor saat mendampingi Anda."}
               </p>
             </div>
           </div>
@@ -816,7 +958,7 @@ export default function SettingsPage() {
           <div className="grid sm:grid-cols-2 gap-4 pt-1">
             <div className="space-y-1.5">
               <label className="block text-xs font-semibold text-slate-700 dark:text-[#d4d4d4]">
-                Gaya Belajar Personal
+                {isEn ? "Personal Learning Style" : "Gaya Belajar Personal"}
               </label>
               <div className="relative">
                 <select
@@ -826,10 +968,10 @@ export default function SettingsPage() {
                   }
                   className="w-full appearance-none px-3.5 pr-9 py-2.5 text-xs bg-slate-50/50 dark:bg-[#141414] border border-slate-200/80 dark:border-white/[0.08] rounded-[10px] text-slate-900 dark:text-[#f5f5f5] focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition cursor-pointer"
                 >
-                  <option value="Netral">Netral / Umum</option>
-                  <option value="Visual">Visual (Perbanyak Contoh Visual & Analogi)</option>
-                  <option value="Membaca/Menulis">Membaca/Menulis (Penjelasan Teks Mendetail)</option>
-                  <option value="Praktik">Praktik (Fokus Latihan & Langkah Eksekusi)</option>
+                  <option value="Netral">{isEn ? "Neutral / General" : "Netral / Umum"}</option>
+                  <option value="Visual">{isEn ? "Visual (More Visual Examples & Analogies)" : "Visual (Perbanyak Contoh Visual & Analogi)"}</option>
+                  <option value="Membaca/Menulis">{isEn ? "Reading/Writing (Detailed Text Explanations)" : "Membaca/Menulis (Penjelasan Teks Mendetail)"}</option>
+                  <option value="Praktik">{isEn ? "Kinesthetic / Practical (Focus on Exercises & Steps)" : "Praktik (Fokus Latihan & Langkah Eksekusi)"}</option>
                 </select>
                 <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-[#737373]" />
               </div>
@@ -837,7 +979,7 @@ export default function SettingsPage() {
 
             <div className="space-y-1.5">
               <label className="block text-xs font-semibold text-slate-700 dark:text-[#d4d4d4]">
-                Gaya Bahasa (Tone) AI
+                {isEn ? "AI Tone & Voice" : "Gaya Bahasa (Tone) AI"}
               </label>
               <div className="relative">
                 <select
@@ -847,9 +989,9 @@ export default function SettingsPage() {
                   }
                   className="w-full appearance-none px-3.5 pr-9 py-2.5 text-xs bg-slate-50/50 dark:bg-[#141414] border border-slate-200/80 dark:border-white/[0.08] rounded-[10px] text-slate-900 dark:text-[#f5f5f5] focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition cursor-pointer"
                 >
-                  <option value="Ramah">Ramah & Memotivasi</option>
-                  <option value="Tegas">Tegas & Langsung (To the point)</option>
-                  <option value="Sokratik">Sokratik (Memancing Pertanyaan Reflektif)</option>
+                  <option value="Ramah">{isEn ? "Friendly & Motivating" : "Ramah & Memotivasi"}</option>
+                  <option value="Tegas">{isEn ? "Direct & Concise (To the point)" : "Tegas & Langsung (To the point)"}</option>
+                  <option value="Sokratik">{isEn ? "Socratic (Guiding Reflective Questions)" : "Sokratik (Memancing Pertanyaan Reflektif)"}</option>
                 </select>
                 <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-[#737373]" />
               </div>
@@ -857,26 +999,26 @@ export default function SettingsPage() {
 
             <div className="space-y-1.5 sm:col-span-2 pt-1">
               <label className="block text-xs font-semibold text-slate-700 dark:text-[#d4d4d4]">
-                Mode Belajar Asisten AI (Default)
+                {isEn ? "Default AI Assistant Study Mode" : "Mode Belajar Asisten AI (Default)"}
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                 {[
                   {
                     id: "socratic",
-                    label: "Sokratik",
-                    desc: "Membimbing berpikir bertahap dengan pertanyaan pemantik reflektif.",
+                    label: isEn ? "Socratic" : "Sokratik",
+                    desc: isEn ? "Guided step-by-step thinking with reflective questions." : "Membimbing berpikir bertahap dengan pertanyaan pemantik reflektif.",
                     icon: Brain,
                   },
                   {
                     id: "direct",
-                    label: "Ringkas",
-                    desc: "Jawaban padat, to-the-point, fokus inti materi.",
+                    label: isEn ? "Concise" : "Ringkas",
+                    desc: isEn ? "Concise answers, to-the-point, focused on core subject." : "Jawaban padat, to-the-point, fokus inti materi.",
                     icon: Zap,
                   },
                   {
                     id: "quizzer",
-                    label: "Kuis",
-                    desc: "Tantangan soal interaktif & latihan mandiri.",
+                    label: isEn ? "Quiz" : "Kuis",
+                    desc: isEn ? "Interactive question challenges & practice drills." : "Tantangan soal interaktif & latihan mandiri.",
                     icon: HelpCircle,
                   },
                 ].map((mode) => {
@@ -916,10 +1058,12 @@ export default function SettingsPage() {
             </div>
             <div>
               <h2 className="text-sm font-semibold text-slate-900 dark:text-[#f5f5f5]">
-                Penyedia AI & Integrasi API
+                {isEn ? "AI Providers & API Integration" : "Penyedia AI & Integrasi API"}
               </h2>
               <p className="text-xs text-slate-500 dark:text-[#a3a3a3]">
-                Pilih model kecerdasan buatan bawaan atau sambungkan kunci API pribadi Anda.
+                {isEn
+                  ? "Choose built-in cloud AI or connect your personal API keys."
+                  : "Pilih model kecerdasan buatan bawaan atau sambungkan kunci API pribadi Anda."}
               </p>
             </div>
           </div>
@@ -929,14 +1073,14 @@ export default function SettingsPage() {
             {[
               {
                 id: "gemini",
-                label: "Gemini Bawaan",
-                desc: "Gratis & Langsung Siap Pakai",
+                label: isEn ? "Built-in Gemini" : "Gemini Bawaan",
+                desc: isEn ? "Free & Ready to Use" : "Gratis & Langsung Siap Pakai",
                 icon: Sparkles,
               },
               {
                 id: "gemini_custom",
-                label: "Gemini Pribadi",
-                desc: "API Key Google AI Studio",
+                label: isEn ? "Personal Gemini" : "Gemini Pribadi",
+                desc: isEn ? "Google AI Studio API Key" : "API Key Google AI Studio",
                 icon: Key,
               },
               {
@@ -990,10 +1134,12 @@ export default function SettingsPage() {
             <div className="p-3.5 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40 text-xs text-indigo-950 dark:text-indigo-200 space-y-1">
               <div className="font-semibold text-indigo-900 dark:text-indigo-300 flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                <span>Google Gemini Cloud Server Aktif</span>
+                <span>{isEn ? "Google Gemini Cloud Server Active" : "Google Gemini Cloud Server Aktif"}</span>
               </div>
               <p className="text-xs text-indigo-900/80 dark:text-indigo-300/80 leading-relaxed">
-                Aplikasi terhubung ke backend server bawaan. Anda tidak perlu memasukkan API key manual untuk mulai menganalisis tugas dan berdiskusi dengan AI Tutor.
+                {isEn
+                  ? "Application connected to default cloud server. No manual API key required to start analyzing tasks and chatting with AI Tutor."
+                  : "Aplikasi terhubung ke backend server bawaan. Anda tidak perlu memasukkan API key manual untuk mulai menganalisis tugas dan berdiskusi dengan AI Tutor."}
               </p>
             </div>
           )}
@@ -1013,7 +1159,7 @@ export default function SettingsPage() {
                     rel="noopener noreferrer"
                     className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-1"
                   >
-                    <span>Dapatkan API Key Gratis</span>
+                    <span>{isEn ? "Get Free API Key" : "Dapatkan API Key Gratis"}</span>
                     <ExternalLink className="w-3 h-3" />
                   </a>
                 </div>
@@ -1044,7 +1190,7 @@ export default function SettingsPage() {
               <div>
                 <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-[#d4d4d4] mb-1.5">
                   <Cpu className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                  <span>Model Gemini</span>
+                  <span>{isEn ? "Gemini Model" : "Model Gemini"}</span>
                 </label>
                 {!isCustomModel ? (
                   <div className="relative">
@@ -1062,7 +1208,11 @@ export default function SettingsPage() {
                     >
                       {GEMINI_MODELS.map((m) => (
                         <option key={m.value} value={m.value}>
-                          {m.label}
+                          {m.value === "__CUSTOM__"
+                            ? (isEn ? "Write Custom Model Name..." : m.label)
+                            : isEn
+                            ? m.label.replace("Default Bawaan", "Default").replace("Rekomendasi", "Recommended")
+                            : m.label}
                         </option>
                       ))}
                     </select>
@@ -1092,7 +1242,7 @@ export default function SettingsPage() {
                       }}
                       className="text-xs h-9 rounded-[10px]"
                     >
-                      Pilihan Standar
+                      {isEn ? "Standard Options" : "Pilihan Standar"}
                     </Button>
                   </div>
                 )}
@@ -1169,7 +1319,11 @@ export default function SettingsPage() {
                     >
                       {OPENAI_MODELS.map((m) => (
                         <option key={m.value} value={m.value}>
-                          {m.label}
+                          {m.value === "__CUSTOM__"
+                            ? (isEn ? "Write Custom Model Name..." : m.label)
+                            : isEn
+                            ? m.label.replace("Cepat & Efisien", "Fast & Efficient").replace("Model Flagship Cerdas", "Smart Flagship").replace("Klasik", "Classic")
+                            : m.label}
                         </option>
                       ))}
                     </select>
@@ -1196,7 +1350,7 @@ export default function SettingsPage() {
                       }}
                       className="text-xs h-9 rounded-[10px]"
                     >
-                      Pilihan Standar
+                      {isEn ? "Standard Options" : "Pilihan Standar"}
                     </Button>
                   </div>
                 )}
@@ -1217,7 +1371,7 @@ export default function SettingsPage() {
                 <span className="relative inline-flex rounded-full size-2.5 bg-amber-500"></span>
               </div>
               <div className="text-xs font-medium text-slate-800 dark:text-[#e5e5e5] truncate">
-                Perubahan belum disimpan
+                {isEn ? "Unsaved changes" : "Perubahan belum disimpan"}
               </div>
             </div>
 
@@ -1230,7 +1384,7 @@ export default function SettingsPage() {
                 className="h-8 px-2.5 rounded-[8px] gap-1 text-xs text-slate-600 dark:text-[#a3a3a3] hover:text-slate-900 dark:hover:text-[#f5f5f5] hover:bg-slate-100 dark:hover:bg-[#202020] cursor-pointer"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
-                <span>Batalkan</span>
+                <span>{isEn ? "Discard" : "Batalkan"}</span>
               </Button>
               <Button
                 type="button"
@@ -1239,7 +1393,7 @@ export default function SettingsPage() {
                 className="h-8 px-3.5 rounded-[8px] gap-1.5 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white dark:bg-[#f5f5f5] dark:text-[#0c0c0c] dark:hover:bg-white shadow-2xs active:scale-95 cursor-pointer"
               >
                 <Save className="w-3.5 h-3.5" />
-                <span>Simpan</span>
+                <span>{isEn ? "Save" : "Simpan"}</span>
               </Button>
             </div>
           </aside>
@@ -1261,7 +1415,7 @@ export default function SettingsPage() {
                 type="button"
                 onClick={() => setPendingNavigationUrl(null)}
                 className="absolute top-2.5 right-2.5 p-1 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-[#eee] hover:bg-slate-100 dark:hover:bg-[#222] transition cursor-pointer"
-                title="Tutup dialog"
+                title={isEn ? "Close dialog" : "Tutup dialog"}
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -1272,10 +1426,12 @@ export default function SettingsPage() {
                 </div>
                 <div className="space-y-0.5">
                   <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-[#f0f0f0] leading-snug">
-                    Simpan Perubahan Pengaturan?
+                    {isEn ? "Save Settings Changes?" : "Simpan Perubahan Pengaturan?"}
                   </h3>
                   <p className="text-[11px] sm:text-xs text-slate-500 dark:text-[#a0a0a0] leading-normal">
-                    Anda memiliki perubahan yang belum disimpan. Ingin menyimpan perubahan sebelum berpindah halaman?
+                    {isEn
+                      ? "You have unsaved changes. Would you like to save changes before navigating away?"
+                      : "Anda memiliki perubahan yang belum disimpan. Ingin menyimpan perubahan sebelum berpindah halaman?"}
                   </p>
                 </div>
               </div>
@@ -1293,7 +1449,7 @@ export default function SettingsPage() {
                   }}
                   className="text-xs text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900/50 hover:bg-rose-50 dark:hover:bg-rose-950/30 cursor-pointer h-7.5 px-3 rounded-lg font-medium"
                 >
-                  Buang Perubahan
+                  {isEn ? "Discard Changes" : "Buang Perubahan"}
                 </Button>
                 <Button
                   type="button"
@@ -1306,7 +1462,7 @@ export default function SettingsPage() {
                   }}
                   className="text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xs cursor-pointer h-7.5 px-3.5 rounded-lg"
                 >
-                  Simpan & Lanjutkan
+                  {isEn ? "Save & Continue" : "Simpan & Lanjutkan"}
                 </Button>
               </div>
             </div>

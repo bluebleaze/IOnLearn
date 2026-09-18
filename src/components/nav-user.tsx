@@ -28,6 +28,7 @@ import {
   LogOut,
   User,
 } from "lucide-react";
+import { useLanguage } from "@/context/LanguageContext";
 
 export interface NavUserProps {
   user: {
@@ -50,6 +51,7 @@ export function NavUser({
 }: NavUserProps) {
   const router = useRouter();
   const { isMobile, setOpenMobile } = useSidebar();
+  const { t } = useLanguage();
 
   const getInitials = (name: string) => {
     if (!name) return "U";
@@ -115,8 +117,6 @@ export function NavUser({
             <DropdownMenuSeparator className="bg-slate-100 dark:bg-white/[0.08] my-1" />
 
             <DropdownMenuGroup className="space-y-0.5">
-
-
               <DropdownMenuItem
                 onClick={() => {
                   if (isMobile) setOpenMobile(false);
@@ -125,7 +125,7 @@ export function NavUser({
                 className="cursor-pointer gap-2 px-2 py-1.5 rounded-lg text-xs font-medium text-slate-700 dark:text-[#a3a3a3] hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-[#18181b] outline-none"
               >
                 <Settings className="w-4 h-4 text-slate-500 dark:text-[#737373]" />
-                <span>Pengaturan Belajar & AI</span>
+                <span>{t.nav.studySettings}</span>
               </DropdownMenuItem>
 
               {onSyncClassroom && (
@@ -139,7 +139,7 @@ export function NavUser({
                       }`}
                   />
                   <span>
-                    {isSyncing ? "Menyinkronkan..." : "Sinkronkan Classroom"}
+                    {isSyncing ? t.nav.syncing : t.nav.syncClassroom}
                   </span>
                 </DropdownMenuItem>
               )}
@@ -156,7 +156,7 @@ export function NavUser({
                   className="cursor-pointer gap-2 px-2 py-1.5 rounded-lg text-xs font-medium text-rose-600 dark:text-[#f87171] hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-700 dark:hover:text-[#f87171] outline-none"
                 >
                   <LogOut className="w-4 h-4" />
-                  <span>Keluar dari Google</span>
+                  <span>{t.nav.logoutGoogle}</span>
                 </DropdownMenuItem>
               </>
             )}

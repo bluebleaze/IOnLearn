@@ -23,17 +23,19 @@ import { Shell, useShell } from "../components/Shell";
 import { ActivityChart } from "../components/ActivityChart";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
-import { TodoTask, PersonalTodo, StudyNote } from "../types";
+import { TodoTask, PersonalTodo, StudyNote, UserPreferences } from "../types";
 import {
   loadTasks,
   loadTodos,
   loadNotes,
+  loadPreferences,
   toggleTaskComplete,
   toggleTodoComplete,
   syncAllUserDataToCloud,
 } from "../lib/taskStore";
 import confetti from "canvas-confetti";
 import { TaskCompleteConfirmModal } from "../components/TaskCompleteConfirmModal";
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function HomeHighlightPage() {
   return (
@@ -46,10 +48,12 @@ export default function HomeHighlightPage() {
 function HomeContent() {
   const router = useRouter();
   const { userProfile, isSyncing, syncClassroom } = useShell();
+  const { isEn } = useLanguage();
 
   const [tasks, setTasks] = useState<TodoTask[]>([]);
   const [todos, setTodos] = useState<PersonalTodo[]>([]);
   const [notes, setNotes] = useState<StudyNote[]>([]);
+  const [prefs, setPrefs] = useState<UserPreferences | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [taskToConfirm, setTaskToConfirm] = useState<{ id: string; title: string } | null>(null);
 
@@ -57,16 +61,150 @@ function HomeContent() {
     setTasks(loadTasks());
     setTodos(loadTodos());
     setNotes(loadNotes());
+    setPrefs(loadPreferences());
     setIsLoaded(true);
 
     const handleStorage = () => {
       setTasks(loadTasks());
       setTodos(loadTodos());
       setNotes(loadNotes());
+      setPrefs(loadPreferences());
     };
     window.addEventListener("taskStoreChange", handleStorage);
-    return () => window.removeEventListener("taskStoreChange", handleStorage);
+    window.addEventListener("language-changed", handleStorage);
+    return () => {
+      window.removeEventListener("taskStoreChange", handleStorage);
+      window.removeEventListener("language-changed", handleStorage);
+    };
   }, []);
+
+  const t = useMemo(() => {
+    if (isEn) {
+      return {
+        overviewEyebrow: "Study Overview",
+        dateLocale: "en-US",
+        welcome: "Welcome back",
+        defaultStudentName: "Student",
+        tasksSummary: (active: number, urgent: number, todosCount: number) => (
+          <>
+            You have <span className="font-semibold text-slate-900 dark:text-[#f0f0f0]">{active} active tasks</span>
+            {urgent > 0 && (
+              <>
+                , with <span className="font-semibold text-rose-600 dark:text-rose-400">{urgent} approaching deadlines</span>
+              </>
+            )}
+            , and <span className="font-semibold text-slate-900 dark:text-[#f0f0f0]">{todosCount} to-dos remaining</span> today.
+          </>
+        ),
+        allTasksBtn: "All Tasks",
+        askAIBtn: "Ask AI",
+
+        // Metrics cards
+        cardTasksTitle: "Active Classroom Tasks",
+        cardTasksUrgent: (count: number) => `${count} urgent`,
+        cardTasksSafe: "Deadlines safe",
+        cardTodosTitle: "Pending To-Dos",
+        cardTodosDone: (pct: number) => <>Completed <span className="font-semibold text-slate-800 dark:text-[#ddd]">{pct}%</span></>,
+        cardNotesTitle: "Study Notes",
+        cardNotesAI: (count: number) => `${count} AI summarized`,
+        cardAITitle: "AI Tutor",
+        cardAISubtitle: "Active Learning Assistant",
+        cardAIDesc: "Assignment Discussion & Analysis",
+
+        // Urgent Deadlines section
+        urgentSectionTitle: "Upcoming Deadlines",
+        viewAllBtn: "View All",
+        noUrgentTitle: "No urgent deadlines",
+        noUrgentDesc: "All your coursework is currently well on track 🎉",
+        aiReadyBadge: "AI Ready",
+
+        // Daily To-Dos section
+        todosSectionTitle: "Daily To-Dos",
+        openTodoBtn: "Open To-Do",
+        noTodosTitle: "No to-do plans for today yet.",
+        addTodoBtn: "Add To-Do",
+        priorityHigh: "High",
+
+        // Right column
+        activityTitle: "Weekly Study Activity",
+        notesSectionTitle: "Recent Study Notes",
+        openNotesBtn: "Open Notes",
+        noNotesDesc: "No study notes saved yet.",
+        untitledNote: "Untitled",
+        generalSubject: "General",
+        quickAITitle: "Quick AI Prompts:",
+        quickPrompts: [
+          "Explain the core concepts of my nearest upcoming assignment",
+          "Help me create a structured study plan for this week's exams",
+          "How can I balance time between coursework and personal projects?",
+        ],
+        toastTaskCompleted: "Task Completed!",
+        toastTodoCompleted: "To-Do Completed!",
+      };
+    }
+
+    return {
+      overviewEyebrow: "Ikhtisar Belajar",
+      dateLocale: "id-ID",
+      welcome: "Selamat datang kembali",
+      defaultStudentName: "Pelajar",
+      tasksSummary: (active: number, urgent: number, todosCount: number) => (
+        <>
+          Terdapat <span className="font-semibold text-slate-900 dark:text-[#f0f0f0]">{active} tugas aktif</span>
+          {urgent > 0 && (
+            <>
+              , dengan <span className="font-semibold text-rose-600 dark:text-rose-400">{urgent} tenggat mendekat</span>
+            </>
+          )}
+          , serta <span className="font-semibold text-slate-900 dark:text-[#f0f0f0]">{todosCount} to-do tersisa</span> hari ini.
+        </>
+      ),
+      allTasksBtn: "Semua Tugas",
+      askAIBtn: "Tanya AI",
+
+      // Metrics cards
+      cardTasksTitle: "Tugas Classroom Aktif",
+      cardTasksUrgent: (count: number) => `${count} mendesak`,
+      cardTasksSafe: "Tenggat aman",
+      cardTodosTitle: "To-Do Belum Selesai",
+      cardTodosDone: (pct: number) => <>Selesai <span className="font-semibold text-slate-800 dark:text-[#ddd]">{pct}%</span></>,
+      cardNotesTitle: "Catatan Materi",
+      cardNotesAI: (count: number) => `${count} dirangkum AI`,
+      cardAITitle: "AI Tutor",
+      cardAISubtitle: "Bantuan Belajar Aktif",
+      cardAIDesc: "Diskusi & Analisis Tugas",
+
+      // Urgent Deadlines section
+      urgentSectionTitle: "Tugas Tenggat Terdekat",
+      viewAllBtn: "Lihat Semua",
+      noUrgentTitle: "Tidak ada tenggat mendesak",
+      noUrgentDesc: "Semua tugas kuliah saat ini terkendali dengan baik 🎉",
+      aiReadyBadge: "AI Siap",
+
+      // Daily To-Dos section
+      todosSectionTitle: "To-Do Harian",
+      openTodoBtn: "Buka To-Do",
+      noTodosTitle: "Belum ada rencana To-Do hari ini.",
+      addTodoBtn: "Tambah To-Do",
+      priorityHigh: "Penting",
+
+      // Right column
+      activityTitle: "Aktivitas Belajar Mingguan",
+      notesSectionTitle: "Catatan Materi Terkini",
+      openNotesBtn: "Buka Catatan",
+      noNotesDesc: "Belum ada catatan materi tersimpan.",
+      untitledNote: "Tanpa Judul",
+      generalSubject: "Umum",
+      quickAITitle: "Tanya AI Cepat:",
+      quickPrompts: [
+        "Jelaskan konsep kunci dari tugas terdekat saya",
+        "Bantu saya membuat rencana belajar untuk ujian minggu ini",
+        "Bagaimana cara membagi waktu antara tugas kuliah dan proyek pribadi?",
+      ],
+      toastTaskCompleted: "Tugas Diselesaikan!",
+      toastTodoCompleted: "To-Do Selesai!",
+    };
+  }, [isEn]);
 
   // Stats calculation
   const stats = useMemo(() => {
@@ -140,7 +278,7 @@ function HomeContent() {
       try {
         confetti({ particleCount: 35, spread: 50, origin: { y: 0.8 } });
       } catch { }
-      toast.success("Tugas Diselesaikan!", { description: res.title });
+      toast.success(t.toastTaskCompleted, { description: res.title });
     }
   };
 
@@ -157,15 +295,9 @@ function HomeContent() {
       try {
         confetti({ particleCount: 25, spread: 40, origin: { y: 0.8 } });
       } catch { }
-      toast.success("To-Do Selesai!", { description: res.title });
+      toast.success(t.toastTodoCompleted, { description: res.title });
     }
   };
-
-  const quickPrompts = [
-    "Jelaskan konsep kunci dari tugas terdekat saya",
-    "Bantu saya membuat rencana belajar untuk ujian minggu ini",
-    "Bagaimana cara membagi waktu antara tugas kuliah dan proyek pribadi?",
-  ];
 
   return (
     <>
@@ -175,21 +307,15 @@ function HomeContent() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="space-y-1.5 max-w-2xl">
               <div className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-[#888]">
-                <span>Ikhtisar Belajar</span>
+                <span>{t.overviewEyebrow}</span>
                 <span>•</span>
-                <span>{new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long" })}</span>
+                <span>{new Date().toLocaleDateString(t.dateLocale, { weekday: "long", day: "numeric", month: "long" })}</span>
               </div>
               <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-[#f3f3f3] font-heading">
-                Selamat datang kembali, {userProfile?.name ? userProfile.name.split(" ").slice(0, 2).join(" ") : "Pelajar"}
+                {t.welcome}, {userProfile?.name ? userProfile.name.split(" ").slice(0, 2).join(" ") : t.defaultStudentName}
               </h1>
               <p className="text-xs sm:text-sm text-slate-600 dark:text-[#999] leading-relaxed">
-                Terdapat <span className="font-semibold text-slate-900 dark:text-[#f0f0f0]">{stats.activeTasksCount} tugas aktif</span>
-                {stats.urgentTasksCount > 0 && (
-                  <>
-                    , dengan <span className="font-semibold text-rose-600 dark:text-rose-400">{stats.urgentTasksCount} tenggat mendekat</span>
-                  </>
-                )}
-                , serta <span className="font-semibold text-slate-900 dark:text-[#f0f0f0]">{stats.activeTodosCount} to-do tersisa</span> hari ini.
+                {t.tasksSummary(stats.activeTasksCount, stats.urgentTasksCount, stats.activeTodosCount)}
               </p>
             </div>
 
@@ -201,7 +327,7 @@ function HomeContent() {
                 className="h-9 px-3.5 text-xs font-medium rounded-xl border-slate-200 dark:border-[#2b2b2b] hover:bg-slate-100 dark:hover:bg-[#202020] text-slate-800 dark:text-[#e0e0e0] gap-1.5 cursor-pointer"
               >
                 <BookOpen className="w-3.5 h-3.5 text-slate-500 dark:text-[#888]" />
-                <span>Semua Tugas</span>
+                <span>{t.allTasksBtn}</span>
               </Button>
 
               <Button
@@ -209,7 +335,7 @@ function HomeContent() {
                 className="h-9 px-3.5 text-xs font-medium rounded-xl bg-indigo-600 hover:bg-indigo-700 dark:bg-[#818cf8] dark:hover:bg-[#9ba3fa] text-white dark:text-[#0c0c0c] gap-1.5 shadow-2xs cursor-pointer"
               >
                 <MessageSquareText className="w-3.5 h-3.5" />
-                <span>Tanya AI</span>
+                <span>{t.askAIBtn}</span>
               </Button>
             </div>
           </div>
@@ -233,17 +359,17 @@ function HomeContent() {
                 {stats.activeTasksCount}
               </div>
               <div className="text-xs text-slate-500 dark:text-[#888] mt-0.5">
-                Tugas Classroom Aktif
+                {t.cardTasksTitle}
               </div>
             </div>
             {stats.urgentTasksCount > 0 ? (
               <div className="mt-2.5 text-xs font-medium text-rose-600 dark:text-rose-400 flex items-center gap-1">
                 <AlertCircle className="w-3 h-3" />
-                <span>{stats.urgentTasksCount} mendesak</span>
+                <span>{t.cardTasksUrgent(stats.urgentTasksCount)}</span>
               </div>
             ) : (
               <div className="mt-2.5 text-xs text-slate-400 dark:text-[#666]">
-                Tenggat aman
+                {t.cardTasksSafe}
               </div>
             )}
           </div>
@@ -264,11 +390,11 @@ function HomeContent() {
                 {stats.activeTodosCount}
               </div>
               <div className="text-xs text-slate-500 dark:text-[#888] mt-0.5">
-                To-Do Belum Selesai
+                {t.cardTodosTitle}
               </div>
             </div>
             <div className="mt-2.5 text-xs text-slate-500 dark:text-[#888]">
-              Selesai <span className="font-semibold text-slate-800 dark:text-[#ddd]">{stats.todoProgress}%</span>
+              {t.cardTodosDone(stats.todoProgress)}
             </div>
           </div>
 
@@ -288,12 +414,12 @@ function HomeContent() {
                 {stats.notesCount}
               </div>
               <div className="text-xs text-slate-500 dark:text-[#888] mt-0.5">
-                Catatan Materi
+                {t.cardNotesTitle}
               </div>
             </div>
             <div className="mt-2.5 text-xs text-slate-500 dark:text-[#888] flex items-center gap-1">
               <Sparkles className="w-3 h-3 text-purple-500" />
-              <span>{stats.notesWithAICount} dirangkum AI</span>
+              <span>{t.cardNotesAI(stats.notesWithAICount)}</span>
             </div>
           </div>
 
@@ -314,14 +440,14 @@ function HomeContent() {
             </div>
             <div className="mt-3">
               <div className="text-2xl font-bold tracking-tight text-slate-900 dark:text-[#f3f3f3] font-heading">
-                AI Tutor
+                {t.cardAITitle}
               </div>
               <div className="text-xs text-slate-500 dark:text-[#888] mt-0.5">
-                Bantuan Belajar Aktif
+                {t.cardAISubtitle}
               </div>
             </div>
             <div className="mt-2.5 text-xs text-slate-500 dark:text-[#888]">
-              Diskusi & Analisis Tugas
+              {t.cardAIDesc}
             </div>
           </div>
         </div>
@@ -338,7 +464,7 @@ function HomeContent() {
                     <Clock className="w-3.5 h-3.5" />
                   </div>
                   <h3 className="text-sm font-semibold text-slate-900 dark:text-[#f3f3f3]">
-                    Tugas Tenggat Terdekat
+                    {t.urgentSectionTitle}
                   </h3>
                 </div>
                 <Button
@@ -347,7 +473,7 @@ function HomeContent() {
                   onClick={() => router.push("/tasks")}
                   className="text-xs text-slate-600 dark:text-[#a0a0a0] hover:text-slate-900 dark:hover:text-[#f0f0f0] gap-1 cursor-pointer"
                 >
-                  <span>Lihat Semua</span>
+                  <span>{t.viewAllBtn}</span>
                   <ArrowRight className="w-3 h-3" />
                 </Button>
               </div>
@@ -356,47 +482,47 @@ function HomeContent() {
                 <div className="text-center py-7 px-4 rounded-xl bg-slate-50/50 dark:bg-[#181818]/50 border border-dashed border-slate-200 dark:border-[#262626] text-xs text-slate-500 dark:text-[#888] space-y-1">
                   <div className="flex items-center justify-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-semibold">
                     <Check className="w-3.5 h-3.5" />
-                    <span>Tidak ada tenggat mendesak</span>
+                    <span>{t.noUrgentTitle}</span>
                   </div>
-                  <p className="text-xs text-slate-400 dark:text-[#666]">Semua tugas kuliah saat ini terkendali dengan baik 🎉</p>
+                  <p className="text-xs text-slate-400 dark:text-[#666]">{t.noUrgentDesc}</p>
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {urgentTasks.map((t) => (
+                  {urgentTasks.map((tItem) => (
                     <div
-                      key={t.id}
-                      onClick={() => router.push(`/tugas/${t.id}`)}
+                      key={tItem.id}
+                      onClick={() => router.push(`/tugas/${tItem.id}`)}
                       className="p-3 rounded-xl bg-slate-50/70 dark:bg-[#181818] hover:bg-slate-100/80 dark:hover:bg-[#202020] border border-slate-100 dark:border-[#242424] transition-colors cursor-pointer flex items-center justify-between gap-3"
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (!t.isCompleted) {
-                              setTaskToConfirm({ id: t.id, title: t.title });
+                            if (!tItem.isCompleted) {
+                              setTaskToConfirm({ id: tItem.id, title: tItem.title });
                             } else {
-                              handleToggleTask(t.id);
+                              handleToggleTask(tItem.id);
                             }
                           }}
                           className="w-5 h-5 rounded-md border border-slate-300 dark:border-[#444] hover:border-indigo-500 flex items-center justify-center shrink-0 cursor-pointer"
                         >
-                          {t.isCompleted && <Check className="w-3 h-3 text-emerald-500" />}
+                          {tItem.isCompleted && <Check className="w-3 h-3 text-emerald-500" />}
                         </button>
                         <div className="min-w-0">
                           <h4 className="text-xs font-medium text-slate-900 dark:text-[#f3f3f3] truncate">
-                            {t.title}
+                            {tItem.title}
                           </h4>
                           <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-[#888] mt-0.5">
-                            {t.courseName && <span>{t.courseName}</span>}
-                            {t.dueDateStr && <span>• {t.dueDateStr}</span>}
+                            {tItem.courseName && <span>{tItem.courseName}</span>}
+                            {tItem.dueDateStr && <span>• {tItem.dueDateStr}</span>}
                           </div>
                         </div>
                       </div>
 
-                      {t.aiAnalysis && (
+                      {tItem.aiAnalysis && (
                         <span className="shrink-0 text-xs font-medium px-2 py-0.5 rounded-md bg-slate-100 dark:bg-[#222] text-slate-600 dark:text-[#aaa] flex items-center gap-1 border border-slate-200/60 dark:border-[#2c2c2c]">
                           <Sparkles className="w-2.5 h-2.5 text-indigo-500" />
-                          <span>AI Siap</span>
+                          <span>{t.aiReadyBadge}</span>
                         </span>
                       )}
                     </div>
@@ -413,7 +539,7 @@ function HomeContent() {
                     <ListTodo className="w-3.5 h-3.5" />
                   </div>
                   <h3 className="text-sm font-semibold text-slate-900 dark:text-[#f3f3f3]">
-                    To-Do Harian
+                    {t.todosSectionTitle}
                   </h3>
                 </div>
                 <Button
@@ -422,21 +548,21 @@ function HomeContent() {
                   onClick={() => router.push("/todo")}
                   className="text-xs text-slate-600 dark:text-[#a0a0a0] hover:text-slate-900 dark:hover:text-[#f0f0f0] gap-1 cursor-pointer"
                 >
-                  <span>Buka To-Do</span>
+                  <span>{t.openTodoBtn}</span>
                   <ArrowRight className="w-3 h-3" />
                 </Button>
               </div>
 
               {todayTodos.length === 0 ? (
                 <div className="text-center py-8 text-xs text-slate-500 dark:text-[#888] space-y-2">
-                  <p>Belum ada rencana To-Do hari ini.</p>
+                  <p>{t.noTodosTitle}</p>
                   <Button
                     size="sm"
                     onClick={() => router.push("/todo")}
                     className="text-xs bg-slate-900 hover:bg-slate-800 dark:bg-[#f0f0f0] dark:hover:bg-white text-white dark:text-slate-900 rounded-xl"
                   >
                     <Plus className="w-3.5 h-3.5 mr-1" />
-                    Tambah To-Do
+                    {t.addTodoBtn}
                   </Button>
                 </div>
               ) : (
@@ -464,7 +590,7 @@ function HomeContent() {
 
                       {todo.priority === "high" && (
                         <span className="shrink-0 text-xs font-medium px-1.5 py-0.5 rounded bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400">
-                          Penting
+                          {t.priorityHigh}
                         </span>
                       )}
                     </div>
@@ -481,10 +607,10 @@ function HomeContent() {
               <div className="flex items-center gap-2 mb-3">
                 <TrendingUp className="w-4 h-4 text-slate-500 dark:text-[#888]" />
                 <h3 className="text-sm font-semibold text-slate-900 dark:text-[#f3f3f3]">
-                  Aktivitas Belajar Mingguan
+                  {t.activityTitle}
                 </h3>
               </div>
-              <ActivityChart tasks={tasks} />
+              <ActivityChart tasks={tasks} language={isEn ? "en" : "id"} />
             </div>
 
             {/* Recent Notes Preview */}
@@ -493,7 +619,7 @@ function HomeContent() {
                 <div className="flex items-center gap-2">
                   <NotebookPen className="w-4 h-4 text-slate-500 dark:text-[#888]" />
                   <h3 className="text-sm font-semibold text-slate-900 dark:text-[#f3f3f3]">
-                    Catatan Materi Terkini
+                    {t.notesSectionTitle}
                   </h3>
                 </div>
                 <Button
@@ -502,13 +628,13 @@ function HomeContent() {
                   onClick={() => router.push("/notes")}
                   className="text-xs text-slate-600 dark:text-[#a0a0a0] hover:text-slate-900 dark:hover:text-[#f0f0f0]"
                 >
-                  Buka Catatan
+                  {t.openNotesBtn}
                 </Button>
               </div>
 
               {recentNotes.length === 0 ? (
                 <div className="text-center py-6 text-xs text-slate-500 dark:text-[#888]">
-                  Belum ada catatan materi tersimpan.
+                  {t.noNotesDesc}
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -520,10 +646,10 @@ function HomeContent() {
                     >
                       <div className="flex items-center justify-between text-xs">
                         <span className="font-medium text-slate-900 dark:text-[#f3f3f3] line-clamp-1">
-                          {note.title || "Tanpa Judul"}
+                          {note.title || t.untitledNote}
                         </span>
                         <span className="text-xs text-slate-400 dark:text-[#666] shrink-0">
-                          {note.subject || "Umum"}
+                          {note.subject || t.generalSubject}
                         </span>
                       </div>
                       <p className="text-xs text-slate-500 dark:text-[#888] line-clamp-1">
@@ -539,10 +665,10 @@ function HomeContent() {
             <div className="bg-white dark:bg-[#161616] rounded-2xl p-4.5 border border-slate-200/80 dark:border-[#262626] shadow-2xs space-y-2.5">
               <div className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-[#d0d0d0]">
                 <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
-                <span>Tanya AI Cepat:</span>
+                <span>{t.quickAITitle}</span>
               </div>
               <div className="space-y-1.5">
-                {quickPrompts.map((prompt, i) => (
+                {t.quickPrompts.map((prompt, i) => (
                   <button
                     key={i}
                     onClick={() => router.push(`/chat?prompt=${encodeURIComponent(prompt)}`)}
@@ -563,6 +689,7 @@ function HomeContent() {
         taskTitle={taskToConfirm?.title}
         onClose={() => setTaskToConfirm(null)}
         onConfirm={handleConfirmTaskComplete}
+        language={isEn ? "en" : "id"}
       />
     </>
   );

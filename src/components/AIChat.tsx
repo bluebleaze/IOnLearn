@@ -106,6 +106,7 @@ import {
 import { APP_NAME } from "@/lib/brand";
 import { toast } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
+import { useLanguage } from "@/context/LanguageContext";
 
 const SESSIONS_KEY = "classroom_ai_chat_sessions_v1";
 const MAX_SESSIONS = 30;
@@ -531,6 +532,7 @@ export const AIChat: React.FC<AIChatProps> = ({
   aiConfig,
 }) => {
   const router = useRouter();
+  const { language, isEn, t } = useLanguage();
   const [tasks, setTasks] = useState<TodoTask[]>(propTasks);
   const [notes, setNotes] = useState<StudyNote[]>(propNotes);
 
@@ -2694,22 +2696,22 @@ export const AIChat: React.FC<AIChatProps> = ({
 
   const quickPrompts = [
     {
-      label: "Jelaskan konsep materi ini dengan analogi sederhana",
+      label: isEn ? "Explain this material concept using a simple analogy" : "Jelaskan konsep materi ini dengan analogi sederhana",
       mode: "socratic" as StudyMode,
       icon: Brain,
     },
     {
-      label: "Rangkum dan simpan menjadi Catatan Materi lengkap",
+      label: isEn ? "Summarize and save into a complete Study Note" : "Rangkum dan simpan menjadi Catatan Materi lengkap",
       mode: "direct" as StudyMode,
       icon: NotebookPen,
     },
     {
-      label: "Buatkan daftar to-do belajar bertahap untuk materi ini",
+      label: isEn ? "Create a step-by-step study to-do list for this topic" : "Buatkan daftar to-do belajar bertahap untuk materi ini",
       mode: "direct" as StudyMode,
       icon: ListTodo,
     },
     {
-      label: "Beri 2 contoh soal latihan beserta pembahasannya",
+      label: isEn ? "Provide 2 practice questions with full explanations" : "Beri 2 contoh soal latihan beserta pembahasannya",
       mode: "quizzer" as StudyMode,
       icon: HelpCircle,
     },
@@ -2895,12 +2897,16 @@ export const AIChat: React.FC<AIChatProps> = ({
             onPaste={handlePaste}
             placeholder={
               attachedFiles.some((f) => f.type === "youtube")
-                ? `Tanyakan materi tentang "${attachedFiles.find((f) => f.type === "youtube")?.youtubeInfo?.title || "Video YouTube"}"… (atau tekan Enter untuk analisis lengkap)`
+                ? (isEn
+                    ? `Ask about "${attachedFiles.find((f) => f.type === "youtube")?.youtubeInfo?.title || "YouTube Video"}"… (or press Enter for full analysis)`
+                    : `Tanyakan materi tentang "${attachedFiles.find((f) => f.type === "youtube")?.youtubeInfo?.title || "Video YouTube"}"… (atau tekan Enter untuk analisis lengkap)`)
                 : activeTask
-                  ? `Tanyakan tentang tugas "${activeTask.title}"…`
+                  ? (isEn ? `Ask about task "${activeTask.title}"…` : `Tanyakan tentang tugas "${activeTask.title}"…`)
                   : activeNote
-                    ? `Tanyakan tentang catatan "${activeNote.title}"…`
-                    : "Tanyakan konsep, rumus, lampirkan berkas, atau tempel link YouTube… (Enter untuk kirim)"
+                    ? (isEn ? `Ask about note "${activeNote.title}"…` : `Tanyakan tentang catatan "${activeNote.title}"…`)
+                    : (isEn
+                        ? "Ask about concepts, formulas, attach files, or paste YouTube links… (Enter to send)"
+                        : "Tanyakan konsep, rumus, lampirkan berkas, atau tempel link YouTube… (Enter untuk kirim)")
             }
             className="w-full bg-transparent border-0 focus:outline-none text-xs sm:text-sm text-slate-900 dark:text-[#ececec] placeholder:text-slate-400 dark:placeholder:text-[#666] pt-3 px-3.5 pb-1 resize-none max-h-40 min-h-[36px] leading-relaxed"
           />
@@ -3191,7 +3197,7 @@ export const AIChat: React.FC<AIChatProps> = ({
                         >
                           <div className="flex items-center gap-3">
                             <GraduationCap className="w-4 h-4 text-[#aaa]" />
-                            <span>Mode Belajar</span>
+                            <span>{isEn ? "Study Mode" : "Mode Belajar"}</span>
                           </div>
                           <ChevronRight className="w-3.5 h-3.5 text-[#888]" />
                         </button>
@@ -3211,8 +3217,8 @@ export const AIChat: React.FC<AIChatProps> = ({
                             >
                               <BookOpen className="w-4 h-4 text-emerald-400 shrink-0" />
                               <div>
-                                <div className="font-semibold">Tutor Sokratik</div>
-                                <div className="text-[10px] text-[#888]">Tanya-jawab terbimbing</div>
+                                <div className="font-semibold">{isEn ? "Socratic Tutor" : "Tutor Sokratik"}</div>
+                                <div className="text-[10px] text-[#888]">{isEn ? "Guided critical inquiry" : "Tanya-jawab terbimbing"}</div>
                               </div>
                             </button>
 
@@ -3228,8 +3234,8 @@ export const AIChat: React.FC<AIChatProps> = ({
                             >
                               <HelpCircle className="w-4 h-4 text-sky-400 shrink-0" />
                               <div>
-                                <div className="font-semibold">Kuis & Latihan</div>
-                                <div className="text-[10px] text-[#888]">Soal uji pemahaman</div>
+                                <div className="font-semibold">{isEn ? "Quiz & Practice" : "Kuis & Latihan"}</div>
+                                <div className="text-[10px] text-[#888]">{isEn ? "Concept evaluation quiz" : "Soal uji pemahaman"}</div>
                               </div>
                             </button>
 
@@ -3241,8 +3247,8 @@ export const AIChat: React.FC<AIChatProps> = ({
                                 setActiveSubmenu("none");
                                 setInputPrompt((prev) =>
                                   prev.trim()
-                                    ? `${prev} - tolong buatkan ringkasan intisari materi dan simpan ke catatan belajar`
-                                    : "Tolong buatkan ringkasan komprehensif materi ini dan simpan sebagai catatan belajar: "
+                                    ? (isEn ? `${prev} - please summarize the key takeaways and save to study notes` : `${prev} - tolong buatkan ringkasan intisari materi dan simpan ke catatan belajar`)
+                                    : (isEn ? "Please summarize the key takeaways of this material and save to study notes: " : "Tolong buatkan ringkasan komprehensif materi ini dan simpan sebagai catatan belajar: ")
                                 );
                                 textareaRef.current?.focus();
                               }}
@@ -3250,8 +3256,8 @@ export const AIChat: React.FC<AIChatProps> = ({
                             >
                               <NotebookPen className="w-4 h-4 text-violet-400 shrink-0" />
                               <div>
-                                <div className="font-semibold">Ringkasan Catatan</div>
-                                <div className="text-[10px] text-[#888]">Poin inti materi</div>
+                                <div className="font-semibold">{isEn ? "Notes Summary" : "Ringkasan Catatan"}</div>
+                                <div className="text-[10px] text-[#888]">{isEn ? "Core concept takeaways" : "Poin inti materi"}</div>
                               </div>
                             </button>
 
@@ -3263,8 +3269,8 @@ export const AIChat: React.FC<AIChatProps> = ({
                                 setActiveSubmenu("none");
                                 setInputPrompt((prev) =>
                                   prev.trim()
-                                    ? `${prev} - tolong buatkan rencana breakdown to-do langkah kerja terukur`
-                                    : "Tolong pecah tugas ini menjadi to-do list langkah kerja yang terukur:"
+                                    ? (isEn ? `${prev} - please create an actionable step-by-step to-do breakdown` : `${prev} - tolong buatkan rencana breakdown to-do langkah kerja terukur`)
+                                    : (isEn ? "Please break this task down into actionable to-do steps: " : "Tolong pecah tugas ini menjadi to-do list langkah kerja yang terukur:")
                                 );
                                 textareaRef.current?.focus();
                               }}
@@ -3272,8 +3278,8 @@ export const AIChat: React.FC<AIChatProps> = ({
                             >
                               <ListTodo className="w-4 h-4 text-amber-400 shrink-0" />
                               <div>
-                                <div className="font-semibold">Breakdown Tugas</div>
-                                <div className="text-[10px] text-[#888]">To-do list terukur</div>
+                                <div className="font-semibold">{isEn ? "Task Breakdown" : "Breakdown Tugas"}</div>
+                                <div className="text-[10px] text-[#888]">{isEn ? "Actionable to-do steps" : "To-do list terukur"}</div>
                               </div>
                             </button>
                           </div>
@@ -3290,7 +3296,7 @@ export const AIChat: React.FC<AIChatProps> = ({
                   type="button"
                   onClick={() => setIsContextOpen(!isContextOpen)}
                   className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-slate-200/80 dark:bg-[#202020] dark:hover:bg-[#282828] text-xs font-semibold text-slate-700 dark:text-[#d0d0d0] transition cursor-pointer"
-                  title="Pilih konteks materi / tugas"
+                  title={isEn ? "Select study material or assignment context" : "Pilih konteks materi / tugas"}
                 >
                   {activeTask ? (
                     <BookOpen className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
@@ -3304,7 +3310,7 @@ export const AIChat: React.FC<AIChatProps> = ({
                       ? activeTask.title
                       : activeNote
                         ? activeNote.title
-                        : "Pilih Materi Belajar"}
+                        : (isEn ? "Select Study Context" : "Pilih Materi Belajar")}
                   </span>
                   <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
                 </button>
@@ -3321,7 +3327,7 @@ export const AIChat: React.FC<AIChatProps> = ({
                           : "text-slate-500 hover:bg-slate-50 dark:hover:bg-[#202020]"
                           }`}
                       >
-                        Tugas Classroom ({tasks.length})
+                        {isEn ? `Classroom Tasks (${tasks.length})` : `Tugas Classroom (${tasks.length})`}
                       </button>
                       <button
                         type="button"
@@ -3331,7 +3337,7 @@ export const AIChat: React.FC<AIChatProps> = ({
                           : "text-slate-500 hover:bg-slate-50 dark:hover:bg-[#202020]"
                           }`}
                       >
-                        Catatan ({notes.length})
+                        {isEn ? `Notes (${notes.length})` : `Catatan (${notes.length})`}
                       </button>
                     </div>
 
@@ -3344,13 +3350,13 @@ export const AIChat: React.FC<AIChatProps> = ({
                         }}
                         className="w-full text-left px-2.5 py-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-[#222] text-slate-700 dark:text-[#ccc] font-medium transition cursor-pointer"
                       >
-                        🌐 Mode Bebas (Tanpa Konteks Khusus)
+                        {isEn ? "🌐 Free Mode (No Specific Context)" : "🌐 Mode Bebas (Tanpa Konteks Khusus)"}
                       </button>
 
                       {contextTab === "tasks" ? (
                         tasks.length === 0 ? (
                           <p className="text-xs text-slate-400 p-3 text-center">
-                            Tidak ada tugas.
+                            {isEn ? "No tasks found." : "Tidak ada tugas."}
                           </p>
                         ) : (
                           tasks.map((t) => (
@@ -3372,7 +3378,7 @@ export const AIChat: React.FC<AIChatProps> = ({
                         )
                       ) : notes.length === 0 ? (
                         <p className="text-xs text-slate-400 p-3 text-center">
-                          Tidak ada catatan.
+                          {isEn ? "No notes found." : "Tidak ada catatan."}
                         </p>
                       ) : (
                         notes.map((n) => (
@@ -3387,7 +3393,7 @@ export const AIChat: React.FC<AIChatProps> = ({
                           >
                             <div className="font-semibold truncate">{n.title}</div>
                             <div className="text-xs text-slate-400 truncate">
-                              {n.subject || "Catatan"}
+                              {n.subject || (isEn ? "Note" : "Catatan")}
                             </div>
                           </button>
                         ))
@@ -3415,7 +3421,7 @@ export const AIChat: React.FC<AIChatProps> = ({
                   type="button"
                   onClick={toggleVoiceRecognition}
                   className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-rose-500 text-white animate-pulse shadow-md shadow-rose-500/30 transition-all cursor-pointer"
-                  title="Sedang merekam suara... Klik untuk berhenti"
+                  title={isEn ? "Recording voice... Click to stop" : "Sedang merekam suara... Klik untuk berhenti"}
                 >
                   <MicOff className="w-4 h-4" />
                 </button>
@@ -3424,7 +3430,7 @@ export const AIChat: React.FC<AIChatProps> = ({
                   type="button"
                   onClick={handleStopGeneration}
                   className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 transition-all shrink-0 shadow-2xs cursor-pointer animate-in zoom-in-90 duration-150"
-                  title="Hentikan respons (Stop)"
+                  title={isEn ? "Stop response (Stop)" : "Hentikan respons (Stop)"}
                 >
                   <Square className="w-3.5 h-3.5 fill-current" />
                 </button>
@@ -3434,7 +3440,7 @@ export const AIChat: React.FC<AIChatProps> = ({
                   onClick={() => handleSendMessage()}
                   disabled={!inputPrompt.trim() && attachedFiles.length === 0}
                   className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-30 disabled:hover:bg-indigo-600 text-white transition-all shrink-0 shadow-2xs cursor-pointer disabled:cursor-not-allowed animate-in zoom-in-90 duration-150"
-                  title="Kirim pesan (Enter)"
+                  title={isEn ? "Send message (Enter)" : "Kirim pesan (Enter)"}
                 >
                   <ArrowUp className="w-4 h-4 stroke-[2.5]" />
                 </button>
@@ -3443,7 +3449,7 @@ export const AIChat: React.FC<AIChatProps> = ({
                   type="button"
                   onClick={toggleVoiceRecognition}
                   className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-slate-100 dark:bg-[#202020] text-slate-600 dark:text-[#aaa] hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-200/80 dark:hover:bg-[#282828] transition-all cursor-pointer animate-in zoom-in-90 duration-150"
-                  title="Input dengan Suara (Speech-to-Text)"
+                  title={isEn ? "Voice Input (Speech-to-Text)" : "Input dengan Suara (Speech-to-Text)"}
                 >
                   <Mic className="w-4 h-4" />
                 </button>
@@ -3453,7 +3459,7 @@ export const AIChat: React.FC<AIChatProps> = ({
         </div>
 
         <p className="text-xs text-slate-400 dark:text-[#555] text-center mt-2">
-          AI dapat melakukan kekeliruan. Selalu verifikasi jawaban sebelum dikumpulkan.
+          {t.chat.disclaimer}
         </p>
       </div>
     );
@@ -3467,7 +3473,7 @@ export const AIChat: React.FC<AIChatProps> = ({
         <div className="flex items-center gap-2">
           <History className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
           <span className="text-xs font-bold text-slate-900 dark:text-[#f0f0f0]">
-            Riwayat Percakapan
+            {t.chat.historyTitle}
           </span>
         </div>
         {isDrawer && (
@@ -3488,7 +3494,7 @@ export const AIChat: React.FC<AIChatProps> = ({
           className="w-full justify-center gap-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xs h-9 cursor-pointer"
         >
           <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-          <span>Percakapan Baru</span>
+          <span>{t.chat.newChatBtn}</span>
         </Button>
 
         <div className="relative">
@@ -3497,7 +3503,7 @@ export const AIChat: React.FC<AIChatProps> = ({
             type="text"
             value={sessionSearchQuery}
             onChange={(e) => setSessionSearchQuery(e.target.value)}
-            placeholder="Cari percakapan…"
+            placeholder={t.chat.searchPlaceholder}
             className="w-full pl-8 pr-2.5 py-1.5 text-xs rounded-xl bg-slate-50 dark:bg-[#1a1a1a] border border-slate-200/70 dark:border-[#262626] text-slate-900 dark:text-[#eee] placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500/30"
           />
         </div>
@@ -3507,7 +3513,7 @@ export const AIChat: React.FC<AIChatProps> = ({
       <div className="flex-1 overflow-y-auto p-2 space-y-1">
         {filteredSessions.length === 0 ? (
           <div className="text-center py-10 px-4 text-xs text-slate-400">
-            Tidak ada percakapan ditemukan.
+            {t.chat.emptyHistory}
           </div>
         ) : (
           filteredSessions.map((s) => {
@@ -3847,11 +3853,11 @@ export const AIChat: React.FC<AIChatProps> = ({
                   type="button"
                   onClick={() => setIsDesktopSidebarOpen(!isDesktopSidebarOpen)}
                   className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white/90 dark:bg-[#181818]/90 hover:bg-white dark:hover:bg-[#222] border border-slate-200/80 dark:border-[#2a2a2a] shadow-xs backdrop-blur-md text-slate-600 dark:text-[#ccc] hover:text-slate-900 dark:hover:text-white transition cursor-pointer text-xs font-medium"
-                  title={isDesktopSidebarOpen ? "Tutup Sidebar Riwayat" : "Buka Sidebar Riwayat"}
+                  title={isDesktopSidebarOpen ? (isEn ? "Close History Sidebar" : "Tutup Sidebar Riwayat") : (isEn ? "Open History Sidebar" : "Buka Sidebar Riwayat")}
                 >
                   <PanelLeft className="w-3.5 h-3.5 text-slate-500 dark:text-[#aaa]" />
                   <span className="hidden sm:inline">
-                    {isDesktopSidebarOpen ? "Tutup Sidebar" : "Buka Sidebar"}
+                    {isDesktopSidebarOpen ? (isEn ? "Close Sidebar" : "Tutup Sidebar") : (isEn ? "Open Sidebar" : "Buka Sidebar")}
                   </span>
                 </button>
               )}
@@ -3866,10 +3872,10 @@ export const AIChat: React.FC<AIChatProps> = ({
                   type="button"
                   onClick={() => setIsHistoryDrawerOpen(true)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/90 dark:bg-[#181818]/90 hover:bg-white dark:hover:bg-[#222] border border-slate-200/80 dark:border-[#2a2a2a] shadow-xs backdrop-blur-md text-slate-600 dark:text-[#ccc] hover:text-slate-900 dark:hover:text-white transition cursor-pointer text-xs font-medium"
-                  title="Buka Riwayat Percakapan"
+                  title={isEn ? "Open Chat History" : "Buka Riwayat Percakapan"}
                 >
                   <History className="w-3.5 h-3.5 text-slate-500 dark:text-[#aaa]" />
-                  <span>Riwayat</span>
+                  <span>{isEn ? "History" : "Riwayat"}</span>
                 </motion.button>
               ) : (
                 <motion.button
@@ -3878,10 +3884,10 @@ export const AIChat: React.FC<AIChatProps> = ({
                   type="button"
                   onClick={() => setIsHistoryDrawerOpen(true)}
                   className="md:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/90 dark:bg-[#181818]/90 hover:bg-white dark:hover:bg-[#222] border border-slate-200/80 dark:border-[#2a2a2a] shadow-xs backdrop-blur-md text-slate-600 dark:text-[#ccc] hover:text-slate-900 dark:hover:text-white transition cursor-pointer text-xs font-medium"
-                  title="Buka Riwayat Percakapan"
+                  title={isEn ? "Open Chat History" : "Buka Riwayat Percakapan"}
                 >
                   <History className="w-3.5 h-3.5 text-slate-500 dark:text-[#aaa]" />
-                  <span>Riwayat</span>
+                  <span>{isEn ? "History" : "Riwayat"}</span>
                 </motion.button>
               )}
             </div>
@@ -3933,18 +3939,18 @@ export const AIChat: React.FC<AIChatProps> = ({
 
             <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-[#f3f3f3] mb-1.5 tracking-tight">
               {activeTask
-                ? `Membimbing "${activeTask.title}"`
+                ? (isEn ? `Guiding "${activeTask.title}"` : `Membimbing "${activeTask.title}"`)
                 : activeNote
-                  ? `Membahas "${activeNote.title}"`
-                  : `Hai, ada materi yang ingin dibahas?`}
+                  ? (isEn ? `Discussing "${activeNote.title}"` : `Membahas "${activeNote.title}"`)
+                  : (isEn ? `Hi, what would you like to study today?` : `Hai, ada materi yang ingin dibahas?`)}
             </h2>
 
             <p className="text-xs sm:text-sm text-slate-500 dark:text-[#7f7f7f] max-w-md leading-relaxed mb-6">
               {activeTask
-                ? `AI siap membimbing pengerjaan tugas ${activeTask.courseName || ""} secara bertahap.`
+                ? (isEn ? `AI is ready to guide you step-by-step through ${activeTask.courseName || "this assignment"}.` : `AI siap membimbing pengerjaan tugas ${activeTask.courseName || ""} secara bertahap.`)
                 : activeNote
-                  ? `AI siap mengulas materi, merangkum poin penting, dan menguji pemahaman catatan ini.`
-                  : `Tanyakan rumus, konsep sulit, minta rangkuman, atau lampirkan dokumen materi.`}
+                  ? (isEn ? `AI is ready to review material, summarize key points, and quiz your understanding.` : `AI siap mengulas materi, merangkum poin penting, dan menguji pemahaman catatan ini.`)
+                  : (isEn ? `Ask about formulas, tough concepts, request summaries, or attach course files.` : `Tanyakan rumus, konsep sulit, minta rangkuman, atau lampirkan dokumen materi.`)}
             </p>
 
             {/* 🌟 CENTERED INPUT BAR */}
@@ -4259,7 +4265,7 @@ export const AIChat: React.FC<AIChatProps> = ({
                               </div>
                               <div className="flex items-center gap-1.5 flex-1 min-w-0">
                                 <span className="text-xs font-bold text-sky-950 dark:text-sky-200 truncate">
-                                  Sumber Rujukan Terverifikasi
+                                  {isEn ? "Verified Reference Sources" : "Sumber Rujukan Terverifikasi"}
                                 </span>
                                 <span className="text-[10px] px-1.5 py-0.2 rounded font-medium bg-sky-200/70 dark:bg-sky-900/60 text-sky-800 dark:text-sky-300 shrink-0">
                                   Google Search
@@ -4272,7 +4278,7 @@ export const AIChat: React.FC<AIChatProps> = ({
                                 try {
                                   hostname = new URL(source.url).hostname.replace(/^www\./, "");
                                 } catch {
-                                  hostname = "Sumber Web";
+                                  hostname = isEn ? "Web Source" : "Sumber Web";
                                 }
                                 return (
                                   <a
@@ -4307,7 +4313,7 @@ export const AIChat: React.FC<AIChatProps> = ({
                                   <NotebookPen className="w-3.5 h-3.5" />
                                 </div>
                                 <span className="text-xs font-bold text-slate-900 dark:text-[#f3f3f3]">
-                                  Catatan Materi Tersimpan
+                                  {isEn ? "Saved Study Note" : "Catatan Materi Tersimpan"}
                                 </span>
                               </div>
                               <button
@@ -4315,7 +4321,7 @@ export const AIChat: React.FC<AIChatProps> = ({
                                 onClick={() => router.push("/notes")}
                                 className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-0.5 cursor-pointer"
                               >
-                                <span>Buka Catatan</span>
+                                <span>{isEn ? "Open Notes" : "Buka Catatan"}</span>
                                 <ChevronRight className="w-3 h-3" />
                               </button>
                             </div>
@@ -4335,10 +4341,10 @@ export const AIChat: React.FC<AIChatProps> = ({
                         {/* Interactive Created To-Do Card if AI made a to-do with subtasks */}
                         {(m.createdTodo || (m.createdTodos && m.createdTodos.length > 0)) && (() => {
                           const todoData = m.createdTodo || (m.createdTodos ? {
-                            title: m.createdTodos.length === 1 ? m.createdTodos[0].title : `Rencana Belajar: ${m.createdTodos[0]?.category || "Belajar"}`,
+                            title: m.createdTodos.length === 1 ? m.createdTodos[0].title : (isEn ? `Study Plan: ${m.createdTodos[0]?.category || "Study"}` : `Rencana Belajar: ${m.createdTodos[0]?.category || "Belajar"}`),
                             description: m.createdTodos[0]?.description,
                             priority: m.createdTodos[0]?.priority || "medium",
-                            category: m.createdTodos[0]?.category || "Belajar AI",
+                            category: m.createdTodos[0]?.category || (isEn ? "AI Study" : "Belajar AI"),
                             subtasks: m.createdTodos.length > 1
                               ? m.createdTodos.map((t, idx) => ({ id: `st-${idx}`, title: t.title, isCompleted: false }))
                               : m.createdTodos[0]?.subtasks,
@@ -4355,7 +4361,7 @@ export const AIChat: React.FC<AIChatProps> = ({
                                     <CheckCircle2 className="w-3.5 h-3.5" />
                                   </div>
                                   <span className="text-xs font-bold text-slate-900 dark:text-[#f3f3f3]">
-                                    To-Do Tersimpan
+                                    {isEn ? "Saved To-Do" : "To-Do Tersimpan"}
                                   </span>
                                 </div>
                                 <button
@@ -4363,7 +4369,7 @@ export const AIChat: React.FC<AIChatProps> = ({
                                   onClick={() => router.push("/todo")}
                                   className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline inline-flex items-center gap-0.5 cursor-pointer"
                                 >
-                                  <span>Buka To-Do</span>
+                                  <span>{isEn ? "Open To-Do" : "Buka To-Do"}</span>
                                   <ChevronRight className="w-3 h-3" />
                                 </button>
                               </div>
@@ -4390,7 +4396,7 @@ export const AIChat: React.FC<AIChatProps> = ({
                                             : "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300"
                                           }`}
                                       >
-                                        {todoData.priority === "high" ? "Penting" : todoData.priority === "low" ? "Rendah" : "Sedang"}
+                                        {todoData.priority === "high" ? (isEn ? "High" : "Penting") : todoData.priority === "low" ? (isEn ? "Low" : "Rendah") : (isEn ? "Medium" : "Sedang")}
                                       </span>
                                     )}
                                     {todoData.category && (

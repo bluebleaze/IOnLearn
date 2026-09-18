@@ -45,6 +45,7 @@ import { analyzeTaskWithAI } from "@/services/aiService";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
 import confetti from "canvas-confetti";
+import { useLanguage } from "@/context/LanguageContext";
 
 type ViewMode = "grid" | "kanban" | "table";
 type StatusFilter = "all" | "urgent" | "later" | "overdue" | "completed";
@@ -58,6 +59,7 @@ const truncateWords = (text: string, maxWords: number = 12): string => {
 
 export default function TasksPage() {
   const router = useRouter();
+  const { isEn, t } = useLanguage();
   const [tasks, setTasks] = useState<TodoTask[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -445,10 +447,10 @@ export default function TasksPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3.5">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold font-heading tracking-tight text-slate-900 dark:text-[#f3f3f3]">
-              Semua Tugas
+              {t.tasks.pageTitle}
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 dark:text-[#a3a3a3] mt-0.5">
-              Katalog tugas Google Classroom & analisis materi AI.
+              {t.tasks.pageSubtitle}
             </p>
           </div>
 
@@ -463,7 +465,7 @@ export default function TasksPage() {
                     ? "bg-white dark:bg-[#252525] text-slate-900 dark:text-[#f3f3f3] shadow-2xs font-semibold"
                     : "text-slate-500 dark:text-[#777] hover:text-slate-800 dark:hover:text-[#eee]"
                 }`}
-                title="Tampilan Grid"
+                title={isEn ? "Grid View" : "Tampilan Grid"}
               >
                 <LayoutGrid className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Grid</span>
@@ -476,7 +478,7 @@ export default function TasksPage() {
                     ? "bg-white dark:bg-[#252525] text-slate-900 dark:text-[#f3f3f3] shadow-2xs font-semibold"
                     : "text-slate-500 dark:text-[#777] hover:text-slate-800 dark:hover:text-[#eee]"
                 }`}
-                title="Tampilan Kanban"
+                title={isEn ? "Kanban Board View" : "Tampilan Kanban"}
               >
                 <Columns3 className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Kanban</span>
@@ -489,10 +491,10 @@ export default function TasksPage() {
                     ? "bg-white dark:bg-[#252525] text-slate-900 dark:text-[#f3f3f3] shadow-2xs font-semibold"
                     : "text-slate-500 dark:text-[#777] hover:text-slate-800 dark:hover:text-[#eee]"
                 }`}
-                title="Tampilan Tabel"
+                title={isEn ? "Table View" : "Tampilan Tabel"}
               >
                 <TableProperties className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Tabel</span>
+                <span className="hidden sm:inline">{isEn ? "Table" : "Tabel"}</span>
               </button>
             </div>
           </div>
@@ -508,7 +510,7 @@ export default function TasksPage() {
                     : "text-slate-700 dark:text-[#888] hover:bg-slate-100 dark:hover:bg-[#222]"
                 }`}
               >
-                <span>Semua</span>
+                <span>{t.tasks.tabAll}</span>
                 <span
                   className={`px-1.5 py-0.2 rounded-md text-xs ${
                     statusTab === "all"
@@ -529,7 +531,7 @@ export default function TasksPage() {
                 }`}
               >
                 <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
-                <span>Perlu Dikerjakan</span>
+                <span>{isEn ? "Action Needed" : "Perlu Dikerjakan"}</span>
                 <span
                   className={`px-1.5 py-0.2 rounded-md text-xs ${
                     statusTab === "urgent"
@@ -550,7 +552,7 @@ export default function TasksPage() {
                 }`}
               >
                 <span className="w-2 h-2 rounded-full bg-slate-400 shrink-0" />
-                <span>Nanti</span>
+                <span>{isEn ? "Later" : "Nanti"}</span>
                 <span
                   className={`px-1.5 py-0.2 rounded-md text-xs ${
                     statusTab === "later"
@@ -571,7 +573,7 @@ export default function TasksPage() {
                 }`}
               >
                 <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
-                <span>Telat</span>
+                <span>{isEn ? "Overdue" : "Telat"}</span>
                 <span
                   className={`px-1.5 py-0.2 rounded-md text-xs ${
                     statusTab === "overdue"
@@ -592,7 +594,7 @@ export default function TasksPage() {
                 }`}
               >
                 <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                <span>Selesai</span>
+                <span>{t.tasks.tabCompleted}</span>
                 <span
                   className={`px-1.5 py-0.2 rounded-md text-xs ${
                     statusTab === "completed"
@@ -610,7 +612,7 @@ export default function TasksPage() {
               <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-[#737373]" />
               <input
                 type="text"
-                placeholder="Cari tugas kuliah atau materi..."
+                placeholder={t.tasks.searchPlaceholder}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-8.5 pr-3 py-1.5 text-xs rounded-xl bg-slate-50 dark:bg-[#181818] border border-slate-200/80 dark:border-[#2b2b2b] text-slate-900 dark:text-[#f3f3f3] placeholder:text-slate-400 dark:placeholder:text-[#666] focus:outline-none focus:ring-1 focus:ring-indigo-500/40"
@@ -633,7 +635,9 @@ export default function TasksPage() {
                   onChange={(e) => setSelectedCourse(e.target.value)}
                   className="text-xs bg-transparent border-0 text-slate-800 dark:text-[#e5e5e5] font-medium focus:outline-none cursor-pointer max-w-[140px] truncate"
                 >
-                  <option value="all" className="bg-white dark:bg-[#181818]">Semua Kelas ({tasks.length})</option>
+                  <option value="all" className="bg-white dark:bg-[#181818]">
+                    {isEn ? `All Courses (${tasks.length})` : `Semua Kelas (${tasks.length})`}
+                  </option>
                   {coursesWithCounts.map(({ name, count }) => (
                     <option key={name} value={name} className="bg-white dark:bg-[#181818]">
                       {name} ({count})
@@ -650,10 +654,10 @@ export default function TasksPage() {
                 onChange={(e) => setSortBy(e.target.value as any)}
                 className="text-xs bg-transparent border-0 text-slate-800 dark:text-[#e5e5e5] font-medium focus:outline-none cursor-pointer"
               >
-                <option value="due-asc" className="bg-white dark:bg-[#181818]">Tenggat Terdekat</option>
-                <option value="due-desc" className="bg-white dark:bg-[#181818]">Tenggat Terjauh</option>
-                <option value="priority" className="bg-white dark:bg-[#181818]">Prioritas Tertinggi</option>
-                <option value="newest" className="bg-white dark:bg-[#181818]">Paling Baru Ditambahkan</option>
+                <option value="due-asc" className="bg-white dark:bg-[#181818]">{t.tasks.sortDueAsc}</option>
+                <option value="due-desc" className="bg-white dark:bg-[#181818]">{t.tasks.sortDueDesc}</option>
+                <option value="priority" className="bg-white dark:bg-[#181818]">{t.tasks.sortPriority}</option>
+                <option value="newest" className="bg-white dark:bg-[#181818]">{t.tasks.sortNewest}</option>
               </select>
             </div>
           </div>
@@ -670,10 +674,10 @@ export default function TasksPage() {
               <BookOpen className="w-6 h-6" />
             </div>
             <h3 className="text-base font-semibold text-slate-900 dark:text-[#f3f3f3]">
-              Belum Ada Tugas
+              {t.tasks.emptyTitle}
             </h3>
             <p className="text-xs text-slate-500 dark:text-[#888] max-w-sm mx-auto">
-              Tugas dari Google Classroom akan muncul otomatis di sini setelah akun disinkronkan.
+              {t.tasks.emptyDesc}
             </p>
           </div>
         ) : statusTab !== "all" && filteredTasks.length === 0 && counts.all > 0 ? (
@@ -683,10 +687,10 @@ export default function TasksPage() {
             </div>
             <div className="max-w-md mx-auto space-y-1">
               <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-[#f3f3f3] font-heading">
-                Tidak ada tugas di kategori ini
+                {isEn ? "No tasks in this category" : "Tidak ada tugas di kategori ini"}
               </h3>
               <p className="text-xs text-slate-500 dark:text-[#888] leading-relaxed">
-                Semua tugas pada filter ini telah ditangani atau belum tersedia.
+                {isEn ? "All tasks under this filter have been addressed or none are available." : "Semua tugas pada filter ini telah ditangani atau belum tersedia."}
               </p>
             </div>
             <div className="flex items-center justify-center gap-2 pt-2">
@@ -696,7 +700,7 @@ export default function TasksPage() {
                 onClick={() => setStatusTab("all")}
                 className="text-xs rounded-xl"
               >
-                Lihat Semua Tugas ({counts.all})
+                {isEn ? `View All Tasks (${counts.all})` : `Lihat Semua Tugas (${counts.all})`}
               </Button>
             </div>
           </div>
@@ -706,10 +710,10 @@ export default function TasksPage() {
               <BookOpen className="w-5 h-5" />
             </div>
             <h3 className="text-sm font-semibold text-slate-900 dark:text-[#f3f3f3]">
-              Tidak Ada Tugas Ditemukan
+              {isEn ? "No Tasks Found" : "Tidak Ada Tugas Ditemukan"}
             </h3>
             <p className="text-xs text-slate-500 dark:text-[#888] max-w-xs mx-auto">
-              Coba sesuaikan filter pencarian atau pilih kategori lainnya.
+              {isEn ? "Try adjusting your search filters or select another category." : "Coba sesuaikan filter pencarian atau pilih kategori lainnya."}
             </p>
             {(searchQuery || selectedCourse !== "all" || statusTab !== "all") && (
               <Button
@@ -722,7 +726,7 @@ export default function TasksPage() {
                 }}
                 className="mt-1 text-xs rounded-xl"
               >
-                Reset Filter
+                {isEn ? "Reset Filters" : "Reset Filter"}
               </Button>
             )}
           </div>
@@ -756,7 +760,7 @@ export default function TasksPage() {
                         <div className="flex items-center gap-2">
                           <span className="w-2 h-2 rounded-full bg-rose-500" />
                           <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-[#ccc]">
-                            Perlu Dikerjakan
+                            {isEn ? "Action Needed" : "Perlu Dikerjakan"}
                           </h3>
                         </div>
                         <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-white dark:bg-[#202020] text-slate-600 dark:text-[#888] shadow-2xs">
@@ -768,7 +772,7 @@ export default function TasksPage() {
                         {pendingTasks.length === 0 ? (
                           <div className="border border-dashed border-slate-200 dark:border-[#262626] rounded-xl p-5 text-center text-slate-400 text-xs">
                             <CheckCircle2 className="w-4 h-4 mx-auto text-slate-300 dark:text-[#444] mb-1" />
-                            <p>Tidak ada tugas pending</p>
+                            <p>{isEn ? "No pending tasks" : "Tidak ada tugas pending"}</p>
                           </div>
                         ) : (
                           pendingTasks.map((task) => (
@@ -826,7 +830,7 @@ export default function TasksPage() {
                                   aria-label={`Analisis AI untuk "${task.title}"`}
                                 >
                                   <Sparkles className="w-3.5 h-3.5" />
-                                  <span>Analisis AI</span>
+                                  <span>{isEn ? "AI Analysis" : "Analisis AI"}</span>
                                 </button>
                               </div>
                             </div>
@@ -845,7 +849,7 @@ export default function TasksPage() {
                         <div className="flex items-center gap-2">
                           <span className="w-2 h-2 rounded-full bg-indigo-500" />
                           <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-[#ccc]">
-                            Siap Belajar (AI)
+                            {isEn ? "AI Ready" : "Siap Belajar (AI)"}
                           </h3>
                         </div>
                         <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-white dark:bg-[#202020] text-slate-600 dark:text-[#888] shadow-2xs">
@@ -857,7 +861,7 @@ export default function TasksPage() {
                         {readyTasks.length === 0 ? (
                           <div className="border border-dashed border-slate-200 dark:border-[#262626] rounded-xl p-5 text-center text-slate-400 text-xs">
                             <Sparkles className="w-4 h-4 mx-auto text-slate-300 dark:text-[#444] mb-1" />
-                            <p>Belum ada analisis AI</p>
+                            <p>{isEn ? "No AI analysis yet" : "Belum ada analisis AI"}</p>
                           </div>
                         ) : (
                           readyTasks.map((task) => (
@@ -926,7 +930,7 @@ export default function TasksPage() {
                         <div className="flex items-center gap-2">
                           <span className="w-2 h-2 rounded-full bg-emerald-500" />
                           <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-[#ccc]">
-                            Selesai
+                            {isEn ? "Completed" : "Selesai"}
                           </h3>
                         </div>
                         <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-white dark:bg-[#202020] text-slate-600 dark:text-[#888] shadow-2xs">
@@ -937,7 +941,7 @@ export default function TasksPage() {
                       <div className="space-y-2.5 min-h-[180px]">
                         {completedTasks.length === 0 ? (
                           <div className="border border-dashed border-slate-200 dark:border-[#262626] rounded-xl p-5 text-center text-slate-400 text-xs">
-                            <p>Belum ada tugas selesai</p>
+                            <p>{isEn ? "No completed tasks yet" : "Belum ada tugas selesai"}</p>
                           </div>
                         ) : (
                           completedTasks.map((task) => (
@@ -998,13 +1002,13 @@ export default function TasksPage() {
                   <table className="w-full text-left text-xs border-collapse">
                     <thead>
                       <tr className="border-b border-slate-200/80 dark:border-[#262626] bg-slate-50/70 dark:bg-[#181818] text-slate-600 dark:text-[#888]">
-                        <th className="py-3 px-4 w-12 text-center">Centang</th>
-                        <th className="py-3 px-4">Judul Tugas</th>
-                        <th className="py-3 px-4 hidden md:table-cell">Mata Kuliah</th>
-                        <th className="py-3 px-4">Status</th>
-                        <th className="py-3 px-4">Batas Waktu</th>
-                        <th className="py-3 px-4 hidden sm:table-cell">AI Ready</th>
-                        <th className="py-3 px-4 text-right">Aksi</th>
+                        <th className="py-3 px-4 w-12 text-center">{isEn ? "Check" : "Centang"}</th>
+                        <th className="py-3 px-4">{isEn ? "Task Title" : "Judul Tugas"}</th>
+                        <th className="py-3 px-4 hidden md:table-cell">{isEn ? "Course" : "Mata Kuliah"}</th>
+                        <th className="py-3 px-4">{isEn ? "Status" : "Status"}</th>
+                        <th className="py-3 px-4">{isEn ? "Due Date" : "Batas Waktu"}</th>
+                        <th className="py-3 px-4 hidden sm:table-cell">{isEn ? "AI Ready" : "AI Ready"}</th>
+                        <th className="py-3 px-4 text-right">{isEn ? "Actions" : "Aksi"}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-[#222]">
@@ -1055,7 +1059,7 @@ export default function TasksPage() {
                               {task.aiAnalysis ? (
                                 <span className="inline-flex items-center gap-1 text-xs text-indigo-600 dark:text-indigo-400 font-semibold">
                                   <Sparkles className="w-3 h-3" />
-                                  Siap
+                                  {isEn ? "Ready" : "Siap"}
                                 </span>
                               ) : (
                                 <button
@@ -1065,7 +1069,7 @@ export default function TasksPage() {
                                   }}
                                   className="text-xs text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-medium"
                                 >
-                                  + Analisis
+                                  {isEn ? "+ Analyze" : "+ Analisis"}
                                 </button>
                               )}
                             </td>
@@ -1077,7 +1081,7 @@ export default function TasksPage() {
                                   onClick={() => router.push(`/chat?taskId=${task.id}`)}
                                   className="h-6.5 px-2 text-xs text-indigo-600 dark:text-indigo-400 font-semibold"
                                 >
-                                  Tanya AI
+                                  {isEn ? "Ask AI" : "Tanya AI"}
                                 </Button>
                                 <Button
                                   variant="outline"
@@ -1085,7 +1089,7 @@ export default function TasksPage() {
                                   onClick={() => setActiveDetailTaskId(task.id)}
                                   className="h-6.5 px-2.5 text-xs rounded-lg border-slate-200 dark:border-[#2b2b2b]"
                                 >
-                                  Detail
+                                  {isEn ? "Details" : "Detail"}
                                 </Button>
                               </div>
                             </td>
@@ -1122,6 +1126,7 @@ export default function TasksPage() {
             }
           }}
           taskTitle={taskToComplete?.title}
+          language={isEn ? "en" : "id"}
         />
       </div>
     </Shell>

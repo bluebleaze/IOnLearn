@@ -268,6 +268,7 @@ export interface UserPreferences {
   toastPosition?: ToastPosition; // Posisi notifikasi toast sonner (default: 'top-right')
   taskModalStyle?: 'modal' | 'drawer'; // Gaya pop-up detail tugas: 'drawer' (panel samping) atau 'modal' (tengah layar)
   chatLayout?: 'sidebar' | 'split' | 'minimal'; // Tata letak AI Chat: 'sidebar' (default), 'split' (dual workspace), atau 'minimal'
+  language?: 'id' | 'en'; // Bahasa antarmuka: 'id' (Indonesia) atau 'en' (English)
 }
 
 export const DEFAULT_DATE_RANGE_MONTHS = 2;

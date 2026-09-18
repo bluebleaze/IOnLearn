@@ -15,6 +15,8 @@ import {
 import { TodoTask } from "../types";
 import { TaskCompleteConfirmModal } from "./TaskCompleteConfirmModal";
 
+import { useLanguage } from "@/context/LanguageContext";
+
 interface TaskCardProps {
   task: TodoTask;
   onToggleComplete: (taskId: string) => void;
@@ -39,6 +41,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   onOpenDetails,
 }) => {
   const [showConfirmComplete, setShowConfirmComplete] = useState(false);
+  const { isEn } = useLanguage();
 
   const handleCheck = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -57,7 +60,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   const getStatusInfo = () => {
     if (task.isCompleted) {
       return {
-        label: "Selesai",
+        label: isEn ? "Completed" : "Selesai",
         badgeClass: "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200/70 dark:border-emerald-800/50",
         icon: CheckCircle2,
       };
@@ -65,7 +68,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
     const now = Date.now();
     if (typeof task.dueTimestamp === "number" && !isNaN(task.dueTimestamp) && task.dueTimestamp < now) {
       return {
-        label: "Telat",
+        label: isEn ? "Overdue" : "Telat",
         badgeClass: "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200/70 dark:border-rose-800/50",
         icon: AlertCircle,
       };
@@ -77,13 +80,13 @@ export const TaskCard: React.FC<TaskCardProps> = ({
 
     if (isUrgent) {
       return {
-        label: "Perlu Dikerjakan",
+        label: isEn ? "Action Needed" : "Perlu Dikerjakan",
         badgeClass: "bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border-indigo-200/70 dark:border-indigo-800/50",
         icon: Clock,
       };
     }
     return {
-      label: "Nanti",
+      label: isEn ? "Later" : "Nanti",
       badgeClass: "bg-slate-100 dark:bg-[#1e1e24] text-slate-700 dark:text-slate-300 border-slate-200/70 dark:border-[#30303a]",
       icon: Calendar,
     };
@@ -120,7 +123,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           <div className="flex items-center justify-between gap-2">
             <div className="flex flex-wrap items-center gap-1.5 min-w-0 flex-1">
               <span className="px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/40 max-w-[170px] truncate">
-                {task.courseName || "Kuliah"}
+                {task.courseName || (isEn ? "Course" : "Kuliah")}
               </span>
 
               {/* Status Badge with Label & Icon */}
@@ -147,7 +150,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
                 }
               }}
               className="min-w-[40px] min-h-[40px] -m-2 flex items-center justify-center cursor-pointer shrink-0 focus-visible:outline-none"
-              title={task.isCompleted ? "Tandai belum selesai" : "Tandai selesai"}
+              title={task.isCompleted ? (isEn ? "Mark as incomplete" : "Tandai belum selesai") : (isEn ? "Mark as completed" : "Tandai selesai")}
               aria-label={task.isCompleted ? `Tandai "${task.title}" belum selesai` : `Tandai "${task.title}" sudah selesai`}
             >
               <span
@@ -183,7 +186,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           {task.dueDateStr && (
             <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-[#888]">
               <Clock className="w-3.5 h-3.5 text-slate-400" />
-              <span>Tenggat: <strong className="font-semibold text-slate-700 dark:text-slate-300">{task.dueDateStr}</strong></span>
+              <span>{isEn ? "Due: " : "Tenggat: "}<strong className="font-semibold text-slate-700 dark:text-slate-300">{task.dueDateStr}</strong></span>
             </div>
           )}
 
@@ -191,7 +194,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           {task.materials && task.materials.length > 0 && (
             <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-[#a3a3a3]">
               <Paperclip className="w-3.5 h-3.5" />
-              <span>{task.materials.length} Lampiran File</span>
+              <span>{task.materials.length} {isEn ? "Attachments" : "Lampiran File"}</span>
             </div>
           )}
         </div>
@@ -201,27 +204,27 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           {task.aiLoading ? (
             <div className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 text-xs font-medium animate-pulse">
               <Loader2 className="w-3 h-3 animate-spin" />
-              <span>Menyusun AI...</span>
+              <span>{isEn ? "AI generating..." : "Menyusun AI..."}</span>
             </div>
           ) : task.aiAnalysis ? (
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-indigo-50 dark:bg-[#1f1f28] text-indigo-700 dark:text-[#a5b4fc]">
-                Rangkuman
+                {isEn ? "Summary" : "Rangkuman"}
               </span>
               {checklistTotal > 0 && (
                 <span className="text-xs text-slate-600 dark:text-[#a3a3a3]">
-                  {checklistDone}/{checklistTotal} Langkah
+                  {checklistDone}/{checklistTotal} {isEn ? "Steps" : "Langkah"}
                 </span>
               )}
             </div>
           ) : (
             <span className="text-xs text-slate-500 dark:text-[#a3a3a3]">
-              Klik untuk detail & AI
+              {isEn ? "Click for details & AI" : "Klik untuk detail & AI"}
             </span>
           )}
 
           <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-indigo-600 dark:text-[#818cf8] group-hover:translate-x-0.5 transition-transform">
-            <span>Detail Tugas</span>
+            <span>{isEn ? "Task Details" : "Detail Tugas"}</span>
             <ChevronRight className="w-3.5 h-3.5" />
           </span>
         </div>
@@ -232,6 +235,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
         onClose={() => setShowConfirmComplete(false)}
         onConfirm={handleConfirmDone}
         taskTitle={task.title}
+        language={isEn ? "en" : "id"}
       />
     </>
   );

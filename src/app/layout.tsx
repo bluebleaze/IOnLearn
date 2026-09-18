@@ -3,6 +3,7 @@ import Script from 'next/script';
 import './globals.css';
 import { APP_NAME, APP_TAGLINE, APP_DESCRIPTION } from '@/lib/brand';
 import { Toaster } from '@/components/ui/sonner';
+import { LanguageProvider } from '@/context/LanguageContext';
 
 export const metadata: Metadata = {
   title: `${APP_NAME} - ${APP_TAGLINE}`,
@@ -52,8 +53,10 @@ export default function RootLayout({
       </head>
       <body suppressHydrationWarning className="bg-slate-50 text-slate-900 dark:bg-[#0c0c0c] dark:text-slate-100 min-h-screen transition-colors duration-200">
         <Script src="https://accounts.google.com/gsi/client" strategy="afterInteractive" />
-        {children}
-        <Toaster />
+        <LanguageProvider>
+          {children}
+          <Toaster />
+        </LanguageProvider>
       </body>
     </html>
   );
