@@ -33,7 +33,12 @@ const Toaster = ({ ...props }: ToasterProps) => {
     });
 
     // 3. Initial toast position from user preferences
-    const updatePosition = () => {
+    const updatePosition = (e?: Event) => {
+      const customEvent = e as CustomEvent<{ position?: ToastPosition }>;
+      if (customEvent?.detail?.position) {
+        setPosition(customEvent.detail.position);
+        return;
+      }
       const prefs = loadPreferences();
       if (prefs?.toastPosition) {
         setPosition(prefs.toastPosition);
@@ -42,11 +47,11 @@ const Toaster = ({ ...props }: ToasterProps) => {
     updatePosition();
 
     // 4. Listen for toast position change events
-    window.addEventListener("toast-position-changed", updatePosition);
+    window.addEventListener("toast-position-changed", updatePosition as EventListener);
 
     return () => {
       observer.disconnect();
-      window.removeEventListener("toast-position-changed", updatePosition);
+      window.removeEventListener("toast-position-changed", updatePosition as EventListener);
     };
   }, []);
 

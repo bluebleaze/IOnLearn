@@ -40,6 +40,7 @@ import {
   Brain,
   Zap,
   HelpCircle,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toggleThemeWithCircularAnimation } from "@/lib/theme";
@@ -159,12 +160,56 @@ export default function SettingsPage() {
     }
   }, []);
 
+  const [pendingNavigationUrl, setPendingNavigationUrl] = useState<string | null>(null);
+
   const hasChanges = useMemo(() => {
     return (
       JSON.stringify(prefs) !== JSON.stringify(initialPrefs) ||
       JSON.stringify(config) !== JSON.stringify(initialConfig)
     );
   }, [prefs, config, initialPrefs, initialConfig]);
+
+  // Guard against browser tab closing or refreshing when hasChanges is true
+  useEffect(() => {
+    if (!hasChanges) return;
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [hasChanges]);
+
+  // Guard against in-app link navigation (sidebar, navbar, breadcrumbs) when hasChanges is true
+  useEffect(() => {
+    if (!hasChanges) return;
+
+    const handleInterceptClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const link = target.closest("a, button[data-sidebar='menu-button']");
+      if (!link) return;
+
+      // Allow clicks within the sticky bottom action bar or confirmation dialog
+      if (link.closest("aside[aria-label='Aksi perubahan pengaturan']")) return;
+      if (link.closest("[data-unsaved-modal='true']")) return;
+
+      const anchor = link.tagName.toLowerCase() === "a" ? (link as HTMLAnchorElement) : link.querySelector("a");
+      const href = anchor?.getAttribute("href");
+
+      if (href && !href.startsWith("#") && !href.startsWith("javascript:") && href !== window.location.pathname) {
+        e.preventDefault();
+        e.stopPropagation();
+        setPendingNavigationUrl(href);
+      }
+    };
+
+    document.addEventListener("click", handleInterceptClick, true);
+    return () => {
+      document.removeEventListener("click", handleInterceptClick, true);
+    };
+  }, [hasChanges]);
 
   const handleSelectTheme = (targetTheme: "light" | "dark", e: React.MouseEvent) => {
     if (typeof document === "undefined") return;
@@ -177,79 +222,24 @@ export default function SettingsPage() {
 
   const handleToastPositionChange = (pos: ToastPosition) => {
     setPrefs((prev) => ({ ...prev, toastPosition: pos }));
-    try {
-      const saved = localStorage.getItem("classroom_ai_user_prefs_v1");
-      const parsed = saved ? JSON.parse(saved) : {};
-      parsed.toastPosition = pos;
-      localStorage.setItem(
-        "classroom_ai_user_prefs_v1",
-        JSON.stringify(parsed)
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("toast-position-changed", { detail: { position: pos } })
       );
-      window.dispatchEvent(new Event("toast-position-changed"));
-    } catch (e) { }
-
-    const labelMap: Record<ToastPosition, string> = {
-      "top-left": "Kiri Atas",
-      "top-center": "Tengah Atas",
-      "top-right": "Kanan Atas",
-      "bottom-left": "Kiri Bawah",
-      "bottom-center": "Tengah Bawah",
-      "bottom-right": "Kanan Bawah",
-    };
-    // Dismiss all previous toasts immediately when switching position
-    toast.dismiss();
-    toast.success("Posisi Notifikasi Diperbarui", {
-      description: `Notifikasi pop-up kini muncul di sudut ${labelMap[pos]}.`,
-    });
+    }
   };
 
   const handleTaskModalStyleChange = (style: "drawer" | "modal") => {
     setPrefs((prev) => ({ ...prev, taskModalStyle: style }));
-    try {
-      const saved = localStorage.getItem("classroom_ai_user_prefs_v1");
-      const parsed = saved ? JSON.parse(saved) : {};
-      parsed.taskModalStyle = style;
-      localStorage.setItem(
-        "classroom_ai_user_prefs_v1",
-        JSON.stringify(parsed)
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("task-modal-style-changed", { detail: { style } })
       );
-      window.dispatchEvent(new Event("task-modal-style-changed"));
-      window.dispatchEvent(new Event("taskStoreChange"));
-    } catch (e) { }
-
-    toast.dismiss();
-    toast.success("Tampilan Pop-up Diperbarui", {
-      description:
-        style === "modal"
-          ? "Detail tugas kini ditampilkan sebagai Dialog Modal melayang di tengah layar."
-          : "Detail tugas kini ditampilkan sebagai Slide-over Drawer di samping kanan."
-    });
+    }
   };
 
   const handleChatLayoutChange = (layout: "sidebar" | "split" | "minimal") => {
     setPrefs((prev) => ({ ...prev, chatLayout: layout }));
-    try {
-      const saved = localStorage.getItem("classroom_ai_user_prefs_v1");
-      const parsed = saved ? JSON.parse(saved) : {};
-      parsed.chatLayout = layout;
-      localStorage.setItem(
-        "classroom_ai_user_prefs_v1",
-        JSON.stringify(parsed)
-      );
-      window.dispatchEvent(new Event("chat-layout-changed"));
-      window.dispatchEvent(new Event("taskStoreChange"));
-    } catch (e) { }
-
-    const descMap: Record<"sidebar" | "split" | "minimal", string> = {
-      sidebar: "Tata letak AI Chat diubah ke Sidebar & Feed Percakapan.",
-      split: "Tata letak AI Chat diubah ke Dual Workspace Split Pane.",
-      minimal: "Tata letak AI Chat diubah ke Tampilan Minimalis Terfokus.",
-    };
-
-    toast.dismiss();
-    toast.success("Tata Letak Chat Diperbarui", {
-      description: descMap[layout],
-    });
   };
 
   const handleProviderChange = (
@@ -276,6 +266,19 @@ export default function SettingsPage() {
     saveAIConfig(config);
     setInitialPrefs(prefs);
     setInitialConfig(config);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("toast-position-changed", {
+          detail: { position: prefs.toastPosition || "top-right" },
+        })
+      );
+      window.dispatchEvent(
+        new CustomEvent("task-modal-style-changed", {
+          detail: { style: prefs.taskModalStyle || "drawer" },
+        })
+      );
+      window.dispatchEvent(new Event("taskStoreChange"));
+    }
     toast.success("Pengaturan Berhasil Disimpan", {
       description:
         "Semua preferensi belajar, filter waktu, dan konfigurasi AI telah diperbarui.",
@@ -285,6 +288,18 @@ export default function SettingsPage() {
   const handleDiscard = () => {
     setPrefs(initialPrefs);
     setConfig(initialConfig);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("toast-position-changed", {
+          detail: { position: initialPrefs.toastPosition || "top-right" },
+        })
+      );
+      window.dispatchEvent(
+        new CustomEvent("task-modal-style-changed", {
+          detail: { style: initialPrefs.taskModalStyle || "drawer" },
+        })
+      );
+    }
     if (initialConfig.provider === "gemini_custom") {
       const isStandard = GEMINI_MODELS.some(
         (m) => m.value === initialConfig.model
@@ -345,7 +360,13 @@ export default function SettingsPage() {
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => router.push("/")}
+            onClick={() => {
+              if (hasChanges) {
+                setPendingNavigationUrl("/");
+              } else {
+                router.push("/");
+              }
+            }}
             className="self-start sm:self-auto h-9 px-3 rounded-[10px] gap-1.5 text-xs text-slate-600 dark:text-[#a3a3a3] hover:text-slate-900 dark:hover:text-[#f5f5f5] border-slate-200/80 dark:border-white/[0.08] dark:bg-[#141414] cursor-pointer"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
@@ -454,9 +475,12 @@ export default function SettingsPage() {
               variant="outline"
               size="sm"
               onClick={() => {
-                toast.info("Uji Coba Notifikasi", {
-                  description:
-                    "Notifikasi pop-up berhasil ditampilkan pada sudut ini.",
+                const currentLabel =
+                  TOAST_POSITIONS.find(
+                    (p) => p.id === (prefs.toastPosition || "top-right")
+                  )?.label || "Kanan Atas";
+                toast.info(`Uji Coba Notifikasi (${currentLabel})`, {
+                  description: `Preview posisi notifikasi pop-up di sudut ${currentLabel}.`,
                 });
               }}
               className="h-8 px-2.5 rounded-[8px] gap-1 text-xs text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 border-indigo-200/60 dark:border-indigo-900/40 cursor-pointer"
@@ -1219,6 +1243,74 @@ export default function SettingsPage() {
               </Button>
             </div>
           </aside>
+        )}
+
+        {/* ── UNSAVED CHANGES NAVIGATION CONFIRMATION MODAL ── */}
+        {pendingNavigationUrl && (
+          <div
+            data-unsaved-modal="true"
+            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
+            onClick={() => setPendingNavigationUrl(null)}
+          >
+            <div
+              className="relative w-full max-w-sm sm:max-w-md bg-white dark:bg-[#161616] border border-slate-200/80 dark:border-[#282828] rounded-xl shadow-xl p-3.5 sm:p-4 animate-in zoom-in-95 duration-150"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Close (X) button at top right */}
+              <button
+                type="button"
+                onClick={() => setPendingNavigationUrl(null)}
+                className="absolute top-2.5 right-2.5 p-1 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-[#eee] hover:bg-slate-100 dark:hover:bg-[#222] transition cursor-pointer"
+                title="Tutup dialog"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+
+              <div className="flex items-start gap-2.5 pr-6">
+                <div className="w-7 h-7 rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 shadow-2xs mt-0.5">
+                  <AlertCircle className="w-3.5 h-3.5" />
+                </div>
+                <div className="space-y-0.5">
+                  <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-[#f0f0f0] leading-snug">
+                    Simpan Perubahan Pengaturan?
+                  </h3>
+                  <p className="text-[11px] sm:text-xs text-slate-500 dark:text-[#a0a0a0] leading-normal">
+                    Anda memiliki perubahan yang belum disimpan. Ingin menyimpan perubahan sebelum berpindah halaman?
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2.5 mt-2.5 border-t border-slate-100 dark:border-[#242424]">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    handleDiscard();
+                    const target = pendingNavigationUrl;
+                    setPendingNavigationUrl(null);
+                    if (target) router.push(target);
+                  }}
+                  className="text-xs text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900/50 hover:bg-rose-50 dark:hover:bg-rose-950/30 cursor-pointer h-7.5 px-3 rounded-lg font-medium"
+                >
+                  Buang Perubahan
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => {
+                    handleSave();
+                    const target = pendingNavigationUrl;
+                    setPendingNavigationUrl(null);
+                    if (target) router.push(target);
+                  }}
+                  className="text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xs cursor-pointer h-7.5 px-3.5 rounded-lg"
+                >
+                  Simpan & Lanjutkan
+                </Button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </Shell>
