@@ -21,6 +21,8 @@ import {
   Flame,
   ArrowRight,
   Coffee,
+  Search,
+  X,
 } from "lucide-react";
 import { Shell } from "@/components/Shell";
 import { PersonalTodo, TodoSubtask, TodoTask } from "@/types";
@@ -227,7 +229,8 @@ export default function TodoPage() {
         const mCategory = t.category?.toLowerCase().includes(q);
         const mCourse = t.courseName?.toLowerCase().includes(q);
         const mDesc = t.description?.toLowerCase().includes(q);
-        if (!mTitle && !mCategory && !mCourse && !mDesc) return false;
+        const mSubtasks = t.subtasks?.some((st) => st.title.toLowerCase().includes(q));
+        if (!mTitle && !mCategory && !mCourse && !mDesc && !mSubtasks) return false;
       }
       return true;
     });
@@ -455,20 +458,54 @@ export default function TodoPage() {
             </button>
           </div>
 
-          <div className="w-full sm:w-60">
+          <div className="relative w-full sm:w-60 group">
+            <Search className="w-3.5 h-3.5 text-slate-400 dark:text-[#737373] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none transition-colors group-focus-within:text-indigo-600 dark:group-focus-within:text-indigo-400" />
             <input
               type="text"
               placeholder="Cari to-do..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full px-3 py-1.5 text-xs rounded-xl bg-slate-100/90 dark:bg-[#181818] border border-slate-200/70 dark:border-[#262626] text-slate-900 dark:text-[#f3f3f3] placeholder:text-slate-400 dark:placeholder:text-[#666] focus:outline-none focus:bg-white dark:focus:bg-[#1f1f1f] focus:ring-1 focus:ring-slate-300 dark:focus:ring-[#333] transition-all"
+              className="w-full pl-8.5 pr-8 py-1.5 text-xs rounded-xl bg-slate-100/90 hover:bg-slate-100 dark:bg-[#181818] dark:hover:bg-[#1c1c1c] border border-slate-200/80 dark:border-[#262626] text-slate-900 dark:text-[#f3f3f3] placeholder:text-slate-400 dark:placeholder:text-[#666] focus:outline-none focus:bg-white dark:focus:bg-[#1e1e1e] focus:border-indigo-500/50 dark:focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/10 transition-all"
             />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-[#ccc] rounded-md transition cursor-pointer"
+                title="Hapus pencarian"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
           </div>
         </div>
 
         {/* To-Do Items List */}
         {filteredTodos.length === 0 ? (
-          filterTab === "active" && totalCount > 0 && activeCount === 0 ? (
+          searchQuery.trim() ? (
+            /* Search Empty State */
+            <div className="text-center py-14 px-4 bg-white dark:bg-[#161616] rounded-2xl border border-slate-200/80 dark:border-[#262626] shadow-2xs space-y-3">
+              <div className="w-12 h-12 mx-auto rounded-2xl bg-slate-100 dark:bg-[#202020] flex items-center justify-center text-slate-400">
+                <Search className="w-5 h-5" />
+              </div>
+              <h3 className="text-base font-semibold text-slate-900 dark:text-[#f3f3f3]">
+                Tidak Ada To-Do Ditemukan
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-[#888] max-w-sm mx-auto">
+                Tidak ada rencana to-do atau sub-langkah yang cocok dengan kata kunci &quot;<span className="font-semibold text-slate-800 dark:text-slate-200">{searchQuery}</span>&quot;.
+              </p>
+              <div className="pt-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSearchQuery("")}
+                  className="min-h-[40px] sm:min-h-0 text-xs rounded-xl cursor-pointer"
+                >
+                  Reset Pencarian
+                </Button>
+              </div>
+            </div>
+          ) : filterTab === "active" && totalCount > 0 && activeCount === 0 ? (
             /* Celebratory Empty State */
             <div className="text-center py-16 px-6 bg-white dark:bg-[#161616] rounded-2xl border border-slate-200/80 dark:border-[#262626] shadow-2xs space-y-4">
               <div className="w-16 h-16 mx-auto rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-2xs">

@@ -17,6 +17,8 @@ import { WhyChooseUsSection } from "@/components/WhyChooseUsSection";
 import { FAQSection } from "@/components/FAQSection";
 import { CTABanner } from "@/components/CTABanner";
 import { LandingFooter } from "@/components/LandingFooter";
+import confetti from "canvas-confetti";
+import { toast } from "@/components/ui/sonner";
 
 type Language = "ENG" | "IND";
 
@@ -41,6 +43,20 @@ export function LandingPage({
   const [heroScale, setHeroScale] = useState(1);
   const [aboutDrift, setAboutDrift] = useState(0);
   const [heroPointer, setHeroPointer] = useState({ x: 0, y: 0, active: false });
+
+  // Easter Egg: Kawaii Mode on consecutive clicks + Squish Jelly animation
+  const [isKawaiiMode, setIsKawaiiMode] = useState(false);
+  const [logoClickCount, setLogoClickCount] = useState(0);
+  const [squishKey, setSquishKey] = useState(0);
+  const logoResetTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("ionlearn_kawaii_mode");
+      if (saved === "true") setIsKawaiiMode(true);
+    } catch { }
+  }, []);
+
   const languageMenuRef = useRef<HTMLDivElement | null>(null);
   const heroSectionRef = useRef<HTMLElement | null>(null);
   const aboutSectionRef = useRef<HTMLElement | null>(null);
@@ -272,8 +288,62 @@ export function LandingPage({
     setHeroPointer({ x: 0, y: 0, active: false });
   };
 
+  const handleLogoClick = () => {
+    // 1. Instantly trigger bouncy squish effect on EVERY click
+    setSquishKey((prev) => prev + 1);
+
+    // 2. Play mini sparkle puff on clicks when already in Kawaii mode
+    if (isKawaiiMode) {
+      try {
+        confetti({
+          particleCount: 16,
+          spread: 45,
+          origin: { y: 0.45 },
+          colors: ["#ff758c", "#ff9ff3", "#c084fc", "#fbc531", "#38bdf8"],
+        });
+      } catch { }
+    }
+
+    if (logoResetTimerRef.current) {
+      clearTimeout(logoResetTimerRef.current);
+    }
+
+    const nextCount = logoClickCount + 1;
+
+    if (nextCount >= 5) {
+      setLogoClickCount(0);
+      const nextMode = !isKawaiiMode;
+      setIsKawaiiMode(nextMode);
+      try {
+        localStorage.setItem("ionlearn_kawaii_mode", String(nextMode));
+      } catch { }
+
+      if (nextMode) {
+        try {
+          confetti({
+            particleCount: 100,
+            spread: 100,
+            origin: { y: 0.45 },
+            colors: ["#ff758c", "#ff7eb3", "#fbc2eb", "#a18cd1", "#ffd1ff", "#fbc531", "#ff9ff3", "#38bdf8", "#4ade80"],
+          });
+        } catch { }
+      }
+    } else {
+      setLogoClickCount(nextCount);
+      logoResetTimerRef.current = setTimeout(() => {
+        setLogoClickCount(0);
+      }, 500);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0c0c0c] text-slate-900 dark:text-[#f5f5f5] flex flex-col font-sans relative overflow-x-hidden">
+    <div
+      className={`min-h-screen transition-colors duration-700 font-sans relative overflow-x-hidden ${
+        isKawaiiMode
+          ? "kawaii-theme bg-[#fff5f9] dark:bg-[#0e0714] text-slate-900 dark:text-[#fce7f3]"
+          : "bg-white dark:bg-[#0c0c0c] text-slate-900 dark:text-[#f5f5f5]"
+      }`}
+    >
       {/* Subtle organic Ubur Ubur background wave motif (calm, non-distracting) */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-[0.04]">
         <svg
@@ -323,16 +393,26 @@ export function LandingPage({
           {/* Left: Brand Logo & Language Switcher */}
           <div className="flex min-w-0 items-center gap-2 sm:gap-3 shrink-0 z-10">
             <a href="#home" className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <img
-                src="/logos/Ionlearnnewfulltext.png"
-                alt="IOnLearn"
-                className="h-7 sm:h-9 w-auto object-contain block dark:hidden"
-              />
-              <img
-                src="/logos/Ionlearnnewfulltext-dark.png"
-                alt="IOnLearn"
-                className="h-7 sm:h-9 w-auto object-contain hidden dark:block"
-              />
+              {isKawaiiMode ? (
+                <img
+                  src="/logos/ionlearnkawaistyle.png"
+                  alt="IOnLearn"
+                  className="h-8 sm:h-10 w-auto object-contain drop-shadow-sm transition-all duration-300 hover:scale-105"
+                />
+              ) : (
+                <>
+                  <img
+                    src="/logos/Ionlearnnewfulltext.png"
+                    alt="IOnLearn"
+                    className="h-7 sm:h-9 w-auto object-contain block dark:hidden"
+                  />
+                  <img
+                    src="/logos/Ionlearnnewfulltext-dark.png"
+                    alt="IOnLearn"
+                    className="h-7 sm:h-9 w-auto object-contain hidden dark:block"
+                  />
+                </>
+              )}
             </a>
 
             <div ref={languageMenuRef} className="relative">
@@ -569,25 +649,64 @@ export function LandingPage({
             willChange: "transform",
           }}
         >
-          {/* Hero Brand Logo Title with Pop Entrance */}
-          <h1 className="animate-hero-logo mb-6 sm:mb-8 flex flex-col items-center justify-center hover:scale-[1.02] transition-transform duration-300">
+          {/* Hero Brand Logo Title with Pop Entrance & Secret Interactive Kawaii Easter Egg */}
+          <div
+            onClick={handleLogoClick}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                handleLogoClick();
+              }
+            }}
+            className="animate-hero-logo mb-6 sm:mb-8 flex flex-col items-center justify-center cursor-pointer select-none relative group"
+            style={{ WebkitTapHighlightColor: "transparent" }}
+          >
             <span className="sr-only">IOnLearn - Sinkronkan Tugas Kelas, Taklukkan dengan AI</span>
-            {/* Light Mode Logo */}
-            <img
-              src="/logos/Ionlearnnewfulltext.png"
-              alt="IOnLearn"
-              className="h-16 sm:h-20 md:h-24 lg:h-28 w-auto object-contain block dark:hidden drop-shadow-sm select-none"
-            />
-            {/* Dark Mode Logo */}
-            <img
-              src="/logos/Ionlearnnewfulltext-dark.png"
-              alt="IOnLearn"
-              className="h-16 sm:h-20 md:h-24 lg:h-28 w-auto object-contain hidden dark:block drop-shadow-sm select-none"
-            />
-          </h1>
 
-          {/* Hero Tagline with Fade-Up Entrance */}
-          <p className="animate-hero-tagline font-cal text-[clamp(2rem,6vw,4rem)] font-semibold tracking-tight text-slate-900 dark:text-[#f5f5f5] max-w-[14ch] sm:max-w-2xl mx-auto mb-8 sm:mb-10 leading-[0.95] sm:leading-snug whitespace-pre-line">
+            {/* Inner Squish Wrapper (re-triggers animation on EVERY single click) */}
+            <div
+              key={squishKey}
+              className="relative flex flex-col items-center transition-transform hover:scale-[1.04]"
+              style={{
+                animation: squishKey > 0 ? "logoSquish 0.52s cubic-bezier(0.28, 0.84, 0.42, 1) both" : undefined,
+                transformOrigin: "bottom center",
+              }}
+            >
+              {isKawaiiMode ? (
+                <div className="relative flex flex-col items-center group/kawaii animate-in zoom-in-95 duration-300">
+                  <img
+                    src="/logos/ionlearnkawaistyle.png"
+                    alt="IOnLearn"
+                    className="kawaii-sticker-logo h-20 sm:h-24 md:h-28 lg:h-32 w-auto object-contain select-none relative z-10 transition-transform duration-300 group-hover/kawaii:scale-105"
+                  />
+                </div>
+              ) : (
+                <div className="relative flex flex-col items-center">
+                  {/* Light Mode Logo */}
+                  <img
+                    src="/logos/Ionlearnnewfulltext.png"
+                    alt="IOnLearn"
+                    className="h-16 sm:h-20 md:h-24 lg:h-28 w-auto object-contain block dark:hidden drop-shadow-sm select-none"
+                  />
+                  {/* Dark Mode Logo */}
+                  <img
+                    src="/logos/Ionlearnnewfulltext-dark.png"
+                    alt="IOnLearn"
+                    className="h-16 sm:h-20 md:h-24 lg:h-28 w-auto object-contain hidden dark:block drop-shadow-sm select-none"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Hero Tagline - Crisp, Clean High-Craft Typography */}
+          <p
+            className={`animate-hero-tagline font-cal text-[clamp(2rem,6vw,4rem)] font-semibold tracking-tight max-w-[14ch] sm:max-w-2xl mx-auto mb-8 sm:mb-10 leading-[0.95] sm:leading-snug whitespace-pre-line transition-colors duration-500 ${
+              isKawaiiMode ? "text-slate-900 dark:text-[#fce7f3]" : "text-slate-900 dark:text-[#f5f5f5]"
+            }`}
+          >
             {uiText.hero.tagline}
           </p>
 
@@ -609,7 +728,11 @@ export function LandingPage({
             <button
               type="button"
               onClick={onDemoMode}
-              className="group relative overflow-hidden rounded-2xl border border-slate-300 dark:border-[#333333] bg-white dark:bg-[#121212] px-5 sm:px-6 py-3 sm:py-3.5 text-slate-800 dark:text-[#e5e5e5] shadow-[0_4px_14px_rgba(15,23,42,0.05)] transition-all duration-300 ease-out hover:border-indigo-400 dark:hover:border-indigo-500 hover:shadow-[0_12px_30px_rgba(79,70,229,0.12)] hover:px-6 sm:hover:px-7 dark:hover:text-white cursor-pointer active:scale-95 w-full sm:w-auto"
+              className={`group relative overflow-hidden rounded-2xl border px-5 sm:px-6 py-3 sm:py-3.5 shadow-[0_4px_14px_rgba(15,23,42,0.05)] transition-all duration-300 ease-out hover:px-6 sm:hover:px-7 cursor-pointer active:scale-95 w-full sm:w-auto ${
+                isKawaiiMode
+                  ? "border-pink-200/70 dark:border-pink-900/50 bg-white/90 dark:bg-[#1a1120] text-slate-800 dark:text-pink-100 hover:border-pink-300 dark:hover:border-pink-700 hover:shadow-[0_8px_20px_rgba(244,63,94,0.1)]"
+                  : "border-slate-300 dark:border-[#333333] bg-white dark:bg-[#121212] text-slate-800 dark:text-[#e5e5e5] hover:border-indigo-400 dark:hover:border-indigo-500 hover:shadow-[0_12px_30px_rgba(79,70,229,0.12)] dark:hover:text-white"
+              }`}
             >
               <span className="relative flex items-center justify-center gap-1.5 text-sm sm:text-base font-semibold transition-all duration-300 ease-out group-hover:gap-2">
                 <span>{uiText.hero.demoButton}</span>
@@ -622,15 +745,19 @@ export function LandingPage({
               type="button"
               onClick={onConnectGoogle}
               disabled={isAuthenticating}
-              className="group relative overflow-hidden rounded-2xl bg-[#4b43c6] hover:bg-[#3e36b8] dark:bg-[#5b52e0] dark:hover:bg-[#4d44d0] px-5 sm:px-7 py-3 sm:py-3.5 text-white shadow-[0_10px_28px_rgba(79,70,229,0.28)] hover:shadow-[0_18px_36px_rgba(79,70,229,0.35)] hover:px-6 sm:hover:px-8 transition-all duration-300 ease-out cursor-pointer disabled:opacity-50 active:scale-95 w-full sm:w-auto"
+              className={`group relative overflow-hidden rounded-2xl px-5 sm:px-7 py-3 sm:py-3.5 text-white hover:px-6 sm:hover:px-8 transition-all duration-300 ease-out cursor-pointer disabled:opacity-50 active:scale-95 w-full sm:w-auto ${
+                isKawaiiMode
+                  ? "bg-[#f43f5e] hover:bg-[#e11d48] dark:bg-[#f43f5e] dark:hover:bg-[#e11d48] shadow-[0_10px_24px_rgba(244,63,94,0.35)] hover:shadow-[0_14px_30px_rgba(244,63,94,0.45)]"
+                  : "bg-[#4b43c6] hover:bg-[#3e36b8] dark:bg-[#5b52e0] dark:hover:bg-[#4d44d0] shadow-[0_10px_28px_rgba(79,70,229,0.28)] hover:shadow-[0_18px_36px_rgba(79,70,229,0.35)]"
+              }`}
             >
               <span className="relative flex items-center justify-center gap-2 text-sm sm:text-base font-semibold transition-all duration-300 ease-out group-hover:gap-2.5">
                 {/* Clean SVG Google icon */}
                 <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
-                  <path fill="#ffffff" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" opacity="0.9"/>
-                  <path fill="#ffffff" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" opacity="0.95"/>
-                  <path fill="#ffffff" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" opacity="0.9"/>
-                  <path fill="#ffffff" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" opacity="0.95"/>
+                  <path fill="#ffffff" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" opacity="0.9" />
+                  <path fill="#ffffff" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" opacity="0.95" />
+                  <path fill="#ffffff" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" opacity="0.9" />
+                  <path fill="#ffffff" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" opacity="0.95" />
                 </svg>
                 <span>
                   {isAuthenticating ? (
@@ -669,7 +796,11 @@ export function LandingPage({
         data-reveal
         className="landing-scroll-section w-full max-w-4xl mx-auto px-4 sm:px-6 pt-20 sm:pt-28 text-center scroll-mt-20"
       >
-        <span className="font-montserrat text-xs sm:text-sm font-bold text-[#4f46e5] dark:text-[#818cf8] tracking-wider lowercase mb-2 inline-block">
+        <span
+          className={`font-montserrat text-xs sm:text-sm font-bold tracking-wider lowercase mb-2 inline-block transition-colors duration-300 ${
+            isKawaiiMode ? "text-pink-600 dark:text-pink-400" : "text-[#4f46e5] dark:text-[#818cf8]"
+          }`}
+        >
           {uiText.sections.aboutEyebrow}
         </span>
 

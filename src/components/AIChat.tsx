@@ -357,37 +357,76 @@ const CodeBlock = ({ inline, className, children, ...props }: any) => {
 const formatMarkdownTables = (content: string): string => {
   if (!content) return "";
   let text = cleanLatexMath(content);
+
   // 1. Split concatenated table rows `| ... | | ... |` or `|:---| | 1 |` into separate lines
   text = text.replace(/\|\s*\|\s*(?=[^|\n]+?\|)/g, "|\n|");
 
   // 2. Process line by line to ensure consecutive table rows stay together, with blank lines around the table block
   const lines = text.split("\n");
   const result: string[] = [];
-  let inTable = false;
+  let tableBuffer: string[] = [];
+
+  const flushTableBuffer = () => {
+    if (tableBuffer.length === 0) return;
+
+    const normalizedRows: string[] = [];
+    for (const r of tableBuffer) {
+      let trimmed = r.trim();
+      if (!trimmed.startsWith("|")) trimmed = "| " + trimmed;
+      if (!trimmed.endsWith("|")) trimmed = trimmed + " |";
+      normalizedRows.push(trimmed);
+    }
+
+    if (normalizedRows.length > 0) {
+      // Check if second row is a valid Markdown table divider (e.g., |:---|:---| or |---|---|)
+      const isDivider = (row: string) => {
+        const cells = row.split("|").slice(1, -1);
+        return cells.length > 0 && cells.every((c) => /^[\s:-]+$/.test(c.trim()) && c.includes("-"));
+      };
+
+      if (normalizedRows.length === 1 || !isDivider(normalizedRows[1])) {
+        // Insert auto-generated divider row after header
+        const headerCells = normalizedRows[0].split("|").slice(1, -1);
+        const colCount = Math.max(headerCells.length, 1);
+        const autoDivider = `| ${Array(colCount).fill("---").join(" | ")} |`;
+        normalizedRows.splice(1, 0, autoDivider);
+      }
+
+      // Ensure preceding blank line if previous line had content
+      if (result.length > 0 && result[result.length - 1].trim() !== "") {
+        result.push("");
+      }
+
+      result.push(...normalizedRows);
+
+      // Ensure trailing blank line after table block
+      result.push("");
+    }
+
+    tableBuffer = [];
+  };
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    const isTableRow = /^\s*\|.+?\|\s*$/.test(line);
+    const trimmed = line.trim();
+
+    // Check if line is a table row (starts/ends with pipe or has multiple pipe delimiters)
+    const isTableRow =
+      trimmed.length > 0 &&
+      (/^\s*\|.+?\|\s*$/.test(trimmed) || (trimmed.includes("|") && trimmed.split("|").length >= 3));
 
     if (isTableRow) {
-      if (!inTable) {
-        // Start of table block: ensure preceding blank line if previous line had content
-        if (result.length > 0 && result[result.length - 1].trim() !== "") {
-          result.push("");
-        }
-        inTable = true;
-      }
-      result.push(line.trim());
+      tableBuffer.push(trimmed);
     } else {
-      if (inTable) {
-        // End of table block: ensure a blank line after the table block
-        if (line.trim() !== "") {
-          result.push("");
-        }
-        inTable = false;
+      if (tableBuffer.length > 0) {
+        flushTableBuffer();
       }
       result.push(line);
     }
+  }
+
+  if (tableBuffer.length > 0) {
+    flushTableBuffer();
   }
 
   return result.join("\n");
@@ -1785,6 +1824,16 @@ export const AIChat: React.FC<AIChatProps> = ({
     return () => clearTimeout(timer);
   }, [inputPrompt, attachedFiles, autoDetectAndAttachYouTube]);
 
+  // Auto-resize textarea when inputPrompt changes
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      if (inputPrompt) {
+        textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 160)}px`;
+      }
+    }
+  }, [inputPrompt]);
+
   // Textarea input and @mention detector
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
@@ -2839,7 +2888,7 @@ export const AIChat: React.FC<AIChatProps> = ({
         <div className="relative flex flex-col bg-white dark:bg-[#161616] border border-slate-200/80 dark:border-[#262626] rounded-2xl shadow-2xs focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500/40 transition-all">
           <textarea
             ref={textareaRef}
-            rows={isCentered ? 3 : 1}
+            rows={1}
             value={inputPrompt}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
@@ -2853,11 +2902,11 @@ export const AIChat: React.FC<AIChatProps> = ({
                     ? `Tanyakan tentang catatan "${activeNote.title}"…`
                     : "Tanyakan konsep, rumus, lampirkan berkas, atau tempel link YouTube… (Enter untuk kirim)"
             }
-            className="w-full bg-transparent border-0 focus:outline-none text-xs sm:text-sm text-slate-900 dark:text-[#ececec] placeholder:text-slate-400 dark:placeholder:text-[#666] pt-3.5 px-3.5 resize-none max-h-40 min-h-[24px] leading-relaxed"
+            className="w-full bg-transparent border-0 focus:outline-none text-xs sm:text-sm text-slate-900 dark:text-[#ececec] placeholder:text-slate-400 dark:placeholder:text-[#666] pt-3 px-3.5 pb-1 resize-none max-h-40 min-h-[36px] leading-relaxed"
           />
 
           {/* Action Row inside Textarea */}
-          <div className="flex items-center justify-between px-3 pb-2.5 pt-1">
+          <div className="flex items-center justify-between px-3 pb-2 pt-0.5">
             <div className="flex items-center gap-1 text-slate-400">
               {/* AI Tools & Attachments Floating Menu */}
               <div className="relative" ref={toolsMenuRef}>
@@ -3874,11 +3923,11 @@ export const AIChat: React.FC<AIChatProps> = ({
           /* ── EMPTY STATE: CLEAN MINIMALIST CENTERED HERO ── */
           <div className="flex flex-col items-center justify-center min-h-full py-12 px-4 sm:px-6 text-center max-w-2xl mx-auto">
             {/* Logo / Brand Mark */}
-            <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-[#141414] border border-indigo-100 dark:border-[#262626] flex items-center justify-center mb-3.5 shadow-2xs">
+            <div className="w-24 h-24 sm:w-28 sm:h-28 flex items-center justify-center mb-3 select-none">
               <img
-                src="/logos/Ionlearnnewkecil.png"
-                alt="IOnLearn"
-                className="w-7 h-7 object-contain"
+                src="/logos/IOnLearn_mascot.svg"
+                alt="IOnLearn Mascot"
+                className="w-full h-full object-contain drop-shadow-sm transition-transform duration-300 hover:scale-105"
               />
             </div>
 
@@ -3939,8 +3988,14 @@ export const AIChat: React.FC<AIChatProps> = ({
                     }`}
                 >
                   {!isUser && (
-                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-indigo-600 dark:bg-indigo-500 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
-                      <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    <div className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center shrink-0 mt-0.5 select-none">
+                      <img
+                        src="/logos/IOnLearn_mascot.svg"
+                        alt="AI Mascot"
+                        className={`w-full h-full object-contain transition-transform duration-200 ${
+                          m.isStreaming ? "animate-mascot-generating" : ""
+                        }`}
+                      />
                     </div>
                   )}
 
@@ -4834,11 +4889,15 @@ export const AIChat: React.FC<AIChatProps> = ({
 
             {/* Loading Thinking Indicator (only shown if not already rendering inline streaming placeholder) */}
             {isLoading && !messages.some((m) => m.isStreaming) && (
-              <div className="flex gap-3.5 justify-start">
-                <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0">
-                  <Loader2 className="w-4 h-4 animate-spin" />
+              <div className="flex gap-3 items-center justify-start">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center shrink-0 select-none">
+                  <img
+                    src="/logos/IOnLearn_mascot.svg"
+                    alt="AI Mascot"
+                    className="w-full h-full object-contain animate-mascot-generating"
+                  />
                 </div>
-                <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-[#7f7f7f] py-2">
+                <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-[#7f7f7f] py-1">
                   <span>{APP_NAME} sedang menyusun bimbingan</span>
                   <span className="flex gap-1 items-center">
                     <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 dark:bg-indigo-400 animate-pulse" />
