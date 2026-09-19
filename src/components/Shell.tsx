@@ -90,10 +90,11 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
   const { isEn, t } = useLanguage();
 
   useEffect(() => {
-    setHydrated(true);
-    setToken(ClassroomService.getStoredToken());
+    const storedToken = ClassroomService.getStoredToken();
     const storedProfile = ClassroomService.getUserProfile();
+    setToken(storedToken);
     setUserProfile(storedProfile);
+    setHydrated(true);
 
     if (typeof window !== "undefined") {
       setIsDark(document.documentElement.classList.contains("dark"));
@@ -243,16 +244,21 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
   useEffect(() => {
     if (!hydrated) return;
 
-    if (!token) {
+    const currentToken = token || ClassroomService.getStoredToken();
+    if (!currentToken) {
       if (
         pathname !== "/" &&
         pathname !== "/landing" &&
         pathname !== "/privacy" &&
         pathname !== "/terms"
       ) {
-        router.replace("/");
+        window.location.href = "/";
       }
       return;
+    }
+
+    if (!token && currentToken) {
+      setToken(currentToken);
     }
 
     // If logged in, check onboarding status for this specific account
@@ -421,16 +427,18 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
 
         localStorage.setItem(key, JSON.stringify(newTasks));
         persist(newTasks);
-        await SyncManager.sync(result.token, {
+
+        // Run sync in background so redirection is instantaneous and never hangs
+        SyncManager.sync(result.token, {
           overrideTasks: newTasks,
           overrideEmail: result.profile.email,
-        });
+          silent: true,
+        }).catch((err) => console.warn("Background sync error on login:", err));
 
-        if (!isOnboardingCompleted(result.profile.email)) {
-          router.replace("/onboarding");
-        } else {
-          router.replace("/dashboard");
-        }
+        const targetUrl = !isOnboardingCompleted(result.profile.email)
+          ? "/onboarding"
+          : "/dashboard";
+        window.location.href = targetUrl;
       } else {
         setLoginError("Gagal mendapatkan akses dari Google.");
       }
@@ -484,11 +492,10 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
       setSpotlightPending(true, "pelajar@contoh.com");
     }
 
-    if (!isOnboardingCompleted("pelajar@contoh.com")) {
-      router.replace("/onboarding");
-    } else {
-      router.replace("/dashboard");
-    }
+    const targetUrl = !isOnboardingCompleted("pelajar@contoh.com")
+      ? "/onboarding"
+      : "/dashboard";
+    window.location.href = targetUrl;
   };
 
   const handleOnboardingSave = (prefs: UserPreferences) => {

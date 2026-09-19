@@ -23,14 +23,14 @@ export default function OnboardingPage() {
     const profile = ClassroomService.getUserProfile();
     setOnboardingCompleted(true, profile?.email);
     setSpotlightPending(true, profile?.email);
-    router.push("/dashboard");
+    window.location.href = "/dashboard";
   };
 
   const handleSkip = () => {
     const profile = ClassroomService.getUserProfile();
     setOnboardingCompleted(true, profile?.email);
     setSpotlightPending(true, profile?.email);
-    router.push("/dashboard");
+    window.location.href = "/dashboard";
   };
 
   if (isAuthenticated === null) {

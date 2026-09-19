@@ -1280,7 +1280,7 @@ export function OnboardingFlow({
     if (onComplete) {
       onComplete(finalPrefs);
     } else {
-      router.push("/dashboard");
+      window.location.href = "/dashboard";
     }
   };
 
@@ -1291,7 +1291,7 @@ export function OnboardingFlow({
     if (onSkip) {
       onSkip();
     } else {
-      router.push("/dashboard");
+      window.location.href = "/dashboard";
     }
   };
 
@@ -1403,7 +1403,7 @@ export function OnboardingFlow({
               if (onSkip) {
                 onSkip();
               } else {
-                router.push("/dashboard");
+                window.location.href = "/dashboard";
               }
             }}
             className="px-2.5 py-1 rounded-xl text-xs font-semibold flex items-center gap-1.5 border border-slate-200/80 dark:border-white/[0.08] bg-white/80 dark:bg-[#161616] text-slate-700 dark:text-[#a3a3a3] hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#202020] transition-colors cursor-pointer shadow-2xs"

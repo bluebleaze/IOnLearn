@@ -31,15 +31,14 @@ export default function RootHomePage() {
     const token = ClassroomService.getStoredToken();
     if (token) {
       const profile = ClassroomService.getUserProfile();
-      if (!isOnboardingCompleted(profile?.email)) {
-        router.replace("/onboarding");
-      } else {
-        router.replace("/dashboard");
-      }
+      const targetUrl = !isOnboardingCompleted(profile?.email)
+        ? "/onboarding"
+        : "/dashboard";
+      window.location.href = targetUrl;
     } else {
       setCheckingAuth(false);
     }
-  }, [router]);
+  }, []);
 
   if (checkingAuth) {
     return null; // Prevents flashing landing page when already authenticated
@@ -131,16 +130,18 @@ export default function RootHomePage() {
 
         localStorage.setItem(key, JSON.stringify(newTasks));
         persist(newTasks);
-        await SyncManager.sync(result.token, {
+
+        // Run sync in background so login redirect is instantaneous
+        SyncManager.sync(result.token, {
           overrideTasks: newTasks,
           overrideEmail: result.profile.email,
-        });
+          silent: true,
+        }).catch((err) => console.warn("Background sync error on login:", err));
 
-        if (!isOnboardingCompleted(result.profile.email)) {
-          router.replace("/onboarding");
-        } else {
-          router.replace("/dashboard");
-        }
+        const targetUrl = !isOnboardingCompleted(result.profile.email)
+          ? "/onboarding"
+          : "/dashboard";
+        window.location.href = targetUrl;
       } else {
         setLoginError("Gagal mendapatkan akses dari Google.");
       }
@@ -181,11 +182,10 @@ export default function RootHomePage() {
       setSpotlightPending(true, "pelajar@contoh.com");
     }
 
-    if (!isOnboardingCompleted("pelajar@contoh.com")) {
-      router.replace("/onboarding");
-    } else {
-      router.replace("/dashboard");
-    }
+    const targetUrl = !isOnboardingCompleted("pelajar@contoh.com")
+      ? "/onboarding"
+      : "/dashboard";
+    window.location.href = targetUrl;
   };
 
   return (
