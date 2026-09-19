@@ -24,11 +24,11 @@ IOnLearn ("Switch ON Your Learning") is a free, copyleft open-source academic pr
 
 By integrating directly with Google Classroom through strictly read-only scopes, IOnLearn categorizes upcoming assignments by urgency, parses syllabus attachments, and pairs students with a Socratic AI study companion. Rather than generating direct answers that bypass critical thinking, the AI tutor scaffolds learning step-by-step to build conceptual mastery.
 
-IOnLearn is completely open-source under the **GNU General Public License v3 (GPLv3)**. It is model-agnostic, supporting both cloud APIs (Google Gemini) and local or custom-routed LLMs (Ollama, LM Studio, 9router, omnirouter, vLLM).
+IOnLearn is completely open-source under the **GNU General Public License v3 (GPLv3)**. It is model-agnostic, supporting both cloud APIs (Google Gemini) and local or custom-routed LLMs ([Ollama](https://github.com/ollama/ollama), [LM Studio](https://lmstudio.ai/), [9router](https://github.com/decolua/9router), [OmniRoute](https://github.com/diegosouzapw/OmniRoute), [vLLM](https://github.com/vllm-project/vllm)).
 
 ---
 
-## 🎯 Alignment with Competition Theme & SDGs (Infinitera 2.0)
+## Alignment with Competition Theme and SDGs (Infinitera 2.0)
 
 > **Event**: INFINITERA 2.0 — Web Development Competition  
 > **Host**: Himpunan Mahasiswa Teknik Informatika (HM TIF), Universitas Islam Sultan Agung (UNISSULA)  
@@ -49,29 +49,38 @@ Quality Education   Industry, Innovation           Sustainable Cities    Climate
 (Inklusif & Merata) & Infrastructure (Tangguh)    & Communities (Aman)  (Paperless & Green)
 ```
 
-### 1. 🎓 SDG 4 — Quality Education (Pendidikan Berkualitas)
-*Mandat Subtema: "Menyediakan pendidikan yang inklusif, merata, dan berkualitas."*
+### 1. 🎓 [SDG 4 — Quality Education](https://sdgs.un.org/goals/goal4) (Pendidikan Berkualitas)
+*Mandat Subtema: "Menyediakan pendidikan yang inklusif, merata, dan berkualitas." — [UN SDG 4 Details](https://sdgs.un.org/goals/goal4)*
 - **Democratizing 1-on-1 Academic Tutoring**: Private human tutoring is often prohibitively expensive. IOnLearn is 100% free and open-source (GPLv3), providing every student—regardless of socioeconomic background—with a 24/7 personal tutor.
 - **Socratic Pedagogy (Anti-Cognitive Atrophy)**: Unlike generic LLMs that spoon-feed direct answers, IOnLearn guides students step-by-step using Socratic questioning, building genuine conceptual mastery and critical thinking skills.
-- **Inclusive & Adaptive Learning**: Features auto-detecting bilingual support (Indonesian 🇮🇩 & English 🇬🇧), customizable learning styles (Visual, Step-by-Step, In-Depth), and full accessibility support (screen-reader friendly, responsive keyboard navigation, dark/light modes).
+- **Inclusive & Adaptive Learning**: Features auto-detecting bilingual support (Indonesian and English), customizable learning styles (Visual, Step-by-Step, In-Depth), and full accessibility support (screen-reader friendly, responsive keyboard navigation, dark/light modes).
 
-### 2. 💡 SDG 9 — Industry, Innovation, and Infrastructure (Industri, Inovasi, dan Infrastruktur)
-*Mandat Subtema: "Membangun infrastruktur yang tangguh dan mendorong inovasi."*
+### 2. 💡 [SDG 9 — Industry, Innovation, and Infrastructure](https://sdgs.un.org/goals/goal9) (Industri, Inovasi, dan Infrastruktur)
+*Mandat Subtema: "Membangun infrastruktur yang tangguh dan mendorong inovasi." — [UN SDG 9 Details](https://sdgs.un.org/goals/goal9)*
 - **Model-Agnostic & Decentralized Edge AI**: IOnLearn breaks proprietary vendor lock-in by supporting local, offline LLMs (Ollama, LM Studio, vLLM) on consumer laptops, allowing students in remote areas with unstable internet to still access AI tutoring without relying on cloud data centers.
 - **Resilient Hybrid Architecture**: Uses local-first offline caching paired with Google Cloud Firestore synchronization, ensuring continuity of study sessions even during network disruptions.
 - **Open-Source Innovation (GPLv3)**: Open code guarantees transparency, security auditing, and continuous community development without reliance on closed commercial infrastructure.
 
-### 3. 🏙️ SDG 11 — Sustainable Cities and Communities (Kota dan Permukiman yang Berkelanjutan)
-*Mandat Subtema: "Mewujudkan kota yang aman, nyaman, dan ramah lingkungan."*
+### 3. 🏙️ [SDG 11 — Sustainable Cities and Communities](https://sdgs.un.org/goals/goal11) (Kota dan Permukiman yang Berkelanjutan)
+*Mandat Subtema: "Mewujudkan kota yang aman, nyaman, dan ramah lingkungan." — [UN SDG 11 Details](https://sdgs.un.org/goals/goal11)*
 - **Decentralized Remote Study Hub**: Reduces urban traffic congestion and daily commuting burdens by enabling students and study groups to organize, analyze, and complete academic assignments from home or local community centers.
 - **Safe, Private, & Ethical Digital Community**: Enforces strictly read-only Google Classroom and Drive scopes. Student submissions and academic data are never monetized, sold, or used to train third-party foundation models.
 - **Community Learning Infrastructure**: Lightweight Progressive Web App (PWA) architecture runs smoothly on affordable devices in public libraries, school labs, and community centers.
 
-### 4. 🌿 SDG 13 — Climate Action (Penanganan Perubahan Iklim)
-*Mandat Subtema: "Mengambil tindakan untuk mengatasi perubahan iklim."*
+### 4. 🌿 [SDG 13 — Climate Action](https://sdgs.un.org/goals/goal13) (Penanganan Perubahan Iklim)
+*Mandat Subtema: "Mengambil tindakan untuk mengatasi perubahan iklim." — [UN SDG 13 Details](https://sdgs.un.org/goals/goal13)*
 - **100% Paperless Academic Lifecycle**: Eliminates physical paper printing for homework assignments, syllabus packets, study sheets, and flashcards by digitizing ingestion and providing rich-text note archiving.
 - **Green Computing & Low-Carbon AI**: Supports ultra-lightweight, quantized, energy-efficient models (such as `gemini-3.1-flash-lite`, `qwen2.5:7b`, and `llama3.2`) that consume significantly less electricity and compute power than massive server clusters.
 - **Reduction of Transportation Carbon Footprint**: By bringing interactive tutoring directly to learners' screens, IOnLearn eliminates unnecessary physical travel to tutoring centers, directly cutting vehicle greenhouse gas emissions.
+
+---
+
+## Live Demo & Juror Testing Access
+
+- **Public Production Deployment**: [https://ionlearn.my.id](https://ionlearn.my.id)
+- **Instant Demo Mode (Recommended for Evaluators)**:
+  - To evaluate the platform without signing into an active school Google Classroom account, simply click **"Coba Mode Demo" (Try Demo Mode)** on the landing page.
+  - This immediately initializes a simulated student profile pre-loaded with realistic courses, upcoming deadline tasks, syllabus attachments, and study notes ready for testing with the AI Tutor.
 
 ---
 
@@ -82,10 +91,72 @@ Quality Education   Industry, Innovation           Sustainable Cities    Climate
   - **Step-by-Step Guided Reasoning**: Helps students dissect complex problems, understand core principles, and arrive at answers independently.
   - **Attachment & Document Ingestion**: Reads PDFs, slide decks, and documents attached to Classroom assignments so tutoring is grounded directly in official course materials.
   - **Adaptive Study Modes**: Automatically generates topic summaries, review flashcards, practice quizzes, and simplified conceptual breakdowns.
+- **Full-Page Interactive Onboarding Guide**: Comprehensive full-screen visual walkthrough for first-time visitors that introduces all platform capabilities and explains an effective 4-step daily study workflow.
+- **Adaptive Language & Geolocation Engine**: Automatically detects user timezone and browser locale to default to Indonesian or English, with instant manual toggle in Settings.
 - **Task & Deadline Management**: Automated sorting into actionable categories: To-Do, Upcoming, Late, and Completed.
 - **Study Notes Workspace**: Markdown-enabled notebook for archiving lecture summaries, AI conversations, and personal study insights grouped by course.
+- **AI Document Studio (.docx, .pptx, .xlsx)**: Convert AI explanations, study notes, and tabular data into formatted Word documents, PowerPoint presentations, and Excel spreadsheets with a visual GUI customizer.
+- **Instant Guest / Demo Evaluation Mode**: Test drive the full platform without Google OAuth using pre-seeded academic data.
 - **Modern Responsive Interface**: Clean, distraction-free UI with full Dark Mode and Light Mode support, installable as a Progressive Web App (PWA) across desktop, tablet, and mobile.
 - **Strict Read-Only Privacy**: Only requests read-only permissions from Google Classroom and Google Drive. The application never modifies, creates, or deletes user files or submissions.
+
+---
+
+## AI Document Studio and GUI Customizer (.docx, .pptx, .xlsx)
+
+IOnLearn includes a built-in document authoring studio that compiles native Microsoft Office files entirely client-side without sending content to third-party conversion servers. Students can transform AI tutoring chats and lecture summaries into formal academic deliverables through an interactive modal customizer:
+
+### 1. Microsoft Word (.docx) — Academic Paper Generator
+- **Formal Academic Letterhead (Kop Surat)**: Add official school/university headers, custom institutional logos, institution addresses, and divider borders.
+- **Author Identity & Metadata**: Pre-fill student name, student ID (NIM/NISN), course subject, supervisor/teacher name, and class section.
+- **Strict Academic Formatting**:
+  - Standard thesis margins: **4 cm left, 3 cm top, right, and bottom** (configurable to normal or compact).
+  - Standard academic typography: Times New Roman, Calibri, Arial, Georgia, or Garamond.
+  - Line spacing options: 1.15, 1.5, or 2.0 with full text justification.
+- **Markdown & Math Compilation**: Seamlessly translates headings, bullet points, callout boxes, and tabular data into native Word XML elements.
+
+### 2. Microsoft PowerPoint (.pptx) — Visual Presentation Builder
+- **Automatic Slide Deck Generation**: Converts AI study breakdowns and coursework summaries into multi-slide presentation decks via `pptxgenjs`.
+- **Presentation Aspect Ratios**: Choose between modern **16:9 Widescreen** or classic **4:3 Projector** layouts.
+- **Curated Slide Themes**: Royal Indigo, Cobalt Blue, Emerald, Modern Dark, and Warm Amber palettes.
+- **Structured Content Layouts**: Title slides, bullet-point cards, comparison blocks, and concluding Q&A slides with consistent typography.
+
+### 3. Microsoft Excel (.xlsx) — Tabular Data Workbook Generator
+- **Structured Data Export**: Automatically converts tables, project budgets, experimental lab readings, and grade trackers into spreadsheets via `xlsx`.
+- **Professional Table Styling**: Color-coded header rows, zebra-striped records, custom borders, and auto-fitted column widths.
+- **Multiple Theme Presets**: Emerald Excel, Modern Teal, Royal Indigo, and Graphite Slate.
+
+### 4. In-Browser Interactive GUI Customizer
+- **Real-Time Visual Preview**: Inspect document layout, typography, and theme styling before downloading.
+- **Logo Drag-and-Drop Uploader**: Embed your university or school emblem directly into generated headers and title slides.
+- **Zero-Latency Client-Side Build**: Generates `.docx`, `.pptx`, and `.xlsx` binaries in-memory inside the browser with zero cloud conversion delay and 100% data privacy.
+
+---
+
+## System Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              CLIENT LAYER (PWA)                             │
+│  Next.js 16 (App Router) · React 19 · Tailwind CSS · Fullscreen Tour · PWA │
+└──────────────┬───────────────────────────────┬──────────────────────────────┘
+               │                               │
+               ▼                               ▼
+┌──────────────────────────────┐ ┌────────────────────────────────────────────┐
+│   AUTH & PERSISTENCE LAYER   │ │               BACKEND ENGINE               │
+│  • Firebase Auth (Google ID) │ │  • Next.js API Handlers (Edge & Node.js)   │
+│  • Cloud Firestore Sync      │ │  • Read-only Classroom & Drive Proxies     │
+│  • Local-first TaskStore     │ │  • Multimodal Document & Syllabus Parser   │
+└──────────────────────────────┘ └──────────────────────┬─────────────────────┘
+                                                        │
+                                                        ▼
+                                 ┌────────────────────────────────────────────┐
+                                 │          AI INFERENCE CONTROLLER           │
+                                 │  • Socratic Reasoning & Prompt Engineering │
+                                 │  • Cloud: Google Gemini API (3.6 / 3.1)    │
+                                 │  • Edge/Local: Ollama / LM Studio / Routers│
+                                 └────────────────────────────────────────────┘
+```
 
 ---
 
@@ -98,12 +169,12 @@ Native integration using the official `@google/genai` SDK with support for `gemi
 
 ### 2. Local AI and OpenAI-Compatible Routers
 Connect IOnLearn to local inference servers or multi-model gateways by pointing to an OpenAI-compatible endpoint:
-- **Ollama** (`http://localhost:11434/v1`): Run open-weight models (Llama 3, DeepSeek-R1, Qwen 2.5, Mistral, Gemma 2) locally on your own hardware without internet access.
-- **LM Studio** (`http://localhost:1234/v1`): Run local GGUF models with a desktop interface.
+- **[Ollama](https://github.com/ollama/ollama)** (`http://localhost:11434/v1`): Run open-weight models (Llama 3, DeepSeek-R1, Qwen 2.5, Mistral, Gemma 2) locally on your own hardware without internet access.
+- **[LM Studio](https://lmstudio.ai/)** (`http://localhost:1234/v1`): Run local GGUF models with a desktop interface.
 - **AI Gateways & Routers**:
-  - 9router / omnirouter
-  - OpenRouter (`https://openrouter.ai/api/v1`)
-  - vLLM, LocalAI, Jan, or Text Generation WebUI.
+  - [9router](https://github.com/decolua/9router) / [OmniRoute (omnirouter)](https://github.com/diegosouzapw/OmniRoute)
+  - [OpenRouter](https://openrouter.ai/) (`https://openrouter.ai/api/v1`)
+  - [vLLM](https://github.com/vllm-project/vllm), [LocalAI](https://github.com/mudler/LocalAI), [Jan](https://github.com/janhq/jan), or [Text Generation WebUI](https://github.com/oobabooga/text-generation-webui).
 
 #### Environment Configuration for AI (`.env`):
 ```env
