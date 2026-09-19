@@ -36,6 +36,7 @@ import {
   Moon,
   Globe,
   X,
+  Loader2,
 } from "lucide-react";
 import confetti from "canvas-confetti";
 import { UserPreferences } from "@/types";
@@ -1222,23 +1223,13 @@ export function OnboardingFlow({
       language: language,
     };
 
-    // 1. Primary: Save directly to Firebase Firestore Cloud & Server
+    // 1. Persist locally IMMEDIATELY for instant UI responsiveness & zero delay
     try {
-      await DBService.saveUserData(
-        loadTasks(),
-        finalPrefs,
-        loadAIConfig(),
-        profile?.email,
-        loadTodos(),
-        loadNotes()
-      );
+      savePreferences(finalPrefs, profile?.email);
+      setOnboardingCompleted(true, profile?.email);
     } catch (e) {
-      console.warn("Cloud save warning:", e);
+      console.warn("Local storage save warning:", e);
     }
-
-    // 2. Persist locally for instant hydration
-    savePreferences(finalPrefs, profile?.email);
-    setOnboardingCompleted(true, profile?.email);
 
     const draftKey = profile?.email ? `onboarding_draft_${profile.email}` : "onboarding_draft";
     try {
@@ -1252,7 +1243,7 @@ export function OnboardingFlow({
         origin: { y: 0.6 },
         colors: ["#6366f1", "#818cf8", "#3b82f6", "#10b981", "#a855f7"],
       });
-    } catch { }
+    } catch {}
 
     toast.success(
       isEn
@@ -1264,6 +1255,23 @@ export function OnboardingFlow({
           : "AI Tutor dan Dashboard telah siap menemani belajarmu.",
       }
     );
+
+    // 2. Primary: Save directly to Firebase Firestore Cloud & Server with a safe timeout
+    try {
+      await Promise.race([
+        DBService.saveUserData(
+          loadTasks(),
+          finalPrefs,
+          loadAIConfig(),
+          profile?.email,
+          loadTodos(),
+          loadNotes()
+        ),
+        new Promise((resolve) => setTimeout(resolve, 800)),
+      ]);
+    } catch (e) {
+      console.warn("Cloud save warning:", e);
+    }
 
     setIsSavingCloud(false);
     if (onComplete) {
@@ -1623,11 +1631,12 @@ export function OnboardingFlow({
         <button
           type="button"
           onClick={handleNext}
-          disabled={!isCurrentStepAnswered}
-          className={`flex items-center gap-2 px-6 sm:px-7 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 ${isCurrentStepAnswered
-            ? "bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white shadow-md shadow-indigo-500/25 active:scale-95 cursor-pointer"
-            : "bg-slate-200 dark:bg-white/[0.06] text-slate-400 dark:text-[#707070] border border-slate-300/60 dark:border-white/[0.08] cursor-not-allowed opacity-50 shadow-none"
-            }`}
+          disabled={!isCurrentStepAnswered || isSavingCloud}
+          className={`flex items-center gap-2 px-6 sm:px-7 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 ${
+            isCurrentStepAnswered && !isSavingCloud
+              ? "bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white shadow-md shadow-indigo-500/25 active:scale-95 cursor-pointer"
+              : "bg-slate-200 dark:bg-white/[0.06] text-slate-400 dark:text-[#707070] border border-slate-300/60 dark:border-white/[0.08] cursor-not-allowed opacity-50 shadow-none"
+          }`}
           title={
             !isCurrentStepAnswered
               ? isEn
@@ -1639,19 +1648,25 @@ export function OnboardingFlow({
           }
         >
           <span>
-            {currentStepIndex === allSteps.length - 1
+            {isSavingCloud
+              ? isEn
+                ? "Setting up AI Dashboard..."
+                : "Menyiapkan Dashboard..."
+              : currentStepIndex === allSteps.length - 1
               ? isEn
                 ? "Start Learning"
                 : "Mulai Belajar"
               : currentStep.type === "interstitial"
-                ? isEn
-                  ? "Continue to Next Section"
-                  : "Lanjut Bagian Berikutnya"
-                : isEn
-                  ? "Continue"
-                  : "Lanjut"}
+              ? isEn
+                ? "Continue to Next Section"
+                : "Lanjut Bagian Berikutnya"
+              : isEn
+              ? "Continue"
+              : "Lanjut"}
           </span>
-          {currentStepIndex === allSteps.length - 1 ? (
+          {isSavingCloud ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          ) : currentStepIndex === allSteps.length - 1 ? (
             <Sparkles className="w-3.5 h-3.5" />
           ) : (
             <ArrowRight className="w-3.5 h-3.5" />

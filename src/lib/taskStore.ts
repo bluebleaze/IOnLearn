@@ -89,6 +89,8 @@ export function setOnboardingCompleted(completed: boolean = true, userEmail?: st
   if (email) {
     localStorage.setItem(`${ONBOARDING_DONE_KEY}_${email}`, val);
   }
+  localStorage.setItem(ONBOARDING_DONE_KEY, val);
+  window.dispatchEvent(new Event("taskStoreChange"));
 }
 
 // -------------------------------------------------------------
@@ -491,9 +493,8 @@ export function savePreferences(prefs: UserPreferences, userEmail?: string): voi
   const email = userEmail || profile?.email;
   if (email) {
     localStorage.setItem(`${PREFS_STORAGE_KEY}_${email}`, JSON.stringify(prefs));
-  } else {
-    localStorage.setItem(PREFS_STORAGE_KEY, JSON.stringify(prefs));
   }
+  localStorage.setItem(PREFS_STORAGE_KEY, JSON.stringify(prefs));
   syncAllUserDataToCloud();
   window.dispatchEvent(new Event("taskStoreChange"));
   window.dispatchEvent(new Event("task-modal-style-changed"));
