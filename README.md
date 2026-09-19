@@ -28,6 +28,53 @@ IOnLearn is completely open-source under the **GNU General Public License v3 (GP
 
 ---
 
+## 🎯 Alignment with Competition Theme & SDGs (Infinitera 2.0)
+
+> **Event**: INFINITERA 2.0 — Web Development Competition  
+> **Host**: Himpunan Mahasiswa Teknik Informatika (HM TIF), Universitas Islam Sultan Agung (UNISSULA)  
+> **Grand Theme**: *“Bridging Innovation and Sustainability to Create Meaningful Impact for Future Generations”*
+
+IOnLearn was purposefully designed to embody this theme by bridging cutting-edge technological innovation (Socratic conversational AI, edge intelligence, model-agnostic architecture) with sustainable societal impact for current and future generations.
+
+```
+                  ┌────────────────────────────────────────────────────────┐
+                  │                    INFINITERA 2.0                      │
+                  │   Bridging Innovation & Sustainability for Impact      │
+                  └──────────────────────────┬─────────────────────────────┘
+                                             │
+         ┌───────────────────┬───────────────┴───────────────┬───────────────────┐
+         ▼                   ▼                               ▼                   ▼
+    🌱 SDG 4            ⚙️ SDG 9                        🏙️ SDG 11           🌍 SDG 13
+Quality Education   Industry, Innovation           Sustainable Cities    Climate Action
+(Inklusif & Merata) & Infrastructure (Tangguh)    & Communities (Aman)  (Paperless & Green)
+```
+
+### 1. 🎓 SDG 4 — Quality Education (Pendidikan Berkualitas)
+*Mandat Subtema: "Menyediakan pendidikan yang inklusif, merata, dan berkualitas."*
+- **Democratizing 1-on-1 Academic Tutoring**: Private human tutoring is often prohibitively expensive. IOnLearn is 100% free and open-source (GPLv3), providing every student—regardless of socioeconomic background—with a 24/7 personal tutor.
+- **Socratic Pedagogy (Anti-Cognitive Atrophy)**: Unlike generic LLMs that spoon-feed direct answers, IOnLearn guides students step-by-step using Socratic questioning, building genuine conceptual mastery and critical thinking skills.
+- **Inclusive & Adaptive Learning**: Features auto-detecting bilingual support (Indonesian 🇮🇩 & English 🇬🇧), customizable learning styles (Visual, Step-by-Step, In-Depth), and full accessibility support (screen-reader friendly, responsive keyboard navigation, dark/light modes).
+
+### 2. 💡 SDG 9 — Industry, Innovation, and Infrastructure (Industri, Inovasi, dan Infrastruktur)
+*Mandat Subtema: "Membangun infrastruktur yang tangguh dan mendorong inovasi."*
+- **Model-Agnostic & Decentralized Edge AI**: IOnLearn breaks proprietary vendor lock-in by supporting local, offline LLMs (Ollama, LM Studio, vLLM) on consumer laptops, allowing students in remote areas with unstable internet to still access AI tutoring without relying on cloud data centers.
+- **Resilient Hybrid Architecture**: Uses local-first offline caching paired with Google Cloud Firestore synchronization, ensuring continuity of study sessions even during network disruptions.
+- **Open-Source Innovation (GPLv3)**: Open code guarantees transparency, security auditing, and continuous community development without reliance on closed commercial infrastructure.
+
+### 3. 🏙️ SDG 11 — Sustainable Cities and Communities (Kota dan Permukiman yang Berkelanjutan)
+*Mandat Subtema: "Mewujudkan kota yang aman, nyaman, dan ramah lingkungan."*
+- **Decentralized Remote Study Hub**: Reduces urban traffic congestion and daily commuting burdens by enabling students and study groups to organize, analyze, and complete academic assignments from home or local community centers.
+- **Safe, Private, & Ethical Digital Community**: Enforces strictly read-only Google Classroom and Drive scopes. Student submissions and academic data are never monetized, sold, or used to train third-party foundation models.
+- **Community Learning Infrastructure**: Lightweight Progressive Web App (PWA) architecture runs smoothly on affordable devices in public libraries, school labs, and community centers.
+
+### 4. 🌿 SDG 13 — Climate Action (Penanganan Perubahan Iklim)
+*Mandat Subtema: "Mengambil tindakan untuk mengatasi perubahan iklim."*
+- **100% Paperless Academic Lifecycle**: Eliminates physical paper printing for homework assignments, syllabus packets, study sheets, and flashcards by digitizing ingestion and providing rich-text note archiving.
+- **Green Computing & Low-Carbon AI**: Supports ultra-lightweight, quantized, energy-efficient models (such as `gemini-3.1-flash-lite`, `qwen2.5:7b`, and `llama3.2`) that consume significantly less electricity and compute power than massive server clusters.
+- **Reduction of Transportation Carbon Footprint**: By bringing interactive tutoring directly to learners' screens, IOnLearn eliminates unnecessary physical travel to tutoring centers, directly cutting vehicle greenhouse gas emissions.
+
+---
+
 ## Key Features
 
 - **Google Classroom Integration**: One-click synchronization for enrolled courses, assignments (`courseWork`), instructions, due dates, classroom materials, and submission statuses (`turned in`, `assigned`, `late`).
