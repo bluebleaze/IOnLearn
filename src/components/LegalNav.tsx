@@ -1,15 +1,17 @@
-"use client";
-
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft, Sun, Moon, Shield, FileText } from "lucide-react";
+import { ArrowLeft, Sun, Moon, Shield, FileText, Languages } from "lucide-react";
 import { toggleThemeWithCircularAnimation } from "@/lib/theme";
+
+export type LegalLang = "id" | "en";
 
 interface LegalNavProps {
   currentPage: "terms" | "privacy";
+  currentLang?: LegalLang;
+  onToggleLang?: (lang: LegalLang) => void;
 }
 
-export function LegalNav({ currentPage }: LegalNavProps) {
+export function LegalNav({ currentPage, currentLang = "id", onToggleLang }: LegalNavProps) {
   const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
@@ -31,6 +33,8 @@ export function LegalNav({ currentPage }: LegalNavProps) {
     setIsDark(nextTheme === "dark");
   };
 
+  const isEn = currentLang === "en";
+
   return (
     <header className="sticky top-0 z-30 w-full border-b border-slate-200/80 dark:border-[#222222] bg-white/90 dark:bg-[#0c0c0c]/90 backdrop-blur-md transition-colors">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
@@ -39,10 +43,12 @@ export function LegalNav({ currentPage }: LegalNavProps) {
           <Link
             href="/"
             className="flex items-center gap-2 p-1.5 rounded-xl text-slate-500 hover:text-slate-900 dark:text-[#a3a3a3] dark:hover:text-[#f5f5f5] hover:bg-slate-100 dark:hover:bg-[#181818] transition-colors"
-            title="Kembali ke Beranda"
+            title={isEn ? "Back to Home" : "Kembali ke Beranda"}
           >
             <ArrowLeft className="w-4 h-4 shrink-0" />
-            <span className="text-xs font-medium hidden sm:inline">Beranda</span>
+            <span className="text-xs font-medium hidden sm:inline">
+              {isEn ? "Home" : "Beranda"}
+            </span>
           </Link>
 
           <div className="h-4 w-px bg-slate-200 dark:bg-[#2b2b2b]" />
@@ -56,39 +62,78 @@ export function LegalNav({ currentPage }: LegalNavProps) {
           </Link>
         </div>
 
-        {/* Tab switcher & Theme toggle */}
+        {/* Tab switcher, Language toggle & Theme toggle */}
         <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* Terms / Privacy Tab navigation */}
           <nav className="flex items-center bg-slate-100 dark:bg-[#161616] p-1 rounded-xl border border-slate-200/60 dark:border-[#262626] text-xs font-medium">
             <Link
-              href="/terms"
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors ${
+              href={`/terms?lang=${currentLang}`}
+              className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg transition-colors ${
                 currentPage === "terms"
                   ? "bg-white dark:bg-[#222222] text-slate-900 dark:text-[#f5f5f5] shadow-xs font-semibold"
                   : "text-slate-600 dark:text-[#a3a3a3] hover:text-slate-900 dark:hover:text-[#f5f5f5]"
               }`}
             >
               <FileText className="w-3.5 h-3.5" />
-              <span>Ketentuan Layanan</span>
+              <span className="hidden xs:inline sm:inline">
+                {isEn ? "Terms" : "Ketentuan"}
+              </span>
+              <span className="hidden md:inline">
+                {isEn ? " of Service" : " Layanan"}
+              </span>
             </Link>
             <Link
-              href="/privacy"
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors ${
+              href={`/privacy?lang=${currentLang}`}
+              className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg transition-colors ${
                 currentPage === "privacy"
                   ? "bg-white dark:bg-[#222222] text-slate-900 dark:text-[#f5f5f5] shadow-xs font-semibold"
                   : "text-slate-600 dark:text-[#a3a3a3] hover:text-slate-900 dark:hover:text-[#f5f5f5]"
               }`}
             >
               <Shield className="w-3.5 h-3.5" />
-              <span>Kebijakan Privasi</span>
+              <span className="hidden xs:inline sm:inline">
+                {isEn ? "Privacy" : "Privasi"}
+              </span>
+              <span className="hidden md:inline">
+                {isEn ? " Policy" : " Kebijakan"}
+              </span>
             </Link>
           </nav>
+
+          {/* Language Switcher Pill (ID | EN) */}
+          <div className="flex items-center bg-slate-100 dark:bg-[#161616] p-1 rounded-xl border border-slate-200/60 dark:border-[#262626] text-[11px] font-bold">
+            <button
+              type="button"
+              onClick={() => onToggleLang?.("id")}
+              className={`flex items-center gap-1 px-2 py-1 rounded-lg transition-all ${
+                !isEn
+                  ? "bg-white dark:bg-[#222222] text-indigo-600 dark:text-indigo-400 shadow-xs font-extrabold"
+                  : "text-slate-500 dark:text-[#888888] hover:text-slate-800 dark:hover:text-slate-200"
+              }`}
+              title="Bahasa Indonesia"
+            >
+              <span>ID</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onToggleLang?.("en")}
+              className={`flex items-center gap-1 px-2 py-1 rounded-lg transition-all ${
+                isEn
+                  ? "bg-white dark:bg-[#222222] text-indigo-600 dark:text-indigo-400 shadow-xs font-extrabold"
+                  : "text-slate-500 dark:text-[#888888] hover:text-slate-800 dark:hover:text-slate-200"
+              }`}
+              title="English (US)"
+            >
+              <span>EN</span>
+            </button>
+          </div>
 
           {/* Theme Toggle Button */}
           <button
             type="button"
             onClick={handleToggleTheme}
-            title={isDark ? "Ganti ke Mode Terang" : "Ganti ke Mode Gelap"}
-            aria-label="Ganti Tema"
+            title={isDark ? (isEn ? "Switch to Light Mode" : "Ganti ke Mode Terang") : (isEn ? "Switch to Dark Mode" : "Ganti ke Mode Gelap")}
+            aria-label="Toggle Theme"
             className="w-9 h-9 rounded-xl text-slate-500 hover:text-slate-900 dark:text-[#a3a3a3] dark:hover:text-[#f5f5f5] bg-slate-100 hover:bg-slate-200/80 dark:bg-[#161616] dark:hover:bg-[#202020] border border-slate-200/60 dark:border-[#262626] flex items-center justify-center transition cursor-pointer shrink-0"
           >
             {isDark ? (

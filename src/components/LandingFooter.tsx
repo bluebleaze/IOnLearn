@@ -30,6 +30,7 @@ export function LandingFooter({ onConnectGoogle, language = "ENG" }: LandingFoot
       terms: "Syarat & Ketentuan",
       privacy: "Kebijakan Privasi",
       contact: "Hubungi Kami",
+      github: "Repositori GitHub",
       backToTop: "Ke Atas",
     }
     : {
@@ -50,6 +51,7 @@ export function LandingFooter({ onConnectGoogle, language = "ENG" }: LandingFoot
       terms: "Terms of Service",
       privacy: "Privacy Policy",
       contact: "Contact Support",
+      github: "GitHub Repository",
       backToTop: "Back to Top",
     };
 
@@ -173,6 +175,16 @@ export function LandingFooter({ onConnectGoogle, language = "ENG" }: LandingFoot
             </li>
             <li>
               <a
+                href="https://github.com/bluebleaze/IOnLearn"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-[#4838cc] dark:hover:text-indigo-400 transition-colors"
+              >
+                {copy.github}
+              </a>
+            </li>
+            <li>
+              <a
                 href="mailto:wangywangy9999@gmail.com"
                 className="hover:text-[#4838cc] dark:hover:text-indigo-400 transition-colors"
               >
@@ -190,10 +202,11 @@ export function LandingFooter({ onConnectGoogle, language = "ENG" }: LandingFoot
 
         <div className="flex items-center gap-2 pt-1">
           <a
-            href="https://github.com"
+            href="https://github.com/bluebleaze/IOnLearn"
             target="_blank"
             rel="noopener noreferrer"
-            aria-label="GitHub"
+            aria-label="GitHub Repository"
+            title="GitHub Repository (bluebleaze/IOnLearn)"
             className="w-7 h-7 rounded-md bg-slate-100 dark:bg-zinc-800/80 hover:bg-slate-200 dark:hover:bg-zinc-700 flex items-center justify-center text-slate-600 dark:text-zinc-300 transition-colors"
           >
             <Github className="w-3.5 h-3.5" />
