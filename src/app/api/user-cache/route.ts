@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 
-const CACHE_FILE = path.join(process.cwd(), '.user_cache.json');
+const CACHE_FILE =
+  process.env.VERCEL || process.env.NODE_ENV === 'production'
+    ? path.join('/tmp', '.user_cache.json')
+    : path.join(process.cwd(), '.user_cache.json');
 
 function readCache(): Record<string, any> {
   try {

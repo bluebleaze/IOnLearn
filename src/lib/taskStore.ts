@@ -26,46 +26,69 @@ export const DEMO_EMAIL = "pelajar@contoh.com";
 
 function getStorageKey(baseKey: string, userEmail?: string): string {
   const profile = ClassroomService.getUserProfile();
-  const email = userEmail || profile?.email;
+  const rawEmail = userEmail || profile?.email;
+  const email = rawEmail ? rawEmail.toLowerCase().trim() : undefined;
   return email ? `${baseKey}_${email}` : baseKey;
 }
 
 export function isOnboardingCompleted(userEmail?: string): boolean {
   if (typeof window === "undefined") return false;
+
+  // 1. If global device flag is set to true, onboarding is completed on this device/browser
+  if (localStorage.getItem(ONBOARDING_DONE_KEY) === "true") return true;
+  if (localStorage.getItem("ionlearn_onboarding_done") === "true") return true;
+
+  // 2. Check email-scoped flag (both lowercase-normalized and raw)
   const profile = ClassroomService.getUserProfile();
-  const email = userEmail || profile?.email;
-  
+  const rawEmail = userEmail || profile?.email;
+  const email = rawEmail ? rawEmail.toLowerCase().trim() : undefined;
+
   if (email) {
     const userKey = `${ONBOARDING_DONE_KEY}_${email}`;
-    const userStatus = localStorage.getItem(userKey);
-    if (userStatus === "true") return true;
-    if (userStatus === "false") return false;
+    if (localStorage.getItem(userKey) === "true") return true;
+    if (rawEmail && localStorage.getItem(`${ONBOARDING_DONE_KEY}_${rawEmail}`) === "true") return true;
 
-    // Check if THIS specific account has educationLevel & learningStyle & aiTone in saved preferences
+    // Check if preferences were saved for this account
     const accountPrefsKey = `${PREFS_STORAGE_KEY}_${email}`;
-    const savedPrefs = localStorage.getItem(accountPrefsKey);
+    const rawPrefsKey = rawEmail ? `${PREFS_STORAGE_KEY}_${rawEmail}` : null;
+    const savedPrefs =
+      localStorage.getItem(accountPrefsKey) ||
+      (rawPrefsKey ? localStorage.getItem(rawPrefsKey) : null);
     if (savedPrefs) {
       try {
         const parsed = JSON.parse(savedPrefs);
-        if (parsed?.educationLevel && parsed?.learningStyle && parsed?.aiTone) {
+        if (parsed?.educationLevel || parsed?.learningStyle || parsed?.aiTone) {
           localStorage.setItem(userKey, "true");
           return true;
         }
       } catch {}
     }
-    return false;
   }
 
-  // If no email yet, do not assume completed
+  // 3. Check global preferences as fallback
+  const globalPrefs = localStorage.getItem(PREFS_STORAGE_KEY);
+  if (globalPrefs) {
+    try {
+      const parsed = JSON.parse(globalPrefs);
+      if (parsed?.educationLevel || parsed?.learningStyle || parsed?.aiTone) {
+        return true;
+      }
+    } catch {}
+  }
+
   return false;
 }
 
 export function isFeatureTourCompleted(userEmail?: string): boolean {
   if (typeof window === "undefined") return false;
   const profile = ClassroomService.getUserProfile();
-  const email = userEmail || profile?.email;
-  if (email) {
-    return localStorage.getItem(`${FEATURE_TOUR_DONE_KEY}_${email}`) === "true";
+  const rawEmail = userEmail || profile?.email;
+  const email = rawEmail ? rawEmail.toLowerCase().trim() : undefined;
+  if (email && localStorage.getItem(`${FEATURE_TOUR_DONE_KEY}_${email}`) === "true") {
+    return true;
+  }
+  if (rawEmail && localStorage.getItem(`${FEATURE_TOUR_DONE_KEY}_${rawEmail}`) === "true") {
+    return true;
   }
   return localStorage.getItem(FEATURE_TOUR_DONE_KEY) === "true";
 }
@@ -73,11 +96,15 @@ export function isFeatureTourCompleted(userEmail?: string): boolean {
 export function setFeatureTourCompleted(completed: boolean = true, userEmail?: string): void {
   if (typeof window === "undefined") return;
   const profile = ClassroomService.getUserProfile();
-  const email = userEmail || profile?.email;
+  const rawEmail = userEmail || profile?.email;
+  const email = rawEmail ? rawEmail.toLowerCase().trim() : undefined;
   const val = completed ? "true" : "false";
 
   if (email) {
     localStorage.setItem(`${FEATURE_TOUR_DONE_KEY}_${email}`, val);
+  }
+  if (rawEmail && rawEmail !== email) {
+    localStorage.setItem(`${FEATURE_TOUR_DONE_KEY}_${rawEmail}`, val);
   }
   localStorage.setItem(FEATURE_TOUR_DONE_KEY, val);
 }
@@ -85,9 +112,13 @@ export function setFeatureTourCompleted(completed: boolean = true, userEmail?: s
 export function isSpotlightTourCompleted(userEmail?: string): boolean {
   if (typeof window === "undefined") return false;
   const profile = ClassroomService.getUserProfile();
-  const email = userEmail || profile?.email;
-  if (email) {
-    return localStorage.getItem(`${SPOTLIGHT_TOUR_DONE_KEY}_${email}`) === "true";
+  const rawEmail = userEmail || profile?.email;
+  const email = rawEmail ? rawEmail.toLowerCase().trim() : undefined;
+  if (email && localStorage.getItem(`${SPOTLIGHT_TOUR_DONE_KEY}_${email}`) === "true") {
+    return true;
+  }
+  if (rawEmail && localStorage.getItem(`${SPOTLIGHT_TOUR_DONE_KEY}_${rawEmail}`) === "true") {
+    return true;
   }
   return localStorage.getItem(SPOTLIGHT_TOUR_DONE_KEY) === "true";
 }
@@ -95,11 +126,15 @@ export function isSpotlightTourCompleted(userEmail?: string): boolean {
 export function setSpotlightTourCompleted(completed: boolean = true, userEmail?: string): void {
   if (typeof window === "undefined") return;
   const profile = ClassroomService.getUserProfile();
-  const email = userEmail || profile?.email;
+  const rawEmail = userEmail || profile?.email;
+  const email = rawEmail ? rawEmail.toLowerCase().trim() : undefined;
   const val = completed ? "true" : "false";
 
   if (email) {
     localStorage.setItem(`${SPOTLIGHT_TOUR_DONE_KEY}_${email}`, val);
+  }
+  if (rawEmail && rawEmail !== email) {
+    localStorage.setItem(`${SPOTLIGHT_TOUR_DONE_KEY}_${rawEmail}`, val);
   }
   localStorage.setItem(SPOTLIGHT_TOUR_DONE_KEY, val);
 }
@@ -107,12 +142,13 @@ export function setSpotlightTourCompleted(completed: boolean = true, userEmail?:
 export function isSpotlightPending(userEmail?: string): boolean {
   if (typeof window === "undefined") return false;
   const profile = ClassroomService.getUserProfile();
-  const email = userEmail || profile?.email;
-  if (email) {
-    return (
-      localStorage.getItem(`${SPOTLIGHT_PENDING_KEY}_${email}`) === "true" ||
-      sessionStorage.getItem("show_spotlight_after_onboarding") === "true"
-    );
+  const rawEmail = userEmail || profile?.email;
+  const email = rawEmail ? rawEmail.toLowerCase().trim() : undefined;
+  if (email && localStorage.getItem(`${SPOTLIGHT_PENDING_KEY}_${email}`) === "true") {
+    return true;
+  }
+  if (rawEmail && localStorage.getItem(`${SPOTLIGHT_PENDING_KEY}_${rawEmail}`) === "true") {
+    return true;
   }
   return (
     localStorage.getItem(SPOTLIGHT_PENDING_KEY) === "true" ||
@@ -123,7 +159,8 @@ export function isSpotlightPending(userEmail?: string): boolean {
 export function setSpotlightPending(pending: boolean = true, userEmail?: string): void {
   if (typeof window === "undefined") return;
   const profile = ClassroomService.getUserProfile();
-  const email = userEmail || profile?.email;
+  const rawEmail = userEmail || profile?.email;
+  const email = rawEmail ? rawEmail.toLowerCase().trim() : undefined;
   const val = pending ? "true" : "false";
 
   if (email) {
@@ -131,6 +168,13 @@ export function setSpotlightPending(pending: boolean = true, userEmail?: string)
       localStorage.setItem(`${SPOTLIGHT_PENDING_KEY}_${email}`, val);
     } else {
       localStorage.removeItem(`${SPOTLIGHT_PENDING_KEY}_${email}`);
+    }
+  }
+  if (rawEmail && rawEmail !== email) {
+    if (pending) {
+      localStorage.setItem(`${SPOTLIGHT_PENDING_KEY}_${rawEmail}`, val);
+    } else {
+      localStorage.removeItem(`${SPOTLIGHT_PENDING_KEY}_${rawEmail}`);
     }
   }
   if (pending) {
@@ -145,11 +189,15 @@ export function setSpotlightPending(pending: boolean = true, userEmail?: string)
 export function setOnboardingCompleted(completed: boolean = true, userEmail?: string): void {
   if (typeof window === "undefined") return;
   const profile = ClassroomService.getUserProfile();
-  const email = userEmail || profile?.email;
+  const rawEmail = userEmail || profile?.email;
+  const email = rawEmail ? rawEmail.toLowerCase().trim() : undefined;
   const val = completed ? "true" : "false";
 
   if (email) {
     localStorage.setItem(`${ONBOARDING_DONE_KEY}_${email}`, val);
+  }
+  if (rawEmail && rawEmail !== email) {
+    localStorage.setItem(`${ONBOARDING_DONE_KEY}_${rawEmail}`, val);
   }
   localStorage.setItem(ONBOARDING_DONE_KEY, val);
   window.dispatchEvent(new Event("taskStoreChange"));

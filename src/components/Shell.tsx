@@ -264,7 +264,8 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
     // If logged in, check onboarding status for this specific account
     let isMounted = true;
     const checkUserOnboarding = async () => {
-      const email = userProfile?.email;
+      const storedProfile = ClassroomService.getUserProfile();
+      const email = userProfile?.email || storedProfile?.email;
       let isDone = isOnboardingCompleted(email);
 
       // If not done locally in this browser, check if cloud already has the completed onboarding profile
@@ -272,8 +273,8 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
         try {
           const cloudData = await DBService.loadUserData(email);
           if (
-            cloudData?.preferences?.educationLevel &&
-            cloudData?.preferences?.learningStyle &&
+            cloudData?.preferences?.educationLevel ||
+            cloudData?.preferences?.learningStyle ||
             cloudData?.preferences?.aiTone
           ) {
             localStorage.setItem(
