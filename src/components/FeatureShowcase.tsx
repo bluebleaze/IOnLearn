@@ -353,7 +353,7 @@ export function FeatureShowcase({ language = "ENG" }: FeatureShowcaseProps) {
                     <div className="flex justify-start">
                       <div className="bg-slate-100 dark:bg-white/10 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-slate-200 px-3 py-2 rounded-2xl rounded-tl-xs max-w-[90%] text-left leading-relaxed">
                         <span className="font-semibold text-[#4b43c6] dark:text-indigo-300 block text-xs mb-0.5">
-                          {language === "IND" ? "💡 Inti Formula: ΣF = m · a" : "💡 Core Formula: ΣF = m · a"}
+                          {language === "IND" ? "Inti Formula: ΣF = m · a" : "Core Formula: ΣF = m · a"}
                         </span>
                         {language === "IND"
                           ? "Gaya dorong (F) sebanding dengan percepatan (a). Semakin berat massa benda (m), semakin besar gaya dorong yang dibutuhkan."

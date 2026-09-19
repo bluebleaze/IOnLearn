@@ -834,20 +834,20 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
     try {
       let textToCopy = `# ${note.title || "Catatan"}\n`;
       if (note.subject) {
-        textToCopy += `📚 Mata Kuliah / Pelajaran: ${note.subject}\n`;
+        textToCopy += `Mata Kuliah / Pelajaran: ${note.subject}\n`;
       }
       if (note.tags && note.tags.length > 0) {
-        textToCopy += `🏷️ Tags: ${note.tags.map((t) => `#${t}`).join(" ")}\n`;
+        textToCopy += `Tags: ${note.tags.map((t) => `#${t}`).join(" ")}\n`;
       }
       textToCopy += `\n${note.content || ""}\n`;
       if (note.summary) {
-        textToCopy += `\n---\n✨ Rangkuman AI:\n${note.summary}\n`;
+        textToCopy += `\n---\n**Rangkuman AI:**\n${note.summary}\n`;
       }
 
       await navigator.clipboard.writeText(textToCopy.trim());
       setCopiedNoteId(note.id);
       toast.success(
-        isEn ? "Full note copied to clipboard! 📋" : "Seluruh isi catatan berhasil disalin! 📋",
+        isEn ? "Full note copied to clipboard!" : "Seluruh isi catatan berhasil disalin!",
         {
           description: isEn
             ? "Title, subject, content, and AI summary copied."
@@ -868,7 +868,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
       return;
     }
     try {
-      let allText = `# 📚 Kumpulan Catatan Materi (${filteredNotes.length} Catatan)\n\n`;
+      let allText = `# Kumpulan Catatan Materi (${filteredNotes.length} Catatan)\n\n`;
       filteredNotes.forEach((note, idx) => {
         allText += `## ${idx + 1}. ${note.title || (isEn ? "Untitled" : "Tanpa Judul")}\n`;
         if (note.subject) allText += `*Mata Kuliah / Pelajaran: ${note.subject}*\n`;
@@ -881,8 +881,8 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
       await navigator.clipboard.writeText(allText.trim());
       toast.success(
         isEn
-          ? `All ${filteredNotes.length} notes copied to clipboard! 📋`
-          : `Semua ${filteredNotes.length} catatan berhasil disalin ke clipboard! 📋`,
+          ? `All ${filteredNotes.length} notes copied to clipboard!`
+          : `Semua ${filteredNotes.length} catatan berhasil disalin ke clipboard!`,
         {
           description: isEn
             ? "All notes formatted in Markdown and ready to paste."

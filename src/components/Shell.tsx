@@ -275,8 +275,8 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
           const timeoutPromise = new Promise<null>((r) => setTimeout(() => r(null), 600));
           const cloudData = await Promise.race([cloudDataPromise, timeoutPromise]);
           if (
-            cloudData?.preferences?.educationLevel ||
-            cloudData?.preferences?.learningStyle ||
+            cloudData?.preferences?.educationLevel &&
+            cloudData?.preferences?.learningStyle &&
             cloudData?.preferences?.aiTone
           ) {
             localStorage.setItem(

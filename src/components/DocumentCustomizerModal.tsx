@@ -31,6 +31,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Eye,
+  MessageSquare,
+  Table,
 } from "lucide-react";
 import {
   DocumentStyleOptions,
@@ -704,7 +706,7 @@ export const DocumentCustomizerModal: React.FC<DocumentCustomizerModalProps> = (
                         />
                         {isSelected && (
                           <span className="ml-auto text-[11px] font-bold text-indigo-600 dark:text-indigo-400">
-                            ✓ Aktif
+                            <Check className="w-3.5 h-3.5 inline mr-1 stroke-[2.5]" />Aktif
                           </span>
                         )}
                       </div>
@@ -790,7 +792,7 @@ export const DocumentCustomizerModal: React.FC<DocumentCustomizerModalProps> = (
                           </span>
                           <p className="text-[10px] text-slate-400">{f.desc}</p>
                         </div>
-                        {isSelected && <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">✓</span>}
+                        {isSelected && <Check className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 stroke-[3]" />}
                       </button>
                     );
                   })}
@@ -1091,7 +1093,7 @@ export const DocumentCustomizerModal: React.FC<DocumentCustomizerModalProps> = (
               {styleOptions.showSpeakerNotes !== false && slides.slides[previewSlideIdx]?.notes && (
                 <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50">
                   <span className="text-[11px] font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5 mb-1">
-                    💬 Catatan Pembicara (Speaker Notes)
+                    <MessageSquare className="w-3.5 h-3.5 inline mr-1.5" /> Catatan Pembicara (Speaker Notes)
                   </span>
                   <p className="text-xs text-amber-900/90 dark:text-amber-200 leading-relaxed italic">
                     "{slides.slides[previewSlideIdx].notes}"
@@ -2070,7 +2072,7 @@ export const DocumentCustomizerModal: React.FC<DocumentCustomizerModalProps> = (
                   <div className="px-3 py-1 bg-slate-100 dark:bg-slate-800/90 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400">
                     <div className="flex items-center gap-1">
                       <span className="px-2 py-0.5 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-bold text-slate-800 dark:text-slate-200">
-                        📊 {styleOptions.sheetName || "Sheet1"}
+                        <Table className="w-3 h-3 inline mr-1 text-slate-500" /> {styleOptions.sheetName || "Sheet1"}
                       </span>
                     </div>
                     <span>Garis Kisi: {styleOptions.showGridLines !== false ? "Aktif" : "Nonaktif"}</span>

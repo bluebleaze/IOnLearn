@@ -34,21 +34,17 @@ function getStorageKey(baseKey: string, userEmail?: string): string {
 export function isOnboardingCompleted(userEmail?: string): boolean {
   if (typeof window === "undefined") return false;
 
-  // 1. If global device flag is set to true, onboarding is completed on this device/browser
-  if (localStorage.getItem(ONBOARDING_DONE_KEY) === "true") return true;
-  if (localStorage.getItem("ionlearn_onboarding_done") === "true") return true;
-
-  // 2. Check email-scoped flag (both lowercase-normalized and raw)
   const profile = ClassroomService.getUserProfile();
   const rawEmail = userEmail || profile?.email;
   const email = rawEmail ? rawEmail.toLowerCase().trim() : undefined;
 
+  // 1. If an account is logged in or userEmail is provided, check ONLY account-scoped records
   if (email) {
     const userKey = `${ONBOARDING_DONE_KEY}_${email}`;
     if (localStorage.getItem(userKey) === "true") return true;
     if (rawEmail && localStorage.getItem(`${ONBOARDING_DONE_KEY}_${rawEmail}`) === "true") return true;
 
-    // Check if preferences were saved for this account
+    // Check if valid onboarding preferences were saved for this account
     const accountPrefsKey = `${PREFS_STORAGE_KEY}_${email}`;
     const rawPrefsKey = rawEmail ? `${PREFS_STORAGE_KEY}_${rawEmail}` : null;
     const savedPrefs =
@@ -57,20 +53,25 @@ export function isOnboardingCompleted(userEmail?: string): boolean {
     if (savedPrefs) {
       try {
         const parsed = JSON.parse(savedPrefs);
-        if (parsed?.educationLevel || parsed?.learningStyle || parsed?.aiTone) {
+        if (parsed && (parsed.educationLevel || parsed.learningStyle || parsed.aiTone)) {
           localStorage.setItem(userKey, "true");
           return true;
         }
       } catch {}
     }
+
+    return false;
   }
 
-  // 3. Check global preferences as fallback
+  // 2. Fallback for completely anonymous/guest mode without any user profile
+  if (localStorage.getItem(ONBOARDING_DONE_KEY) === "true") return true;
+  if (localStorage.getItem("ionlearn_onboarding_done") === "true") return true;
+
   const globalPrefs = localStorage.getItem(PREFS_STORAGE_KEY);
   if (globalPrefs) {
     try {
       const parsed = JSON.parse(globalPrefs);
-      if (parsed?.educationLevel || parsed?.learningStyle || parsed?.aiTone) {
+      if (parsed?.educationLevel && parsed?.learningStyle && parsed?.aiTone) {
         return true;
       }
     } catch {}
@@ -627,36 +628,101 @@ export function saveAIConfig(config: AIConfig): void {
   syncAllUserDataToCloud();
 }
 
+/**
+ * Returns the contextual subject label ("Mata Pelajaran" vs "Mata Kuliah" / "Course") based on educationLevel preference
+ */
+export function getSubjectLabel(prefs?: UserPreferences | null, isEn?: boolean): string {
+  if (isEn) return "Course";
+  const level = (prefs?.educationLevel || "").toLowerCase();
+  if (
+    level.includes("smp") ||
+    level.includes("sma") ||
+    level.includes("smk") ||
+    level.includes("sd") ||
+    level.includes("sekolah")
+  ) {
+    return "Mata Pelajaran";
+  }
+  return "Mata Kuliah";
+}
+
+/**
+ * Short subject label ("Pelajaran" vs "Kuliah" / "Course") for compact pills and badges
+ */
+export function getShortSubjectLabel(prefs?: UserPreferences | null, isEn?: boolean): string {
+  if (isEn) return "Course";
+  const level = (prefs?.educationLevel || "").toLowerCase();
+  if (
+    level.includes("smp") ||
+    level.includes("sma") ||
+    level.includes("smk") ||
+    level.includes("sd") ||
+    level.includes("sekolah")
+  ) {
+    return "Pelajaran";
+  }
+  return "Kuliah";
+}
+
 // -------------------------------------------------------------
 // ACCOUNT DELETION & FULL LOCAL WIPE
 // -------------------------------------------------------------
 export function clearAllUserLocalData(userEmail?: string): void {
   if (typeof window === "undefined") return;
   const profile = ClassroomService.getUserProfile();
-  const email = userEmail || profile?.email;
+  const rawEmail = userEmail || profile?.email;
+  const email = rawEmail ? rawEmail.toLowerCase().trim() : undefined;
 
-  if (email) {
-    localStorage.removeItem(`${TASKS_STORAGE_KEY}_${email}`);
-    localStorage.removeItem(`${TODOS_STORAGE_KEY}_${email}`);
-    localStorage.removeItem(`${NOTES_STORAGE_KEY}_${email}`);
-    localStorage.removeItem(`${PREFS_STORAGE_KEY}_${email}`);
-    localStorage.removeItem(`${ONBOARDING_DONE_KEY}_${email}`);
-    localStorage.removeItem(`${FEATURE_TOUR_DONE_KEY}_${email}`);
-    localStorage.removeItem(`onboarding_draft_${email}`);
+  try {
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key) keysToRemove.push(key);
+    }
+    keysToRemove.forEach((k) => {
+      const lower = k.toLowerCase();
+      if (
+        lower.includes("classroom") ||
+        lower.includes("ionlearn") ||
+        lower.includes("onboarding") ||
+        lower.includes("spotlight") ||
+        lower.includes("task") ||
+        lower.includes("todo") ||
+        lower.includes("note") ||
+        lower.includes("pref") ||
+        lower.includes("tour") ||
+        lower.includes("draft") ||
+        lower.includes("firebase") ||
+        (email && lower.includes(email))
+      ) {
+        localStorage.removeItem(k);
+      }
+    });
+  } catch (e) {
+    console.warn("Storage wipe error:", e);
   }
 
-  // Clear global/fallback keys
+  // Clear specific known keys explicitly
   localStorage.removeItem(TASKS_STORAGE_KEY);
   localStorage.removeItem(TODOS_STORAGE_KEY);
   localStorage.removeItem(NOTES_STORAGE_KEY);
   localStorage.removeItem(PREFS_STORAGE_KEY);
+  localStorage.removeItem(AI_CONFIG_STORAGE_KEY);
   localStorage.removeItem(ONBOARDING_DONE_KEY);
+  localStorage.removeItem("ionlearn_onboarding_done");
+  localStorage.removeItem("ionlearn_onboarding_v2_done");
   localStorage.removeItem(FEATURE_TOUR_DONE_KEY);
+  localStorage.removeItem(SPOTLIGHT_TOUR_DONE_KEY);
+  localStorage.removeItem(SPOTLIGHT_PENDING_KEY);
   localStorage.removeItem("onboarding_draft");
   localStorage.removeItem("classroom_user_profile");
   localStorage.removeItem("last_classroom_sync");
   localStorage.removeItem("classroom_ai_token");
   localStorage.removeItem("classroom_ai_token_expiry");
+
+  try {
+    sessionStorage.clear();
+  } catch {}
 
   ClassroomService.logout().catch(() => {});
   window.dispatchEvent(new Event("taskStoreChange"));

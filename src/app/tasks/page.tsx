@@ -40,6 +40,7 @@ import {
   loadPreferences,
   loadAIConfig,
   addTodo,
+  getSubjectLabel,
 } from "@/lib/taskStore";
 import { analyzeTaskWithAI } from "@/services/aiService";
 import { Button } from "@/components/ui/button";
@@ -1004,7 +1005,7 @@ export default function TasksPage() {
                       <tr className="border-b border-slate-200/80 dark:border-[#262626] bg-slate-50/70 dark:bg-[#181818] text-slate-600 dark:text-[#888]">
                         <th className="py-3 px-4 w-12 text-center shrink-0">{isEn ? "Check" : "Centang"}</th>
                         <th className="py-3 px-4 min-w-[280px] max-w-xl">{isEn ? "Task Title" : "Judul Tugas"}</th>
-                        <th className="py-3 px-4 min-w-[180px] max-w-xs">{isEn ? "Course" : "Mata Kuliah"}</th>
+                        <th className="py-3 px-4 min-w-[180px] max-w-xs">{isEn ? "Course" : getSubjectLabel(loadPreferences(), false)}</th>
                         <th className="py-3 px-4 min-w-[140px] whitespace-nowrap">{isEn ? "Status" : "Status"}</th>
                         <th className="py-3 px-4 min-w-[160px] whitespace-nowrap">{isEn ? "Due Date" : "Batas Waktu"}</th>
                         <th className="py-3 px-4 min-w-[100px] whitespace-nowrap">{isEn ? "AI Ready" : "AI Ready"}</th>

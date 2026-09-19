@@ -11,6 +11,7 @@ import {
   ChevronDown,
   MonitorPlay,
   ArrowUpRight,
+  Globe,
 } from "lucide-react";
 import { toggleThemeWithCircularAnimation } from "@/lib/theme";
 import { FeatureShowcase } from "@/components/FeatureShowcase";
@@ -443,7 +444,7 @@ export function LandingPage({
                 aria-label="Pilih bahasa"
               >
                 <span className="flex items-center gap-1.5 text-xs font-medium">
-                  <span>{selectedLanguage === "IND" ? "🇮🇩" : "🇬🇧"}</span>
+                  <Globe className="h-3.5 w-3.5 text-slate-500 dark:text-[#888]" />
                   <span>{selectedLanguage}</span>
                 </span>
                 <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${isLanguageMenuOpen ? "rotate-180" : "rotate-0"}`} />
@@ -452,8 +453,8 @@ export function LandingPage({
               {isLanguageMenuOpen && (
                 <div className="absolute left-0 top-full z-20 mt-2 min-w-[160px] overflow-hidden rounded-[10px] border border-slate-200 bg-white shadow-sm dark:border-[#2b2b2b] dark:bg-[#141414]">
                   {[
-                    { code: "IND", flag: "🇮🇩", label: "Indonesia" },
-                    { code: "ENG", flag: "🇬🇧", label: "English" },
+                    { code: "IND", label: "Indonesia" },
+                    { code: "ENG", label: "English" },
                   ].map((language) => (
                     <button
                       key={language.code}
@@ -468,8 +469,7 @@ export function LandingPage({
                         }`}
                     >
                       <span className="flex items-center gap-2">
-                        <span>{language.flag}</span>
-                        <span>{language.code}</span>
+                        <span className="font-mono text-[11px] font-bold text-indigo-600 dark:text-indigo-400">{language.code}</span>
                       </span>
                       <span className="text-xs text-slate-400 dark:text-[#888]">{language.label}</span>
                     </button>

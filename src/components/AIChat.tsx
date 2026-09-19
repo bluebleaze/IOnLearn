@@ -57,6 +57,7 @@ import {
   Youtube,
   Play,
   Pause,
+  Lightbulb,
 } from "lucide-react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -1240,7 +1241,7 @@ export const AIChat: React.FC<AIChatProps> = ({
           fileName,
         });
         triggerFileDownload(blob, fileName);
-        toast.success("📄 File PDF Berhasil Dibuat!", {
+        toast.success("File PDF Berhasil Dibuat!", {
           description: `Tersimpan sebagai ${fileName}`,
         });
       } else if (format === "xlsx") {
@@ -1251,7 +1252,7 @@ export const AIChat: React.FC<AIChatProps> = ({
           fileName,
         });
         triggerFileDownload(blob, fileName);
-        toast.success("📊 File Excel (.xlsx) Berhasil Dibuat!", {
+        toast.success("File Excel (.xlsx) Berhasil Dibuat!", {
           description: `Tersimpan sebagai ${fileName}`,
         });
       } else {
@@ -1262,7 +1263,7 @@ export const AIChat: React.FC<AIChatProps> = ({
           fileName,
         });
         triggerFileDownload(blob, fileName);
-        toast.success("📝 File Word (.docx) Berhasil Dibuat!", {
+        toast.success("File Word (.docx) Berhasil Dibuat!", {
           description: `Tersimpan sebagai ${fileName}`,
         });
       }
@@ -1358,7 +1359,7 @@ export const AIChat: React.FC<AIChatProps> = ({
       setExportingFormat(`${msg.id}-pptx`);
       const slideDeck = extractSlidesFromMessage(msg, activeTask?.title, activeTask?.courseName);
       await downloadCreatedSlides(slideDeck);
-      toast.success("📊 Presentasi PowerPoint (.pptx) Berhasil Diunduh!", {
+      toast.success("Presentasi PowerPoint (.pptx) Berhasil Diunduh!", {
         description: `Tersimpan sebagai ${slideDeck.fileName || "presentasi.pptx"}`,
       });
     } catch (err: any) {
@@ -2147,7 +2148,7 @@ export const AIChat: React.FC<AIChatProps> = ({
         try {
           confetti({ particleCount: 35, spread: 50, origin: { y: 0.8 } });
         } catch { }
-        toast.success("📝 Catatan Materi Baru Berhasil Disimpan!", {
+        toast.success("Catatan Materi Baru Berhasil Disimpan!", {
           description: `"${newStudyNote.title}" telah ditambahkan ke Catatan Belajar.`,
           action: {
             label: "Buka Catatan",
@@ -2199,7 +2200,7 @@ export const AIChat: React.FC<AIChatProps> = ({
         try {
           confetti({ particleCount: 35, spread: 50, origin: { y: 0.8 } });
         } catch { }
-        toast.success(`✅ Tugas To-Do Berhasil Dibuat!`, {
+        toast.success("Tugas To-Do Berhasil Dibuat!", {
           description: formattedSubtasks.length > 0
             ? `"${newTodo.title}" dibuat dengan ${formattedSubtasks.length} sub-langkah.`
             : `"${newTodo.title}" telah ditambahkan ke daftar To-Do.`,
@@ -2218,17 +2219,17 @@ export const AIChat: React.FC<AIChatProps> = ({
       if (res.createdDocument) {
         toast.success(
           res.createdDocument.type === "pdf"
-            ? "📄 File PDF Telah Dibuat!"
+            ? "File PDF Telah Dibuat!"
             : res.createdDocument.type === "xlsx"
-              ? "📊 File Excel (.xlsx) Telah Dibuat!"
-              : "📝 File Word Telah Dibuat!",
+              ? "File Excel (.xlsx) Telah Dibuat!"
+              : "File Word Telah Dibuat!",
           {
             description: `"${res.createdDocument.title}" siap diunduh di dalam percakapan.`,
           }
         );
       }
       if (res.createdSlides) {
-        toast.success("📊 Slide Presentasi Telah Dibuat!", {
+        toast.success("Slide Presentasi Telah Dibuat!", {
           description: `"${res.createdSlides.title}" dengan ${res.createdSlides.slides?.length ?? 0} slide siap diunduh.`,
         });
       }
@@ -2290,7 +2291,7 @@ export const AIChat: React.FC<AIChatProps> = ({
       const errorMessage: ChatMessage = {
         id: assistantMsgId,
         role: "assistant",
-        content: `⚠️ Maaf, terjadi kendala saat menghubungi AI: ${err.message || "Gagal memproses permintaan."
+        content: `Maaf, terjadi kendala saat menghubungi AI: ${err.message || "Gagal memproses permintaan."
           }. Silakan cek konfigurasi API Key di menu Pengaturan.`,
         isStreaming: false,
         isError: true,
@@ -2504,7 +2505,7 @@ export const AIChat: React.FC<AIChatProps> = ({
         try {
           confetti({ particleCount: 35, spread: 50, origin: { y: 0.8 } });
         } catch { }
-        toast.success("📝 Catatan Materi Baru Berhasil Disimpan!", {
+        toast.success("Catatan Materi Baru Berhasil Disimpan!", {
           description: `"${newStudyNote.title}" telah ditambahkan ke Catatan Belajar.`,
           action: {
             label: "Buka Catatan",
@@ -2554,7 +2555,7 @@ export const AIChat: React.FC<AIChatProps> = ({
         try {
           confetti({ particleCount: 35, spread: 50, origin: { y: 0.8 } });
         } catch { }
-        toast.success(`✅ Tugas To-Do Berhasil Dibuat!`, {
+        toast.success("Tugas To-Do Berhasil Dibuat!", {
           description: formattedSubtasks.length > 0
             ? `"${newTodo.title}" dibuat dengan ${formattedSubtasks.length} sub-langkah.`
             : `"${newTodo.title}" telah ditambahkan ke daftar To-Do.`,
@@ -2627,7 +2628,7 @@ export const AIChat: React.FC<AIChatProps> = ({
       const errorMessage: ChatMessage = {
         id: assistantMsgId,
         role: "assistant",
-        content: `⚠️ Maaf, terjadi kendala saat mengirim ulang pesan: ${err.message || "Gagal memproses permintaan."
+        content: `Maaf, terjadi kendala saat mengirim ulang pesan: ${err.message || "Gagal memproses permintaan."
           }`,
         isStreaming: false,
         isError: true,
@@ -2856,28 +2857,28 @@ export const AIChat: React.FC<AIChatProps> = ({
                       onClick={() => handleSendMessage("Tolong tonton dan rangkum inti materi serta konsep kunci dari video YouTube ini.")}
                       className="px-2.5 py-1 rounded-lg text-xs font-medium bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/60 border border-red-200/80 dark:border-red-900/50 transition cursor-pointer flex items-center gap-1"
                     >
-                      <span>📝 Rangkum Materi</span>
+                      <FileText className="w-3 h-3 text-red-500" /><span>Rangkum Materi</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => handleSendMessage("Tolong bedah video YouTube ini berdasarkan garis waktu (timestamps [MM:SS]) per topik.")}
                       className="px-2.5 py-1 rounded-lg text-xs font-medium bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/60 border border-red-200/80 dark:border-red-900/50 transition cursor-pointer flex items-center gap-1"
                     >
-                      <span>⏱️ Garis Waktu</span>
+                      <Clock className="w-3 h-3 text-red-500" /><span>Garis Waktu</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => handleSendMessage("Tolong buatkan 3-5 latihan soal / kuis pemahaman konsep berdasarkan materi video YouTube ini.")}
                       className="px-2.5 py-1 rounded-lg text-xs font-medium bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/60 border border-red-200/80 dark:border-red-900/50 transition cursor-pointer flex items-center gap-1"
                     >
-                      <span>❓ Buat Kuis</span>
+                      <HelpCircle className="w-3 h-3 text-red-500" /><span>Buat Kuis</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => handleSendMessage("Tolong susun catatan materi terstruktur dari video YouTube ini dan simpan ke catatan belajar.")}
                       className="px-2.5 py-1 rounded-lg text-xs font-medium bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/60 border border-red-200/80 dark:border-red-900/50 transition cursor-pointer flex items-center gap-1"
                     >
-                      <span>📄 Buat Catatan</span>
+                      <BookmarkPlus className="w-3 h-3 text-red-500" /><span>Buat Catatan</span>
                     </button>
                   </div>
                 )}
@@ -3350,7 +3351,7 @@ export const AIChat: React.FC<AIChatProps> = ({
                         }}
                         className="w-full text-left px-2.5 py-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-[#222] text-slate-700 dark:text-[#ccc] font-medium transition cursor-pointer"
                       >
-                        {isEn ? "🌐 Free Mode (No Specific Context)" : "🌐 Mode Bebas (Tanpa Konteks Khusus)"}
+                        <span className="flex items-center gap-1.5"><Globe className="w-3.5 h-3.5 text-slate-500" /><span>{isEn ? "Free Mode (No Specific Context)" : "Mode Bebas (Tanpa Konteks Khusus)"}</span></span>
                       </button>
 
                       {contextTab === "tasks" ? (
@@ -3953,7 +3954,7 @@ export const AIChat: React.FC<AIChatProps> = ({
                   : (isEn ? `Ask about formulas, tough concepts, request summaries, or attach course files.` : `Tanyakan rumus, konsep sulit, minta rangkuman, atau lampirkan dokumen materi.`)}
             </p>
 
-            {/* 🌟 CENTERED INPUT BAR */}
+            {/* CENTERED INPUT BAR */}
             <div className="w-full mb-6 text-left">
               {renderInputBar(true)}
             </div>
@@ -4639,7 +4640,7 @@ export const AIChat: React.FC<AIChatProps> = ({
 
                                   {activeSlide.notes && (
                                     <div className="mt-2 p-2.5 rounded-xl bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/20 text-[11px] text-slate-600 dark:text-[#bbb] flex items-start gap-2">
-                                      <span className="shrink-0 text-xs">💡</span>
+                                      <Lightbulb className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
                                       <div>
                                         <strong className="text-amber-700 dark:text-amber-400 font-semibold mr-1">Catatan Pemateri:</strong>
                                         <span className="italic">{cleanLatexMath(activeSlide.notes)}</span>
@@ -5123,7 +5124,7 @@ export const AIChat: React.FC<AIChatProps> = ({
 
                 {/* Helpful Instruction Box */}
                 <div className="p-3 rounded-xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/40 text-xs text-amber-900 dark:text-amber-300 space-y-1">
-                  <p className="font-semibold">💡 Tips Akses Dokumen:</p>
+                  <p className="font-semibold">Tips Akses Dokumen:</p>
                   <p className="leading-relaxed text-[11px] text-amber-800 dark:text-amber-400">
                     Pastikan pengaturan tautan di Google Drive / Docs / Sheets disetel ke <strong>&quot;Siapa saja yang memiliki link&quot;</strong> (Anyone with the link can view) agar AI dapat mengunduh dan membaca isinya secara instan tanpa kendala autentikasi.
                   </p>
@@ -5272,7 +5273,7 @@ export const AIChat: React.FC<AIChatProps> = ({
                         }`}
                     >
                       <div className="font-bold flex items-center gap-1.5">
-                        <span>📝 Rangkum Materi</span>
+                        <FileText className="w-3.5 h-3.5 text-red-500" /><span>Rangkum Materi</span>
                       </div>
                       <span className="text-[10px] text-slate-500 dark:text-slate-400">
                         Konsep inti & pesan utama
@@ -5288,7 +5289,7 @@ export const AIChat: React.FC<AIChatProps> = ({
                         }`}
                     >
                       <div className="font-bold flex items-center gap-1.5">
-                        <span>⏱️ Garis Waktu</span>
+                        <Clock className="w-3.5 h-3.5 text-red-500" /><span>Garis Waktu</span>
                       </div>
                       <span className="text-[10px] text-slate-500 dark:text-slate-400">
                         Poin penting & timeline [MM:SS]
@@ -5304,7 +5305,7 @@ export const AIChat: React.FC<AIChatProps> = ({
                         }`}
                     >
                       <div className="font-bold flex items-center gap-1.5">
-                        <span>❓ Kuis Pemahaman</span>
+                        <HelpCircle className="w-3.5 h-3.5 text-red-500" /><span>Kuis Pemahaman</span>
                       </div>
                       <span className="text-[10px] text-slate-500 dark:text-slate-400">
                         Soal latihan dari video
@@ -5320,7 +5321,7 @@ export const AIChat: React.FC<AIChatProps> = ({
                         }`}
                     >
                       <div className="font-bold flex items-center gap-1.5">
-                        <span>📄 Catatan Materi</span>
+                        <BookmarkPlus className="w-3.5 h-3.5 text-red-500" /><span>Catatan Materi</span>
                       </div>
                       <span className="text-[10px] text-slate-500 dark:text-slate-400">
                         Simpan otomatis ke catatan

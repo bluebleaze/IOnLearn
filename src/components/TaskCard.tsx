@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { TodoTask } from "../types";
 import { TaskCompleteConfirmModal } from "./TaskCompleteConfirmModal";
-
+import { loadPreferences, getShortSubjectLabel } from "@/lib/taskStore";
 import { useLanguage } from "@/context/LanguageContext";
 
 interface TaskCardProps {
@@ -123,7 +123,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           <div className="flex items-center justify-between gap-2">
             <div className="flex flex-wrap items-center gap-1.5 min-w-0 flex-1">
               <span className="px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/40 max-w-[170px] truncate">
-                {task.courseName || (isEn ? "Course" : "Kuliah")}
+                {task.courseName || (isEn ? "Course" : getShortSubjectLabel(loadPreferences(), isEn))}
               </span>
 
               {/* Status Badge with Label & Icon */}

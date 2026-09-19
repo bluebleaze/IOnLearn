@@ -2186,15 +2186,6 @@ export async function generatePptxPresentation(
         line: { color: currentTheme.accentBorder, width: 1.2 },
       });
 
-      slide.addText("✨", {
-        x: 6.0,
-        y: contentCardY + (is4x3 ? 0.6 : 0.35),
-        w: 3.0,
-        h: 0.4,
-        fontSize: 22,
-        align: "center",
-      });
-
       slide.addText("Terima Kasih!", {
         x: 6.0,
         y: contentCardY + (is4x3 ? 1.2 : 0.85),

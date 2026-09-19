@@ -180,6 +180,16 @@ export interface TranslationDictionary {
     modalClassroomEmpty: string;
     modalClassroomBreakdownBtn: string;
     modalClassroomAnalyzing: string;
+    dialogEditTitle: string;
+    dialogEditDesc: string;
+    editBtn: string;
+    saveChangesBtn: string;
+    addSubtaskLabel: string;
+    subtaskPlaceholder: string;
+    toastUpdated: string;
+    subtasksOptional: string;
+    addSubstepBtn: string;
+    quickAddSubtaskPlaceholder: string;
   };
   notes: {
     pageTitle: string;
@@ -383,7 +393,7 @@ export const translations: Record<Language, TranslationDictionary> = {
       urgentSectionTitle: "Tugas Tenggat Terdekat",
       viewAllBtn: "Lihat Semua",
       noUrgentTitle: "Tidak ada tenggat mendesak",
-      noUrgentDesc: "Semua tugas kuliah saat ini terkendali dengan baik 🎉",
+      noUrgentDesc: "Semua tugas kuliah saat ini terkendali dengan baik",
       aiReadyBadge: "AI Siap",
       todosSectionTitle: "To-Do Harian",
       openTodoBtn: "Buka To-Do",
@@ -479,7 +489,7 @@ export const translations: Record<Language, TranslationDictionary> = {
       searchEmptyTitle: "Tidak Ada To-Do Ditemukan",
       searchEmptyDesc: "Tidak ada rencana to-do atau sub-langkah yang cocok dengan kata kunci pencarian Anda.",
       resetSearch: "Reset Pencarian",
-      celebrationTitle: "Luar biasa! Semua rencana to-do selesai 🎉",
+      celebrationTitle: "Luar biasa! Semua rencana to-do selesai",
       celebrationDesc: "Kamu telah menyelesaikan seluruh target harian. Waktunya istirahat atau buat rencana baru untuk besok!",
       viewAllBtn: "Lihat Semua To-Do",
       newPlanBtn: "Tambah Rencana Baru",
@@ -503,6 +513,16 @@ export const translations: Record<Language, TranslationDictionary> = {
       modalClassroomEmpty: "Tidak ada tugas pending di Classroom.",
       modalClassroomBreakdownBtn: "Pecah dengan AI",
       modalClassroomAnalyzing: "Sedang Menganalisis...",
+      dialogEditTitle: "Edit To-Do & Sub-langkah",
+      dialogEditDesc: "Perbarui judul, prioritas, tenggat, atau kelola rincian sub-langkah.",
+      editBtn: "Edit To-Do",
+      saveChangesBtn: "Simpan Perubahan",
+      addSubtaskLabel: "Tambah Sub-langkah",
+      subtaskPlaceholder: "Tulis sub-langkah (tekan Enter untuk menambah)...",
+      toastUpdated: "To-Do Berhasil Diperbarui",
+      subtasksOptional: "Sub-langkah",
+      addSubstepBtn: "Tambah Sub-langkah",
+      quickAddSubtaskPlaceholder: "Tambah sub-langkah baru...",
     },
     notes: {
       pageTitle: "Catatan Materi Kuliah",
@@ -704,7 +724,7 @@ export const translations: Record<Language, TranslationDictionary> = {
       urgentSectionTitle: "Upcoming Deadlines",
       viewAllBtn: "View All",
       noUrgentTitle: "No urgent deadlines",
-      noUrgentDesc: "All your coursework is currently well on track 🎉",
+      noUrgentDesc: "All your coursework is currently well on track",
       aiReadyBadge: "AI Ready",
       todosSectionTitle: "Daily To-Dos",
       openTodoBtn: "Open To-Do",
@@ -800,7 +820,7 @@ export const translations: Record<Language, TranslationDictionary> = {
       searchEmptyTitle: "No To-Dos Found",
       searchEmptyDesc: "No to-do plans or subtasks match your search query.",
       resetSearch: "Reset Search",
-      celebrationTitle: "Awesome! All to-dos completed 🎉",
+      celebrationTitle: "Awesome! All to-dos completed",
       celebrationDesc: "You have completed all daily targets. Time to rest or plan for tomorrow!",
       viewAllBtn: "View All To-Dos",
       newPlanBtn: "Add New Plan",
@@ -824,6 +844,16 @@ export const translations: Record<Language, TranslationDictionary> = {
       modalClassroomEmpty: "No pending tasks in Classroom.",
       modalClassroomBreakdownBtn: "Break Down with AI",
       modalClassroomAnalyzing: "Analyzing...",
+      dialogEditTitle: "Edit To-Do & Sub-steps",
+      dialogEditDesc: "Update title, priority, due date, or manage sub-steps.",
+      editBtn: "Edit To-Do",
+      saveChangesBtn: "Save Changes",
+      addSubtaskLabel: "Add Sub-step",
+      subtaskPlaceholder: "Write a sub-step (press Enter to add)...",
+      toastUpdated: "To-Do Updated Successfully",
+      subtasksOptional: "Sub-steps",
+      addSubstepBtn: "Add Sub-step",
+      quickAddSubtaskPlaceholder: "Add a new sub-step...",
     },
     notes: {
       pageTitle: "Study Notes",

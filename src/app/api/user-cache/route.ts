@@ -35,8 +35,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Email parameter required' }, { status: 400 });
   }
 
+  const normalized = email.toLowerCase().trim();
   const cache = readCache();
-  const userData = cache[email] || null;
+  const userData = cache[normalized] || cache[email] || null;
 
   return NextResponse.json({ data: userData });
 }
@@ -50,8 +51,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Email required' }, { status: 400 });
     }
 
+    const normalized = email.toLowerCase().trim();
     const cache = readCache();
-    cache[email] = {
+    cache[normalized] = {
       tasks: tasks || [],
       preferences: preferences || null,
       aiConfig: aiConfig || null,
@@ -61,7 +63,7 @@ export async function POST(request: NextRequest) {
     };
     writeCache(cache);
 
-    return NextResponse.json({ success: true, updatedAt: cache[email].updatedAt });
+    return NextResponse.json({ success: true, updatedAt: cache[normalized].updatedAt });
   } catch (e: any) {
     return NextResponse.json({ error: e.message || 'Failed to save cache' }, { status: 500 });
   }
@@ -76,9 +78,16 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Email parameter required' }, { status: 400 });
     }
 
+    const normalized = email.toLowerCase().trim();
     const cache = readCache();
-    if (cache[email]) {
-      delete cache[email];
+    let deleted = false;
+    for (const key of Object.keys(cache)) {
+      if (key.toLowerCase().trim() === normalized) {
+        delete cache[key];
+        deleted = true;
+      }
+    }
+    if (deleted) {
       writeCache(cache);
     }
 

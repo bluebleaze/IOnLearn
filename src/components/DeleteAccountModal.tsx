@@ -36,22 +36,25 @@ export function DeleteAccountModal({
 
   const email = userEmail || ClassroomService.getUserProfile()?.email || "";
   const expectedKeyword = isEn ? "DELETE" : "HAPUS";
-  const isConfirmed = confirmText.trim().toUpperCase() === expectedKeyword;
+  const normalizedConfirm = confirmText.trim().toUpperCase();
+  const isConfirmed = normalizedConfirm === "HAPUS" || normalizedConfirm === "DELETE";
 
   const handleDelete = async () => {
     if (!isConfirmed || isDeleting) return;
 
     setIsDeleting(true);
-    try {
-      // 1. Wipe local session & all stored tokens immediately so user is logged out
-      clearAllUserLocalData(email);
+    const targetEmail = (userEmail || ClassroomService.getUserProfile()?.email || email || "").trim();
 
-      // 2. Delete cloud database & server cache in background/with timeout
+    try {
+      // 1. Delete cloud database, server cache & Firebase user FIRST while auth is still valid
       try {
-        await DBService.deleteUserData(email);
+        await DBService.deleteUserData(targetEmail);
       } catch (cloudErr) {
         console.warn("Cloud deletion warning:", cloudErr);
       }
+
+      // 2. Wipe local session, stored tokens & onboarding flags completely
+      clearAllUserLocalData(targetEmail);
 
       toast.success(
         isEn
@@ -70,7 +73,7 @@ export function DeleteAccountModal({
     } catch (err: any) {
       console.error("Delete account error:", err);
       // Even if error occurs, ensure local session is cleared and user is safely returned
-      clearAllUserLocalData(email);
+      clearAllUserLocalData(targetEmail);
       onClose();
       window.location.replace("/");
     }

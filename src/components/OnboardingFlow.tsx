@@ -91,7 +91,7 @@ interface QuestionStep {
 
 interface InterstitialStep {
   type: "interstitial";
-  sectionIndex: number;
+  sectionIndex: number; // 0, 1, 2, 3
   categoryId: string;
   categoryEn: string;
   titleId: string;
@@ -100,7 +100,8 @@ interface InterstitialStep {
   subtitleEn: string;
   highlightsId: string[];
   highlightsEn: string[];
-  emoji: string;
+  emoji?: string;
+  icon?: React.ReactNode;
   nextSectionId: string;
   nextSectionEn: string;
 }
@@ -118,9 +119,8 @@ export function OnboardingFlow({
   const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      setIsDark(document.documentElement.classList.contains("dark"));
-    }
+    const isDarkCurrent = document.documentElement.classList.contains("dark");
+    setIsDark(isDarkCurrent);
   }, []);
 
   const handleToggleTheme = (e: React.MouseEvent) => {
@@ -133,19 +133,18 @@ export function OnboardingFlow({
     setLanguage(nextLang);
   };
 
-  // 4 Sections metadata
+  // 3 Sections metadata
   const SECTIONS = [
-    { titleId: "Identitas & AI Tutor", titleEn: "Identity & AI Tutor", emoji: "🎓" },
-    { titleId: "Metode & Format Catatan", titleEn: "Method & Note Format", emoji: "🧠" },
-    { titleId: "Mode Belajar AI & Tugas", titleEn: "AI Study Mode & Tasks", emoji: "🤖" },
-    { titleId: "Fokus & Target Akademik", titleEn: "Focus & Academic Goals", emoji: "🎯" },
+    { titleId: "Identitas & AI Tutor", titleEn: "Identity & AI Tutor" },
+    { titleId: "Metode & Mode Belajar", titleEn: "Method & Study Mode" },
+    { titleId: "Tampilan & Target Belajar", titleEn: "Interface & Academic Goals" },
   ];
 
-  // 19 Distinct, Non-repetitive Question Steps + 3 Interstitial Cards
+  // 8 Essential, High-impact Question Steps + 2 Interstitial Cards
   const allSteps: StepItem[] = useMemo(
     () => [
       // ─────────────────────────────────────────────────────────────
-      // BAGIAN 1: Identitas & AI Tutor (Step 1 - 4)
+      // BAGIAN 1: Identitas & AI Tutor (Step 1 - 3)
       // ─────────────────────────────────────────────────────────────
       {
         type: "question",
@@ -154,53 +153,48 @@ export function OnboardingFlow({
         categoryEn: "Identity & AI Tutor",
         questionId: "Siapa yang sedang kita bantu hari ini?",
         questionEn: "Who are we empowering today?",
-        descId: "Pilih jenjang pendidikan agar AI menyesuaikan kosakata dan kedalaman materi.",
-        descEn: "Select your education level so AI calibrates vocabulary and complexity.",
+        descId: "Pilih jenjang pendidikan agar istilah tugas (Mata Kuliah / Mata Pelajaran) & kosakata AI otomatis sesuai.",
+        descEn: "Select your education level so task terminology and AI vocabulary calibrate automatically.",
         key: "educationLevel",
         options: [
           {
             id: "SMP",
-            labelId: "SMP",
+            labelId: "SMP (Sekolah Menengah Pertama)",
             labelEn: "Middle School (SMP)",
-            descId: "Sekolah Menengah Pertama",
-            descEn: "Junior High School / Secondary",
-            emoji: "📚",
+            descId: "Label tugas: Mata Pelajaran · Kosakata dasar & ramah",
+            descEn: "Task label: Subject · Clear fundamental vocabulary",
             icon: <School className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />,
           },
           {
             id: "SMA/SMK",
-            labelId: "SMA/SMK",
+            labelId: "SMA / SMK (Sekolah Menengah Atas / Kejuruan)",
             labelEn: "High School (SMA/SMK)",
-            descId: "Sekolah Menengah Atas / Kejuruan",
-            descEn: "Senior High School / Vocational",
-            emoji: "🎒",
+            descId: "Label tugas: Mata Pelajaran · Konsep terstruktur & aplikatif",
+            descEn: "Task label: Subject · Structured & practical concepts",
             icon: <BookOpen className="w-5 h-5 text-pink-500 dark:text-pink-400" />,
           },
           {
             id: "Mahasiswa S1",
-            labelId: "Mahasiswa S1",
+            labelId: "Mahasiswa S1 (Sarjana / Diploma)",
             labelEn: "Undergraduate (S1)",
-            descId: "Pendidikan Sarjana / Diploma",
-            descEn: "Bachelor's / Diploma Student",
-            emoji: "🎓",
+            descId: "Label tugas: Mata Kuliah · Kedalaman akademik & analisis",
+            descEn: "Task label: Course · Academic rigor & deep analysis",
             icon: <GraduationCap className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />,
           },
           {
             id: "Pascasarjana",
-            labelId: "Pascasarjana",
+            labelId: "Pascasarjana (Magister S2 / Doktoral S3)",
             labelEn: "Postgraduate (S2/S3)",
-            descId: "Magister (S2) / Doktoral (S3)",
-            descEn: "Master's or Doctoral Candidate",
-            emoji: "🧑‍🎓",
+            descId: "Label tugas: Mata Kuliah · Riset teoritis & metodologi",
+            descEn: "Task label: Course · Theoretical research & methodology",
             icon: <Compass className="w-5 h-5 text-amber-500 dark:text-amber-400" />,
           },
           {
             id: "Profesional",
-            labelId: "Profesional",
-            labelEn: "Professional",
-            descId: "Karier & Belajar Mandiri",
-            descEn: "Career Growth & Self-taught",
-            emoji: "💼",
+            labelId: "Profesional & Belajar Mandiri",
+            labelEn: "Professional & Self-taught",
+            descId: "Label tugas: Mata Kuliah / Studi · Keahlian praktis industri",
+            descEn: "Task label: Course / Study · Practical industry skills",
             icon: <Briefcase className="w-5 h-5 text-rose-500 dark:text-rose-400" />,
           },
         ],
@@ -222,7 +216,6 @@ export function OnboardingFlow({
             labelEn: "Computer Science & Tech",
             descId: "Informatika, Software, AI & Jaringan",
             descEn: "Software, Data, AI & IT Systems",
-            emoji: "💻",
             icon: <Code2 className="w-5 h-5 text-cyan-500 dark:text-cyan-400" />,
           },
           {
@@ -231,7 +224,6 @@ export function OnboardingFlow({
             labelEn: "Science & Engineering (STEM)",
             descId: "Teknik Mesin, Sipil, Elektro, Fisika & Kimia",
             descEn: "Engineering, Physics, Math & Chemistry",
-            emoji: "🔬",
             icon: <Atom className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />,
           },
           {
@@ -240,7 +232,6 @@ export function OnboardingFlow({
             labelEn: "Business & Management",
             descId: "Manajemen, Akuntansi & Keuangan",
             descEn: "Economics, Finance & Marketing",
-            emoji: "📈",
             icon: <Building2 className="w-5 h-5 text-amber-500 dark:text-amber-400" />,
           },
           {
@@ -249,7 +240,6 @@ export function OnboardingFlow({
             labelEn: "Health & Medicine",
             descId: "Kedokteran, Keperawatan & Farmasi",
             descEn: "Medical, Nursing & Pharmacy",
-            emoji: "🩺",
             icon: <HeartPulse className="w-5 h-5 text-rose-500 dark:text-rose-400" />,
           },
           {
@@ -258,7 +248,6 @@ export function OnboardingFlow({
             labelEn: "Social & Humanities",
             descId: "Hukum, Psikologi, Komunikasi, Bahasa & Seni",
             descEn: "Law, Psychology, Arts & Languages",
-            emoji: "🎨",
             icon: <Palette className="w-5 h-5 text-violet-500 dark:text-violet-400" />,
           },
         ],
@@ -280,7 +269,6 @@ export function OnboardingFlow({
             labelEn: "Casual, Warm & Supportive",
             descId: "Bahasa bersahabat, kasual, suportif dan mudah dipahami",
             descEn: "Friendly, empathetic, approachable conversational style",
-            emoji: "😊",
             icon: <Smile className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />,
           },
           {
@@ -289,7 +277,6 @@ export function OnboardingFlow({
             labelEn: "Professional & Academic",
             descId: "Bahasa formal, baku, terstruktur dan berbobot akademik",
             descEn: "Formal, academic rigor, structured and objective",
-            emoji: "👔",
             icon: <ShieldCheck className="w-5 h-5 text-blue-500 dark:text-blue-400" />,
           },
           {
@@ -298,53 +285,7 @@ export function OnboardingFlow({
             labelEn: "Inspiring & Energetic",
             descId: "Antusias, memotivasi, dan selalu mendorong aksi nyata",
             descEn: "Enthusiastic, motivating, and action-oriented",
-            emoji: "✨",
             icon: <Sparkles className="w-5 h-5 text-amber-500 dark:text-amber-400" />,
-          },
-        ],
-      },
-      {
-        type: "question",
-        sectionIndex: 0,
-        categoryId: "Identitas & AI Tutor",
-        categoryEn: "Identity & AI Tutor",
-        questionId: "Peran utama apa yang paling kamu harapkan dari AI Tutor?",
-        questionEn: "What primary role should AI Tutor play in your study routine?",
-        descId: "AI akan memprioritaskan fungsi ini dalam setiap pendampingan belajar.",
-        descEn: "AI will lead with this approach during homework and study sessions.",
-        key: "aiRole",
-        options: [
-          {
-            id: "Mentor & Pembimbing Pemecahan Soal",
-            labelId: "Mentor Pembimbing",
-            labelEn: "Guiding Mentor",
-            descId: "Membimbing langkah demi langkah saat kamu menemui kebuntuan",
-            descEn: "Guides step-by-step when you hit difficult roadblocks",
-            emoji: "🧭",
-          },
-          {
-            id: "Kolega Diskusi / Sparring Partner",
-            labelId: "Teman Diskusi (Sparring Partner)",
-            labelEn: "Discussion & Debate Partner",
-            descId: "Teman bertukar pikiran untuk menguji argumen dan pemikiran",
-            descEn: "Bounces ideas back and forth to sharpen your logic",
-            emoji: "🤝",
-          },
-          {
-            id: "Korektor & Validator Jawaban",
-            labelId: "Korektor & Validator Jawaban",
-            labelEn: "Validator & Proofreader",
-            descId: "Memeriksa ketepatan logika, rumus, dan kualitas draf tulisan",
-            descEn: "Reviews draft essays, equations, and factual accuracy",
-            emoji: "🔍",
-          },
-          {
-            id: "Perangkum Cepat & Pustakawan",
-            labelId: "Perangkum Cepat Materi",
-            labelEn: "Quick Summarizer & Synthesizer",
-            descId: "Mengekstrak intisari penting dari dokumen atau buku tebal",
-            descEn: "Extracts key takeaways from heavy lecture documents",
-            emoji: "📚",
           },
         ],
       },
@@ -355,31 +296,31 @@ export function OnboardingFlow({
         sectionIndex: 0,
         categoryId: "Identitas Selesai",
         categoryEn: "Identity Configured",
-        titleId: "Persona AI Berhasil Dikonfigurasi! 🎓",
-        titleEn: "AI Persona Successfully Configured! 🎓",
-        subtitleId: "AI Tutor kini mengenali jenjang, jurusan, dan nada bicaramu.",
-        subtitleEn: "Your AI Tutor now understands your domain, level, and voice.",
+        titleId: "Profil & Persona AI Berhasil Dikonfigurasi!",
+        titleEn: "AI Persona Successfully Configured!",
+        subtitleId: "AI Tutor kini mengenali jenjang pendidikan, istilah tugas, dan nada bicaramu.",
+        subtitleEn: "Your AI Tutor now understands your domain, task labels, and voice.",
         highlightsId: [
+          "Istilah tugas (Mata Pelajaran / Mata Kuliah) disesuaikan otomatis",
           "Kosakata dan kedalaman materi disesuaikan dengan jenjangmu",
-          "AI Tutor akan menyapa dengan persona pilihanmu",
         ],
         highlightsEn: [
-          "Terminology calibrated to your academic stage",
-          "AI Tutor greets and guides in your chosen tone",
+          "Task terminology dynamically tuned to your level",
+          "AI Tutor greets and guides in your chosen persona",
         ],
-        emoji: "🚀",
-        nextSectionId: "Metode & Format Catatan",
-        nextSectionEn: "Method & Note Format",
+        icon: <Sparkles className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />,
+        nextSectionId: "Metode & Mode Belajar",
+        nextSectionEn: "Method & Study Mode",
       },
 
       // ─────────────────────────────────────────────────────────────
-      // BAGIAN 2: Metode & Format Catatan (Step 5 - 9)
+      // BAGIAN 2: Metode & Mode Belajar (Step 4 - 5)
       // ─────────────────────────────────────────────────────────────
       {
         type: "question",
         sectionIndex: 1,
-        categoryId: "Metode & Format Catatan",
-        categoryEn: "Method & Note Format",
+        categoryId: "Metode & Mode Belajar",
+        categoryEn: "Method & Study Mode",
         questionId: "Bagaimana cara belajar yang paling membuat materi mudah kamu pahami?",
         questionEn: "What learning method helps you understand concepts easiest?",
         descId: "AI akan menyajikan rangkuman & penjelasan sesuai gaya kognitifmu.",
@@ -392,7 +333,6 @@ export function OnboardingFlow({
             labelEn: "Visual & Illustrative",
             descId: "Diagram alur, peta konsep, infografis dan rangkuman visual",
             descEn: "Flowcharts, mindmaps, infographics and visual schemas",
-            emoji: "👁️",
             icon: <Eye className="w-5 h-5 text-sky-500 dark:text-sky-400" />,
           },
           {
@@ -401,7 +341,6 @@ export function OnboardingFlow({
             labelEn: "Reading & Writing (Textual)",
             descId: "Teks terstruktur, artikel runut dan catatan poin mendalam",
             descEn: "Structured text, detailed articles and comprehensive bullet notes",
-            emoji: "📖",
             icon: <BookText className="w-5 h-5 text-violet-500 dark:text-violet-400" />,
           },
           {
@@ -410,7 +349,6 @@ export function OnboardingFlow({
             labelEn: "Hands-on Practice & Cases",
             descId: "Latihan soal terstruktur, koding, dan pemecahan kasus nyata",
             descEn: "Problem solving drills, coding, and real-world case studies",
-            emoji: "🛠️",
             icon: <Hammer className="w-5 h-5 text-amber-500 dark:text-amber-400" />,
           },
           {
@@ -419,7 +357,6 @@ export function OnboardingFlow({
             labelEn: "Auditory & Dialogue",
             descId: "Tanya jawab dua arah yang aktif seperti percakapan lisan",
             descEn: "Back-and-forth conversational explanations and verbal drills",
-            emoji: "🎧",
             icon: <Headphones className="w-5 h-5 text-teal-500 dark:text-teal-400" />,
           },
         ],
@@ -427,202 +364,8 @@ export function OnboardingFlow({
       {
         type: "question",
         sectionIndex: 1,
-        categoryId: "Metode & Format Catatan",
-        categoryEn: "Method & Note Format",
-        questionId: "Format catatan seperti apa yang paling kamu sukai saat AI merangkum?",
-        questionEn: "What note format do you prefer when AI generates summaries?",
-        descId: "Format standar yang otomatis digunakan saat kamu menyimpan catatan materi.",
-        descEn: "Default structure used when saving AI summaries to Study Notes.",
-        key: "noteFormat",
-        options: [
-          {
-            id: "Poin-poin Bullet Terstruktur",
-            labelId: "Bullet Points & Hierarki Rapi",
-            labelEn: "Structured Bullet Hierarchy",
-            descId: "Daftar poin ringkas dengan sub-poin yang mudah dipindai cepat",
-            descEn: "Scannable bullet points with organized nested sub-items",
-            emoji: "📋",
-          },
-          {
-            id: "Tabel Perbandingan & Analisis",
-            labelId: "Tabel & Komparasi Data",
-            labelEn: "Comparison Tables",
-            descId: "Menjajarkan perbedaan konsep, rumus, dan definisi penting",
-            descEn: "Side-by-side tables contrasting key formulas and concepts",
-            emoji: "📊",
-          },
-          {
-            id: "Flashcard & Tanya-Jawab Kuis",
-            labelId: "Flashcard & Format Q&A",
-            labelEn: "Flashcards & Q&A Format",
-            descId: "Format pertanyaan dan jawaban singkat untuk melatih daya ingat",
-            descEn: "Question-and-answer pairs designed for active memory recall",
-            emoji: "🃏",
-          },
-          {
-            id: "Penjelasan Naratif Lengkap",
-            labelId: "Naratif & Ulasan Mendalam",
-            labelEn: "Comprehensive Narrative",
-            descId: "Paragraf ulasan komprehensif seperti buku teks akademik",
-            descEn: "In-depth analytical paragraphs with rich contextual background",
-            emoji: "📑",
-          },
-        ],
-      },
-      {
-        type: "question",
-        sectionIndex: 1,
-        categoryId: "Metode & Format Catatan",
-        categoryEn: "Method & Note Format",
-        questionId: "Bagaimana cara AI menjelaskan materi rumit kepadamu?",
-        questionEn: "How should AI deconstruct complex theories for you?",
-        descId: "Menentukan pendekatan penjelasan AI saat kamu menghadapi konsep sulit.",
-        descEn: "Determines AI's pedagogical angle when explaining difficult topics.",
-        key: "problemSolvingStyle",
-        options: [
-          {
-            id: "Minta Pembongkaran Step-by-Step",
-            labelId: "Bongkar Langkah Demi Langkah",
-            labelEn: "Step-by-Step Breakdown",
-            descId: "Uraikan solusinya secara teratur dari awal hingga akhir",
-            descEn: "Break the concept into sequential, bite-sized milestones",
-            emoji: "🪜",
-          },
-          {
-            id: "Pahami Konsep Fundamental Dulu",
-            labelId: "Konsep Dasar & Fondasi Teori",
-            labelEn: "Core Fundamentals First",
-            descId: "Kuasai teori fondasi sebelum masuk ke rumus atau soal lanjutan",
-            descEn: "Master first-principles before moving to formulas and tasks",
-            emoji: "💡",
-          },
-          {
-            id: "Coba Latihan Soal Serupa",
-            labelId: "Contoh Soal & Kasus Serupa",
-            labelEn: "Worked Examples & Parallel Problems",
-            descId: "Pahami pola melalui contoh soal dan studi kasus yang mirip",
-            descEn: "Learn patterns from analogous worked examples and problems",
-            emoji: "🎯",
-          },
-          {
-            id: "Minta Analogi Sederhana di Dunia Nyata",
-            labelId: "Analogi Kehidupan Nyata",
-            labelEn: "Real-world Analogies",
-            descId: "Gunakan perumpamaan simpel sehari-hari yang gampang dibayangkan",
-            descEn: "Use everyday relatable metaphors to visualize abstract ideas",
-            emoji: "🌟",
-          },
-        ],
-      },
-      {
-        type: "question",
-        sectionIndex: 1,
-        categoryId: "Metode & Format Catatan",
-        categoryEn: "Method & Note Format",
-        questionId: "Seberapa panjang dan detail penjelasan yang kamu inginkan?",
-        questionEn: "How detailed should AI explanations be by default?",
-        descId: "Mengatur kedalaman jawaban asisten AI saat menganalisis materi tugas.",
-        descEn: "Regulates default response density and depth across the app.",
-        key: "explanationDetail",
-        options: [
-          {
-            id: "Singkat & Padat (To the point)",
-            labelId: "Singkat & Padat (To the Point)",
-            labelEn: "Concise & Direct (To the Point)",
-            descId: "Langsung ke inti jawaban tanpa basa-basi atau pengantar panjang",
-            descEn: "Direct answers focused purely on core points without filler",
-            emoji: "⚡",
-            icon: <Zap className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />,
-          },
-          {
-            id: "Bertahap (Step-by-step)",
-            labelId: "Bertahap & Seimbang",
-            labelEn: "Balanced & Step-by-Step",
-            descId: "Penjelasan terukur dengan poin penting dan langkah terstruktur",
-            descEn: "Paced explanations with clear bullet milestones and takeaways",
-            emoji: "🪜",
-            icon: <ListOrdered className="w-5 h-5 text-blue-500 dark:text-blue-400" />,
-          },
-          {
-            id: "Sangat Detail (Mendalam)",
-            labelId: "Sangat Detail & Mendalam",
-            labelEn: "Deep & Comprehensive",
-            descId: "Analisis menyeluruh mencakup teori fundamental, bukti, dan contoh",
-            descEn: "Exhaustive breakdown covering background, theory, and citations",
-            emoji: "🔍",
-            icon: <Layers className="w-5 h-5 text-purple-500 dark:text-purple-400" />,
-          },
-        ],
-      },
-      {
-        type: "question",
-        sectionIndex: 1,
-        categoryId: "Metode & Format Catatan",
-        categoryEn: "Method & Note Format",
-        questionId: "Bagaimana caramu biasanya mengelola tenggat waktu tugas?",
-        questionEn: "How do you usually handle assignment deadlines?",
-        descId: "Membantu AI mengatur intensitas pengingat deadline di Dashboard.",
-        descEn: "Calibrates urgency highlights and deadline alerts in your view.",
-        key: "deadlineHandling",
-        options: [
-          {
-            id: "Selalu Dicicil Jauh-jauh Hari",
-            labelId: "Dicicil Jauh-Jauh Hari",
-            labelEn: "Planned Well in Advance",
-            descId: "Suka menyelesaikan tugas seawal mungkin dengan tenang",
-            descEn: "Finishes tasks comfortably before the deadline arrives",
-            emoji: "🛡️",
-          },
-          {
-            id: "Fokus Maksimal Menjelang Deadline",
-            labelId: "Fokus Dekat Deadline (Fast Finisher)",
-            labelEn: "High-focus Near Deadline",
-            descId: "Paling produktif dan berenergi saat ada tekanan batas waktu",
-            descEn: "Peak productivity occurs under tight deadline pressure",
-            emoji: "⚡",
-          },
-          {
-            id: "Sering Lupa Jika Tidak Diingatkan",
-            labelId: "Butuh Peringatan Visual Rutin",
-            labelEn: "Need Visual Reminders & Alerts",
-            descId: "Sangat terbantu oleh tanda urgent, warna deadline, dan notifikasi",
-            descEn: "Relies heavily on urgent badges, countdowns, and alert colors",
-            emoji: "🔔",
-          },
-        ],
-      },
-
-      // ── INTERSTITIAL 2 ──
-      {
-        type: "interstitial",
-        sectionIndex: 1,
-        categoryId: "Format Catatan Siap",
-        categoryEn: "Notes Configured",
-        titleId: "Format Catatan & Problem Solving Siap! 📝",
-        titleEn: "Note & Problem-Solving Setup Ready! 📝",
-        subtitleId: "AI akan menyajikan rangkuman dalam format kesukaanmu.",
-        subtitleEn: "AI summaries and breakdowns will now match your study habits.",
-        highlightsId: [
-          "Format catatan AI otomatis sesuai preferensimu",
-          "Analisis tugas disesuaikan dengan pola pemecahan masalahmu",
-        ],
-        highlightsEn: [
-          "AI note generator adopts your preferred layout",
-          "Task analysis aligns with your problem-solving style",
-        ],
-        emoji: "✨",
-        nextSectionId: "Mode Belajar AI & Tugas",
-        nextSectionEn: "AI Study Mode & Tasks",
-      },
-
-      // ─────────────────────────────────────────────────────────────
-      // BAGIAN 3: Mode Belajar AI & Tugas (Step 10 - 14)
-      // ─────────────────────────────────────────────────────────────
-      {
-        type: "question",
-        sectionIndex: 2,
-        categoryId: "Mode Belajar AI & Tugas",
-        categoryEn: "AI Study Mode & Tasks",
+        categoryId: "Metode & Mode Belajar",
+        categoryEn: "Method & Study Mode",
         questionId: "Bagaimana pendekatan interaksi utama yang kamu inginkan dari AI Chat?",
         questionEn: "What core interaction model do you want from AI Chat?",
         descId: "Bisa kamu ganti kapan saja di tombol switcher mode pada halaman AI Chat.",
@@ -635,7 +378,7 @@ export function OnboardingFlow({
             labelEn: "Critical Guidance (Socratic Mode)",
             descId: "AI membimbing alur berpikir dengan pertanyaan nalar tanpa langsung memberi contekan",
             descEn: "AI guides your thought process with probing hints instead of raw answer dumps",
-            emoji: "💡",
+            icon: <Brain className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />,
           },
           {
             id: "direct",
@@ -643,7 +386,7 @@ export function OnboardingFlow({
             labelEn: "Direct Solutions (Direct Mode)",
             descId: "AI langsung memberikan solusi to-the-point yang terstruktur dan siap dipraktikkan",
             descEn: "AI provides immediate, actionable, well-structured solutions on demand",
-            emoji: "🎯",
+            icon: <Zap className="w-5 h-5 text-amber-500 dark:text-amber-400" />,
           },
           {
             id: "quizzer",
@@ -651,207 +394,108 @@ export function OnboardingFlow({
             labelEn: "Interactive Drills (Quizzer Mode)",
             descId: "AI menjelaskan materi lalu otomatis menguji pemahamanmu dengan kuis interaktif",
             descEn: "AI explains concepts then tests your understanding with practice questions",
-            emoji: "🏆",
-          },
-        ],
-      },
-      {
-        type: "question",
-        sectionIndex: 2,
-        categoryId: "Mode Belajar AI & Tugas",
-        categoryEn: "AI Study Mode & Tasks",
-        questionId: "Seberapa proaktif kamu ingin AI memberikan saran lanjutan?",
-        questionEn: "How proactive should AI be with follow-up suggestions?",
-        descId: "Mengatur apakah AI otomatis menawarkan tips tambahan atau hanya menjawab persis pertanyaan.",
-        descEn: "Controls whether AI offers extended tips or strictly answers your prompt.",
-        key: "socraticFrequency",
-        options: [
-          {
-            id: "Proaktif (Saran Topik & Tips Lanjutan)",
-            labelId: "Proaktif — Berikan Tips & Topik Terkait",
-            labelEn: "Proactive — Offer Follow-up Tips & Topics",
-            descId: "AI aktif menyarankan ide eksplorasi tambahan dan strategi belajar terkait",
-            descEn: "AI actively suggests related subtopics, study tips, and next steps",
-            emoji: "🚀",
-          },
-          {
-            id: "Seimbang (Saran Singkat Jika Relevan)",
-            labelId: "Seimbang — Saran Singkat Bila Perlu",
-            labelEn: "Balanced — Brief Suggestions When Relevant",
-            descId: "Kombinasi jawaban fokus dengan rekomendasi singkat jika sangat membantu",
-            descEn: "Focused answers accompanied by brief, highly relevant recommendations",
-            emoji: "⚖️",
-          },
-          {
-            id: "Minimalis (Hanya Jawab yang Diminta)",
-            labelId: "Minimalis — Hanya Jawab Pertanyaan",
-            labelEn: "Minimalist — Strictly Answer the Prompt",
-            descId: "Hanya berikan jawaban presisi tanpa saran tambahan yang tidak diminta",
-            descEn: "Strictly provide concise answers without unsolicited extras",
-            emoji: "⚡",
-          },
-        ],
-      },
-      {
-        type: "question",
-        sectionIndex: 2,
-        categoryId: "Mode Belajar AI & Tugas",
-        categoryEn: "AI Study Mode & Tasks",
-        questionId: "Fitur apa yang paling ingin kamu maksimalkan di IOnLearn?",
-        questionEn: "Which features do you plan to utilize most heavily?",
-        descId: "Kamu dapat memilih lebih dari satu fitur favorit.",
-        descEn: "Select one or more essential tools for your study flow.",
-        key: "favoriteFeatures",
-        isMultiSelect: true,
-        options: [
-          {
-            id: "Sinkronisasi Otomatis Google Classroom",
-            labelId: "Sinkronisasi Classroom",
-            labelEn: "Classroom Auto-Sync",
-            descId: "Semua tugas, materi, dan deadline terhubung otomatis tanpa buka tab lain",
-            descEn: "Auto-sync assignments, attachments, and due dates from Google Classroom",
-            emoji: "🔗",
-          },
-          {
-            id: "AI Tutor Interaktif & Diskusi Soal",
-            labelId: "AI Tutor & Chat Asisten",
-            labelEn: "AI Tutor & Study Chat",
-            descId: "Tanya jawab materi kuliah, bedah dokumen tugas, dan bimbingan belajar",
-            descEn: "Dissect homework documents and get personal concept tutoring",
-            emoji: "🤖",
-          },
-          {
-            id: "Catatan Materi & AI Summarizer",
-            labelId: "Catatan Materi AI",
-            labelEn: "AI Notes & Summaries",
-            descId: "Generator rangkuman materi sekali klik dan penyimpanan catatan rapi",
-            descEn: "One-click exam summaries and organized personal study repository",
-            emoji: "📝",
-          },
-          {
-            id: "Manajemen To-Do & Pelacak Progres",
-            labelId: "To-Do & Deadline Tracker",
-            labelEn: "Personal To-Dos & Tracker",
-            descId: "Pengingat tenggat waktu, checklist tugas mandiri, dan pelacak progres",
-            descEn: "Personal task checklists, deadline urgency badges, and study tracker",
-            emoji: "✅",
-          },
-        ],
-      },
-      {
-        type: "question",
-        sectionIndex: 2,
-        categoryId: "Mode Belajar AI & Tugas",
-        categoryEn: "AI Study Mode & Tasks",
-        questionId: "Berapa jam rata-rata waktu yang kamu luangkan untuk belajar per hari?",
-        questionEn: "How many hours do you allocate for studying each day?",
-        descId: "Menentukan rekomendasi pacing dan pembagian jadwal tugas di Dashboard.",
-        descEn: "Calibrates daily pacing and study schedule recommendations.",
-        key: "dailyStudyHours",
-        options: [
-          {
-            id: "< 1 Jam per Hari",
-            labelId: "Kurang dari 1 Jam",
-            labelEn: "Under 1 Hour per Day",
-            descId: "Sesi cepat, ringkas, dan fokus to-the-point di sela kesibukan",
-            descEn: "Short, ultra-focused study sprints between busy routines",
-            emoji: "⚡",
-          },
-          {
-            id: "1 - 2 Jam per Hari",
-            labelId: "1 - 2 Jam per Hari",
-            labelEn: "1 - 2 Hours per Day",
-            descId: "Porsi seimbang untuk mengerjakan tugas harian dan review catatan",
-            descEn: "Balanced daily allocation for homework tasks and note reviews",
-            emoji: "⏱️",
-          },
-          {
-            id: "2 - 4 Jam per Hari",
-            labelId: "2 - 4 Jam per Hari",
-            labelEn: "2 - 4 Hours per Day",
-            descId: "Belajar mendalam dengan latihan soal intensif dan membaca materi",
-            descEn: "Deep work sessions with practice drills and extensive reading",
-            emoji: "📚",
-          },
-          {
-            id: "> 4 Jam (Intensif)",
-            labelId: "Lebih dari 4 Jam (Intensif)",
-            labelEn: "Over 4 Hours (Intensive)",
-            descId: "Persiapan skripsi, riset akademik, dan persiapan ujian besar",
-            descEn: "Thesis research, academic projects, and major exam prep",
-            emoji: "🔥",
-          },
-        ],
-      },
-      {
-        type: "question",
-        sectionIndex: 2,
-        categoryId: "Mode Belajar AI & Tugas",
-        categoryEn: "AI Study Mode & Tasks",
-        questionId: "Bagaimana situasi lingkungan belajarmu sehari-hari?",
-        questionEn: "What is your typical study environment?",
-        descId: "Menyesuaikan kemudahan navigasi dan tata letak informasi.",
-        descEn: "Tailors workspace layout and responsive accessibility.",
-        key: "studyEnvironment",
-        options: [
-          {
-            id: "Mandiri & Hening di Rumah/Kamar",
-            labelId: "Mandiri & Hening (Rumah/Kamar)",
-            labelEn: "Quiet & Solitary (Home/Room)",
-            descId: "Fokus sendiri dalam suasana hening tanpa banyak distraksi",
-            descEn: "Deep focused work in quiet personal space without interruptions",
-            emoji: "🎧",
-          },
-          {
-            id: "Di Kelas / Kampus / Perpustakaan",
-            labelId: "Kampus & Perpustakaan",
-            labelEn: "Campus & Library",
-            descId: "Sering belajar secara mobile dan berpindah-pindah lokasi",
-            descEn: "Mobile studying across classrooms, cafes, and libraries",
-            emoji: "🏫",
-          },
-          {
-            id: "Sambil Bekerja / Aktivitas Padat",
-            labelId: "Sambil Bekerja / Jadwal Padat",
-            labelEn: "Working / Busy Schedule",
-            descId: "Waktu terbagi, butuh asisten belajar yang super cepat dan efisien",
-            descEn: "Split schedule requiring maximum efficiency and fast access",
-            emoji: "💼",
+            icon: <Trophy className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />,
           },
         ],
       },
 
-      // ── INTERSTITIAL 3 ──
+      // ── INTERSTITIAL 2 ──
       {
         type: "interstitial",
-        sectionIndex: 2,
+        sectionIndex: 1,
         categoryId: "Mode AI Siap",
         categoryEn: "AI Mode Ready",
-        titleId: "Mode Belajar AI Terkalibrasi! 🤖",
-        titleEn: "AI Study Mode Calibrated! 🤖",
-        subtitleId: "AI Chat siap berinteraksi sesuai mode percakapan favoritmu.",
+        titleId: "Mode Belajar AI Terkalibrasi!",
+        titleEn: "AI Study Mode Calibrated!",
+        subtitleId: "AI Chat dan mesin perangkum telah diatur sesuai gaya belajarmu.",
         subtitleEn: "AI Chat is primed with your preferred reasoning & study mode.",
         highlightsId: [
           "Mode interaksi AI telah diaktifkan sesuai pilihanmu",
-          "Tingkat proaktif saran AI disesuaikan dengan kebutuhanmu",
+          "Analisis tugas disesuaikan dengan pola pemecahan masalahmu",
         ],
         highlightsEn: [
           "AI interaction mode initialized to your preference",
-          "Follow-up proactive suggestions calibrated",
+          "Study breakdown calibrated to your cognitive style",
         ],
-        emoji: "🎉",
-        nextSectionId: "Fokus & Target Akademik",
-        nextSectionEn: "Focus & Academic Goals",
+        icon: <Brain className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />,
+        nextSectionId: "Tampilan & Target Belajar",
+        nextSectionEn: "Interface & Academic Goals",
       },
 
       // ─────────────────────────────────────────────────────────────
-      // BAGIAN 4: Fokus & Target Belajar (Step 15 - 19)
+      // BAGIAN 3: Tampilan & Target Belajar (Step 6 - 8)
       // ─────────────────────────────────────────────────────────────
       {
         type: "question",
-        sectionIndex: 3,
-        categoryId: "Fokus & Target Akademik",
-        categoryEn: "Focus & Academic Goals",
+        sectionIndex: 2,
+        categoryId: "Tampilan & Target Belajar",
+        categoryEn: "Interface & Academic Goals",
+        questionId: "Bagaimana format pop-up detail tugas yang paling kamu sukai?",
+        questionEn: "What task detail view style do you prefer?",
+        descId: "Pilih cara menampilkan rincian tugas saat kartu tugas diklik.",
+        descEn: "Choose how task breakdowns appear when you click on task cards.",
+        key: "taskModalStyle",
+        options: [
+          {
+            id: "modal",
+            labelId: "Centered Modal (Dialog Tengah)",
+            labelEn: "Centered Modal (Dialog Window)",
+            descId: "Jendela dialog fokus di tengah layar dengan tampilan lebar yang nyaman",
+            descEn: "Focused dialog window in the center of your screen",
+            icon: <Layers className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />,
+          },
+          {
+            id: "drawer",
+            labelId: "Slide-over Drawer (Panel Samping)",
+            labelEn: "Slide-over Drawer (Side Panel)",
+            descId: "Panel geser di sisi kanan layar, daftar tugas tetap terlihat",
+            descEn: "Slide-over panel on the right sidebar, keeping task list in view",
+            icon: <ListOrdered className="w-5 h-5 text-purple-500 dark:text-purple-400" />,
+          },
+        ],
+      },
+      {
+        type: "question",
+        sectionIndex: 2,
+        categoryId: "Tampilan & Target Belajar",
+        categoryEn: "Interface & Academic Goals",
+        questionId: "Tata letak AI Chat & Workspace seperti apa yang paling kamu sukai?",
+        questionEn: "What AI Chat workspace layout do you prefer?",
+        descId: "Mengatur tata letak ruang percakapan dan bimbingan belajar AI (/chat).",
+        descEn: "Sets the conversation workspace layout for AI Chat.",
+        key: "chatLayout",
+        options: [
+          {
+            id: "minimal",
+            labelId: "Minimalis Terfokus (Standar Bersih)",
+            labelEn: "Minimalist Focused (Standard)",
+            descId: "Ruang chat bersih maksimal, riwayat percakapan dalam menu geser",
+            descEn: "Cleanest workspace with conversation history in slide-over menu",
+            icon: <Sparkles className="w-5 h-5 text-cyan-500 dark:text-cyan-400" />,
+          },
+          {
+            id: "sidebar",
+            labelId: "Sidebar + Feed Percakapan",
+            labelEn: "Sidebar + Chat Feed",
+            descId: "Sidebar riwayat di kiri dan feed percakapan fokus di tengah",
+            descEn: "History sidebar on left and focused chat feed in center",
+            icon: <ListOrdered className="w-5 h-5 text-blue-500 dark:text-blue-400" />,
+          },
+          {
+            id: "split",
+            labelId: "Dual Split Workspace (Berdampingan)",
+            labelEn: "Dual Split Workspace (Side-by-Side)",
+            descId: "Chat AI di kiri dan panel materi / catatan berdampingan di kanan",
+            descEn: "AI chat on left and study materials / notes side-by-side on right",
+            icon: <Layers className="w-5 h-5 text-teal-500 dark:text-teal-400" />,
+          },
+        ],
+      },
+      {
+        type: "question",
+        sectionIndex: 2,
+        categoryId: "Tampilan & Target Belajar",
+        categoryEn: "Interface & Academic Goals",
         questionId: "Apa target utama yang ingin kamu capai dalam waktu dekat?",
         questionEn: "What is your primary academic goal right now?",
         descId: "IOnLearn akan memprioritaskan rekomendasi untuk target ini.",
@@ -864,16 +508,14 @@ export function OnboardingFlow({
             labelEn: "Complete Tasks on Time",
             descId: "Bebas dari stres menumpuk tugas dan tidak pernah terlambat mengumpulkan",
             descEn: "Eliminate deadline stress with zero late assignment submissions",
-            emoji: "🎯",
             icon: <Target className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />,
           },
           {
             id: "Menaikkan Nilai Ujian & IPK Akademik",
             labelId: "Menaikkan Nilai & IPK",
             labelEn: "Boost GPA & Exam Scores",
-            descId: "Paham materi ujian dengan mudah dan raih nilai optimal di setiap mata kuliah",
-            descEn: "Master exam concepts easily and secure top grades across courses",
-            emoji: "🏆",
+            descId: "Paham materi ujian dengan mudah dan raih nilai optimal di setiap mata kuliah/pelajaran",
+            descEn: "Master exam concepts easily and secure top grades across subjects",
             icon: <Trophy className="w-5 h-5 text-amber-500 dark:text-amber-400" />,
           },
           {
@@ -882,190 +524,15 @@ export function OnboardingFlow({
             labelEn: "Peak Focus & Productivity",
             descId: "Belajar lebih efisien dalam waktu singkat tanpa distraksi dan tanpa burnout",
             descEn: "Study efficiently in less time without mental fatigue or distractions",
-            emoji: "⏱️",
             icon: <Clock className="w-5 h-5 text-blue-500 dark:text-blue-400" />,
           },
           {
             id: "Persiapan Riset, Skripsi & Karier Masa Depan",
             labelId: "Riset & Penguasaan Skill Karier",
             labelEn: "Research & Career Readiness",
-            descId: "Menguasai keahlian praktis, riset skripsi, dan portofolio profesional",
-            descEn: "Master practical industry skills, thesis research, and portfolio pieces",
-            emoji: "🚀",
+            descId: "Menguasai keahlian praktis, riset skripsi/tugas akhir, dan portofolio profesional",
+            descEn: "Master practical industry skills, final projects, and portfolio pieces",
             icon: <Rocket className="w-5 h-5 text-purple-500 dark:text-purple-400" />,
-          },
-        ],
-      },
-      {
-        type: "question",
-        sectionIndex: 3,
-        categoryId: "Fokus & Target Akademik",
-        categoryEn: "Focus & Academic Goals",
-        questionId: "Topik atau keahlian apa yang ingin kamu pelajari lebih dalam?",
-        questionEn: "What subjects or skills do you want to master?",
-        descId: "Pilih satu atau beberapa topik utama yang ingin kamu prioritaskan.",
-        descEn: "Select one or more domains to prioritize in AI recommendations.",
-        key: "focusTopics",
-        isMultiSelect: true,
-        options: [
-          {
-            id: "Matematika, Logika & Algoritma",
-            labelId: "Matematika & Logika",
-            labelEn: "Mathematics & Logic",
-            descId: "Kalkulus, aljabar linear, statistika, dan pemecahan rumus",
-            descEn: "Calculus, statistics, algebra, and mathematical reasoning",
-            emoji: "📐",
-          },
-          {
-            id: "Pemrograman, Coding & AI",
-            labelId: "Coding & Rekayasa Software",
-            labelEn: "Coding & Software Engineering",
-            descId: "Python, Web Development, Data Science, AI, dan algoritma",
-            descEn: "Python, Full-Stack web, Data Science, AI, and algorithms",
-            emoji: "💻",
-          },
-          {
-            id: "Bahasa Asing & Komunikasi",
-            labelId: "Bahasa & Komunikasi",
-            labelEn: "Languages & Communication",
-            descId: "Bahasa Inggris akademik, TOEFL/IELTS, dan penulisan esai",
-            descEn: "Academic English, TOEFL/IELTS prep, and essay writing",
-            emoji: "🌐",
-          },
-          {
-            id: "Sains Alam & Eksperimen",
-            labelId: "Sains & Eksperimen",
-            labelEn: "Natural Sciences & Lab",
-            descId: "Fisika, Kimia, Biologi, dan pemahaman konsep sains",
-            descEn: "Physics, Chemistry, Biology, and scientific methods",
-            emoji: "🧪",
-          },
-          {
-            id: "Manajemen, Finansial & Bisnis",
-            labelId: "Bisnis & Keuangan",
-            labelEn: "Business & Finance",
-            descId: "Analisis pasar, akuntansi, pemasaran, dan strategi bisnis",
-            descEn: "Market analysis, accounting, marketing, and business strategy",
-            emoji: "💼",
-          },
-        ],
-      },
-      {
-        type: "question",
-        sectionIndex: 3,
-        categoryId: "Fokus & Target Akademik",
-        categoryEn: "Focus & Academic Goals",
-        questionId: "Apa tantangan terbesar yang sering kamu hadapi saat belajar?",
-        questionEn: "What is your biggest obstacle when studying?",
-        descId: "Fitur IOnLearn akan secara khusus disesuaikan untuk membantumu mengatasi hal ini.",
-        descEn: "IOnLearn will provide targeted suggestions to overcome this hurdle.",
-        key: "biggestChallenge",
-        options: [
-          {
-            id: "Prokrastinasi & Suka Menunda Tugas",
-            labelId: "Suka Menunda (Prokrastinasi)",
-            labelEn: "Procrastination & Starting Friction",
-            descId: "Sulit memulai mengerjakan tugas sebelum mendekati hari deadline",
-            descEn: "Difficult to initiate tasks until deadline pressure kicks in",
-            emoji: "⏳",
-          },
-          {
-            id: "Materi Dosen/Guru Terlalu Cepat & Sulit Dipahami",
-            labelId: "Materi di Kelas Sulit Dipahami",
-            labelEn: "Complex Lecture Materials",
-            descId: "Butuh penjelasan ulang yang ramah dengan bahasa lebih sederhana",
-            descEn: "Needs approachable re-explanations using simpler language",
-            emoji: "🧩",
-          },
-          {
-            id: "Waktu Terbatas Karena Jadwal Terlalu Padat",
-            labelId: "Jadwal Padat & Waktu Terbatas",
-            labelEn: "Limited Time & Busy Schedule",
-            descId: "Perlu rangkuman super ringkas dan poin kunci agar hemat waktu",
-            descEn: "Requires high-density key point summaries to save valuable time",
-            emoji: "🏃",
-          },
-          {
-            id: "Kurang Bahan Latihan & Referensi Berkualitas",
-            labelId: "Kurang Referensi & Contoh Soal",
-            labelEn: "Lack of High-Quality Practice Problems",
-            descId: "Butuh bank soal tambahan, studi kasus, dan rekomendasi referensi",
-            descEn: "Needs curated question banks, case studies, and reference materials",
-            emoji: "📖",
-          },
-        ],
-      },
-      {
-        type: "question",
-        sectionIndex: 3,
-        categoryId: "Fokus & Target Akademik",
-        categoryEn: "Focus & Academic Goals",
-        questionId: "Kapan jam paling produktifmu untuk belajar?",
-        questionEn: "When is your most productive study window?",
-        descId: "Membantu mengatur prioritas dashboard di jam optimalmu.",
-        descEn: "Helps tailor dashboard focus at your peak energy hours.",
-        key: "productiveTime",
-        options: [
-          {
-            id: "Pagi Hari (06:00 - 11:00)",
-            labelId: "Pagi Hari yang Segar",
-            labelEn: "Fresh Morning (06:00 - 11:00)",
-            descId: "Pikiran masih segar, jernih, dan berenergi penuh",
-            descEn: "Clear mind, high mental stamina, and fresh focus",
-            emoji: "🌅",
-          },
-          {
-            id: "Siang / Sore Hari (13:00 - 18:00)",
-            labelId: "Siang / Sore Hari",
-            labelEn: "Afternoon (13:00 - 18:00)",
-            descId: "Waktu produktif di sela-sela jeda kelas atau aktivitas harian",
-            descEn: "Productive momentum between classes and daily activities",
-            emoji: "☀️",
-          },
-          {
-            id: "Malam Hari (19:00 - 00:00)",
-            labelId: "Malam Hari yang Tenang",
-            labelEn: "Quiet Night (19:00 - 00:00)",
-            descId: "Suasana hening, tenang, dan fokus tanpa gangguan",
-            descEn: "Peaceful environment with minimal outside distractions",
-            emoji: "🌙",
-          },
-          {
-            id: "Akhir Pekan Intensif",
-            labelId: "Akhir Pekan (Weekend Focused)",
-            labelEn: "Weekend Deep Focus",
-            descId: "Sesi maraton belajar dan mengejar materi di hari Sabtu & Minggu",
-            descEn: "Extended weekend catch-up sessions on Saturdays and Sundays",
-            emoji: "🗓️",
-          },
-        ],
-      },
-      {
-        type: "question",
-        sectionIndex: 3,
-        categoryId: "Fokus & Target Akademik",
-        categoryEn: "Focus & Academic Goals",
-        questionId: "Bagaimana gaya notifikasi yang paling kamu sukai?",
-        questionEn: "What notification style do you prefer?",
-        descId: "Pengaturan notifikasi toast dan banner peringatan deadline.",
-        descEn: "Controls toast notifications and urgent alerts across the app.",
-        key: "notificationStyle",
-        options: [
-          {
-            id: "Toast Interaktif & Banner Visual",
-            labelId: "Toast Interaktif & Visual",
-            labelEn: "Interactive Toasts & Visual Banners",
-            descId: "Notifikasi responsif di sudut layar saat tugas mendekati deadline",
-            descEn: "Responsive corner popups when assignment deadlines approach",
-            emoji: "🔔",
-          },
-          {
-            id: "Minimalis di Dashboard Saja",
-            labelId: "Minimalis di Dashboard",
-            labelEn: "Minimalist Dashboard Only",
-            descId: "Cukup tampilkan ringkasan di dashboard tanpa popup interaktif berlebih",
-            descEn: "Keep it quiet; only display status alerts within dashboard widgets",
-            emoji: "🔕",
           },
         ],
       },
@@ -1092,32 +559,31 @@ export function OnboardingFlow({
         if (raw) draftData = JSON.parse(raw);
       } catch {}
     }
-    const existing = loadPreferences();
     return {
-      educationLevel: draftData.educationLevel || existing?.educationLevel || "",
-      majorOrField: draftData.majorOrField || existing?.majorOrField || "",
-      dailyStudyHours: draftData.dailyStudyHours || existing?.dailyStudyHours || "",
-      studyEnvironment: draftData.studyEnvironment || existing?.studyEnvironment || "",
-      learningStyle: draftData.learningStyle || existing?.learningStyle || "",
-      problemSolvingStyle: draftData.problemSolvingStyle || existing?.problemSolvingStyle || "",
-      noteFormat: draftData.noteFormat || existing?.noteFormat || "",
-      favoriteFeatures: draftData.favoriteFeatures || existing?.favoriteFeatures || [],
-      deadlineHandling: draftData.deadlineHandling || existing?.deadlineHandling || "",
-      explanationDetail: draftData.explanationDetail || existing?.explanationDetail || "",
-      aiTone: draftData.aiTone || existing?.aiTone || "",
-      aiRole: draftData.aiRole || existing?.aiRole || "",
-      socraticFrequency: draftData.socraticFrequency || existing?.socraticFrequency || "",
-      studyGoal: draftData.studyGoal || existing?.studyGoal || "",
-      focusTopics: draftData.focusTopics || existing?.focusTopics || [],
-      biggestChallenge: draftData.biggestChallenge || existing?.biggestChallenge || "",
-      productiveTime: draftData.productiveTime || existing?.productiveTime || "",
-      notificationStyle: draftData.notificationStyle || existing?.notificationStyle || "",
-      defaultStudyMode: draftData.defaultStudyMode || existing?.defaultStudyMode || "socratic",
-      classroomDateRangeMonths: draftData.classroomDateRangeMonths || existing?.classroomDateRangeMonths || 2,
-      toastPosition: draftData.toastPosition || existing?.toastPosition || "top-right",
-      taskModalStyle: draftData.taskModalStyle || existing?.taskModalStyle || "drawer",
-      chatLayout: draftData.chatLayout || existing?.chatLayout || "minimal",
-      language: draftData.language || existing?.language || (isEn ? "en" : "id"),
+      educationLevel: draftData.educationLevel || "",
+      majorOrField: draftData.majorOrField || "",
+      dailyStudyHours: draftData.dailyStudyHours || "",
+      studyEnvironment: draftData.studyEnvironment || "",
+      learningStyle: draftData.learningStyle || "",
+      problemSolvingStyle: draftData.problemSolvingStyle || "",
+      noteFormat: draftData.noteFormat || "",
+      favoriteFeatures: draftData.favoriteFeatures || [],
+      deadlineHandling: draftData.deadlineHandling || "",
+      explanationDetail: draftData.explanationDetail || "",
+      aiTone: draftData.aiTone || "",
+      aiRole: draftData.aiRole || "",
+      socraticFrequency: draftData.socraticFrequency || "",
+      studyGoal: draftData.studyGoal || "",
+      focusTopics: draftData.focusTopics || [],
+      biggestChallenge: draftData.biggestChallenge || "",
+      productiveTime: draftData.productiveTime || "",
+      notificationStyle: draftData.notificationStyle || "",
+      defaultStudyMode: (draftData.defaultStudyMode as any) || "",
+      classroomDateRangeMonths: draftData.classroomDateRangeMonths || 2,
+      toastPosition: draftData.toastPosition || "top-right",
+      taskModalStyle: (draftData.taskModalStyle as any) || "",
+      chatLayout: (draftData.chatLayout as any) || "",
+      language: draftData.language || (isEn ? "en" : "id"),
     };
   });
 
@@ -1133,7 +599,7 @@ export function OnboardingFlow({
 
   const currentStep = allSteps[currentStepIndex];
 
-  // Global question number (1 to 19)
+  // Global question number (1 to totalQuestions)
   const currentQuestionNumber = useMemo(() => {
     let count = 0;
     for (let i = 0; i <= currentStepIndex; i++) {
@@ -1144,16 +610,20 @@ export function OnboardingFlow({
     return Math.max(1, count);
   }, [allSteps, currentStepIndex]);
 
-  // CRITICAL REQUIREMENT: Tombol Lanjut TIDAK dapat diklik sebelum pertanyaan diisi
+  // CRITICAL REQUIREMENT: Tombol Lanjut TIDAK dapat diklik sebelum pertanyaan diisi dengan opsi yang valid
   const isCurrentStepAnswered = useMemo(() => {
     if (currentStep.type === "interstitial") {
       return true;
     }
     const val = selectedPrefs[currentStep.key];
     if (currentStep.isMultiSelect) {
-      return Array.isArray(val) && val.length > 0;
+      return (
+        Array.isArray(val) &&
+        val.length > 0 &&
+        val.some((v) => currentStep.options.some((opt) => opt.id === v))
+      );
     }
-    return typeof val === "string" && val.trim().length > 0;
+    return Boolean(val && currentStep.options.some((opt) => opt.id === val));
   }, [currentStep, selectedPrefs]);
 
   const handleSelectOption = (value: string) => {
@@ -1248,8 +718,8 @@ export function OnboardingFlow({
 
     toast.success(
       isEn
-        ? "AI Learning Profile Successfully Configured! 🎉"
-        : "Personalisasi profil belajar AI berhasil! 🎉",
+        ? "AI Learning Profile Successfully Configured!"
+        : "Personalisasi profil belajar AI berhasil!",
       {
         description: isEn
           ? "Your AI Tutor and Dashboard are fully primed."
@@ -1393,25 +863,27 @@ export function OnboardingFlow({
             )}
           </button>
 
-          {/* Close / Exit Button - Always available so user is never trapped */}
-          <button
-            type="button"
-            onClick={() => {
-              const profile = ClassroomService.getUserProfile();
-              setOnboardingCompleted(true, profile?.email);
-              setSpotlightPending(true, profile?.email);
-              if (onSkip) {
-                onSkip();
-              } else {
-                window.location.href = "/dashboard";
-              }
-            }}
-            className="px-2.5 py-1 rounded-xl text-xs font-semibold flex items-center gap-1.5 border border-slate-200/80 dark:border-white/[0.08] bg-white/80 dark:bg-[#161616] text-slate-700 dark:text-[#a3a3a3] hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#202020] transition-colors cursor-pointer shadow-2xs"
-            title={isEn ? "Exit to Dashboard" : "Tutup & Masuk ke Dashboard"}
-          >
-            <X className="w-3.5 h-3.5 text-slate-500 hover:text-slate-900 dark:hover:text-white" />
-            <span className="hidden sm:inline">{isEn ? "Exit" : "Tutup"}</span>
-          </button>
+          {/* Close / Exit Button - Only available if opened as a modal or user has already completed onboarding before */}
+          {(isModal || alreadyCompleted) && (
+            <button
+              type="button"
+              onClick={() => {
+                const profile = ClassroomService.getUserProfile();
+                setOnboardingCompleted(true, profile?.email);
+                setSpotlightPending(true, profile?.email);
+                if (onSkip) {
+                  onSkip();
+                } else {
+                  window.location.href = "/dashboard";
+                }
+              }}
+              className="px-2.5 py-1 rounded-xl text-xs font-semibold flex items-center gap-1.5 border border-slate-200/80 dark:border-white/[0.08] bg-white/80 dark:bg-[#161616] text-slate-700 dark:text-[#a3a3a3] hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#202020] transition-colors cursor-pointer shadow-2xs"
+              title={isEn ? "Exit to Dashboard" : "Tutup & Masuk ke Dashboard"}
+            >
+              <X className="w-3.5 h-3.5 text-slate-500 hover:text-slate-900 dark:hover:text-white" />
+              <span className="hidden sm:inline">{isEn ? "Exit" : "Tutup"}</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -1527,11 +999,11 @@ export function OnboardingFlow({
                           : "bg-slate-100 dark:bg-white/[0.06] border border-slate-200 dark:border-white/[0.08] text-slate-700 dark:text-slate-200"
                           }`}
                       >
-                        {opt.emoji ? (
-                          <span className="leading-none select-none">{opt.emoji}</span>
-                        ) : (
+                        {opt.icon ? (
                           opt.icon
-                        )}
+                        ) : opt.emoji ? (
+                          <span className="leading-none select-none">{opt.emoji}</span>
+                        ) : null}
                       </div>
 
                       {/* Label & Full Unclipped Description */}
@@ -1581,7 +1053,7 @@ export function OnboardingFlow({
               <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 blur-2xl rounded-full pointer-events-none" />
 
               <div className="w-16 h-16 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/60 dark:border-indigo-800/40 flex items-center justify-center text-3xl mx-auto mb-4 text-indigo-600 dark:text-indigo-400">
-                {currentStep.emoji}
+                {currentStep.icon || <Sparkles className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />}
               </div>
 
               <h2 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white mb-2 font-heading">

@@ -23,6 +23,7 @@ import {
   Coffee,
   Search,
   X,
+  Pencil,
 } from "lucide-react";
 import { Shell } from "@/components/Shell";
 import { PersonalTodo, TodoSubtask, TodoTask } from "@/types";
@@ -43,6 +44,16 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { DatePicker } from "@/components/ui/date-picker";
 import { toast } from "@/components/ui/sonner";
 import confetti from "canvas-confetti";
 import { useLanguage } from "@/context/LanguageContext";
@@ -54,12 +65,28 @@ export default function TodoPage() {
   const [classroomTasks, setClassroomTasks] = useState<TodoTask[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Form State
+  // Form State for Quick Add
   const [newTitle, setNewTitle] = useState("");
   const [newPriority, setNewPriority] = useState<"high" | "medium" | "low">("medium");
   const [newDueDate, setNewDueDate] = useState("");
   const [newSubject, setNewSubject] = useState("");
+  const [newSubtasks, setNewSubtasks] = useState<{ id: string; title: string }[]>([]);
+  const [draftSubtaskInput, setDraftSubtaskInput] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
+
+  // Edit Modal State
+  const [editingTodo, setEditingTodo] = useState<PersonalTodo | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editPriority, setEditPriority] = useState<"high" | "medium" | "low">("medium");
+  const [editDueDate, setEditDueDate] = useState("");
+  const [editSubject, setEditSubject] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editSubtasks, setEditSubtasks] = useState<TodoSubtask[]>([]);
+  const [editSubtaskInput, setEditSubtaskInput] = useState("");
+
+  // Inline Quick Subtask per Card
+  const [quickSubtaskInputs, setQuickSubtaskInputs] = useState<Record<string, string>>({});
+  const [addingSubtaskForId, setAddingSubtaskForId] = useState<string | null>(null);
 
   // Filter State
   const [filterTab, setFilterTab] = useState<"all" | "active" | "completed" | "high">("all");
@@ -90,6 +117,20 @@ export default function TodoPage() {
     setExpandedMap((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
+  const handleAddDraftSubtask = (e?: React.MouseEvent | React.KeyboardEvent) => {
+    if (e) e.preventDefault();
+    if (!draftSubtaskInput.trim()) return;
+    setNewSubtasks((prev) => [
+      ...prev,
+      { id: `sub-${Date.now()}-${prev.length}`, title: draftSubtaskInput.trim() },
+    ]);
+    setDraftSubtaskInput("");
+  };
+
+  const handleRemoveDraftSubtask = (id: string) => {
+    setNewSubtasks((prev) => prev.filter((s) => s.id !== id));
+  };
+
   const handleAddQuickTodo = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim()) return;
@@ -102,17 +143,134 @@ export default function TodoPage() {
       priority: newPriority,
       dueDate: newDueDate || undefined,
       category: newSubject.trim() || undefined,
+      subtasks:
+        newSubtasks.length > 0
+          ? newSubtasks.map((s) => ({ id: s.id, title: s.title, isCompleted: false }))
+          : undefined,
       createdAt: now,
       updatedAt: now,
     };
 
     addTodo(item);
     setTodos(loadTodos());
+    if (item.subtasks && item.subtasks.length > 0) {
+      setExpandedMap((prev) => ({ ...prev, [item.id]: true }));
+    }
     setNewTitle("");
     setNewDueDate("");
     setNewSubject("");
+    setNewSubtasks([]);
+    setDraftSubtaskInput("");
     setShowAddForm(false);
     toast.success(t.todo.toastAdded, { description: item.title });
+  };
+
+  const handleOpenEdit = (todo: PersonalTodo) => {
+    setEditingTodo(todo);
+    setEditTitle(todo.title);
+    setEditPriority(todo.priority);
+    setEditDueDate(todo.dueDate || "");
+    setEditSubject(todo.category || todo.courseName || "");
+    setEditDescription(todo.description || "");
+    setEditSubtasks(todo.subtasks ? [...todo.subtasks] : []);
+    setEditSubtaskInput("");
+  };
+
+  const handleSaveEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingTodo || !editTitle.trim()) return;
+
+    const allCompleted =
+      editSubtasks.length > 0
+        ? editSubtasks.every((s) => s.isCompleted)
+        : editingTodo.isCompleted;
+
+    updateTodo(editingTodo.id, {
+      title: editTitle.trim(),
+      priority: editPriority,
+      dueDate: editDueDate || undefined,
+      category: editSubject.trim() || undefined,
+      description: editDescription.trim() || undefined,
+      subtasks: editSubtasks.length > 0 ? editSubtasks : undefined,
+      isCompleted: allCompleted,
+    });
+
+    setTodos(loadTodos());
+    setEditingTodo(null);
+    toast.success(t.todo.toastUpdated, { description: editTitle.trim() });
+  };
+
+  const handleAddEditSubtask = (e?: React.MouseEvent | React.KeyboardEvent) => {
+    if (e) e.preventDefault();
+    if (!editSubtaskInput.trim()) return;
+    const newSt: TodoSubtask = {
+      id: `sub-${Date.now()}-${editSubtasks.length}`,
+      title: editSubtaskInput.trim(),
+      isCompleted: false,
+    };
+    setEditSubtasks((prev) => [...prev, newSt]);
+    setEditSubtaskInput("");
+  };
+
+  const handleRemoveEditSubtask = (subtaskId: string) => {
+    setEditSubtasks((prev) => prev.filter((s) => s.id !== subtaskId));
+  };
+
+  const handleToggleEditSubtask = (subtaskId: string) => {
+    setEditSubtasks((prev) =>
+      prev.map((s) => (s.id === subtaskId ? { ...s, isCompleted: !s.isCompleted } : s))
+    );
+  };
+
+  const handleUpdateEditSubtaskTitle = (subtaskId: string, title: string) => {
+    setEditSubtasks((prev) =>
+      prev.map((s) => (s.id === subtaskId ? { ...s, title } : s))
+    );
+  };
+
+  const handleInlineAddSubtask = (todoId: string) => {
+    const text = (quickSubtaskInputs[todoId] || "").trim();
+    if (!text) return;
+
+    const target = todos.find((t) => t.id === todoId);
+    if (!target) return;
+
+    const newSubtask: TodoSubtask = {
+      id: `sub-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      title: text,
+      isCompleted: false,
+    };
+
+    const newSubtasksList = [...(target.subtasks || []), newSubtask];
+
+    updateTodo(todoId, {
+      subtasks: newSubtasksList,
+      isCompleted: false,
+    });
+
+    setTodos(loadTodos());
+    setQuickSubtaskInputs((prev) => ({ ...prev, [todoId]: "" }));
+    setExpandedMap((prev) => ({ ...prev, [todoId]: true }));
+    setAddingSubtaskForId(null);
+    toast.success(isEn ? "Sub-step added" : "Sub-langkah ditambahkan", { description: text });
+  };
+
+  const handleDeleteCardSubtask = (todoId: string, subtaskId: string) => {
+    const target = todos.find((t) => t.id === todoId);
+    if (!target || !target.subtasks) return;
+
+    const newSubtasksList = target.subtasks.filter((s) => s.id !== subtaskId);
+    const allCompleted =
+      newSubtasksList.length > 0
+        ? newSubtasksList.every((s) => s.isCompleted)
+        : target.isCompleted;
+
+    updateTodo(todoId, {
+      subtasks: newSubtasksList.length > 0 ? newSubtasksList : undefined,
+      isCompleted: allCompleted,
+    });
+
+    setTodos(loadTodos());
   };
 
   const handleToggleTodo = (todoId: string) => {
@@ -325,7 +483,7 @@ export default function TodoPage() {
                 className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-[#ccc] hover:bg-slate-100 dark:hover:bg-[#222] transition cursor-pointer"
               >
                 <span className="sr-only">{isEn ? "Close" : "Tutup"}</span>
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
@@ -347,31 +505,40 @@ export default function TodoPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
                 <div>
-                  <label htmlFor="todo-priority-select" className="text-xs font-medium text-slate-600 dark:text-[#a3a3a3] block mb-1">
+                  <label className="text-xs font-medium text-slate-600 dark:text-[#a3a3a3] block mb-1">
                     {t.todo.priorityLabel}
                   </label>
-                  <select
-                    id="todo-priority-select"
+                  <Select
                     value={newPriority}
-                    onChange={(e) => setNewPriority(e.target.value as any)}
-                    className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-[#1f1f1f] border border-slate-200/80 dark:border-[#2b2b2b] text-slate-800 dark:text-[#e5e5e5] focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                    onValueChange={(val) => setNewPriority(val as "high" | "medium" | "low")}
                   >
-                    <option value="high">{t.todo.priorityHigh}</option>
-                    <option value="medium">{t.todo.priorityMedium}</option>
-                    <option value="low">{t.todo.priorityLow}</option>
-                  </select>
+                    <SelectTrigger
+                      id="todo-priority-select"
+                      className="w-full h-9 px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-[#1f1f1f] border border-slate-200/80 dark:border-[#2b2b2b] text-slate-800 dark:text-[#e5e5e5] focus:ring-2 focus:ring-indigo-500/30"
+                    >
+                      <SelectValue placeholder={t.todo.priorityLabel} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectLabel>{t.todo.priorityLabel}</SelectLabel>
+                        <SelectItem value="high">{t.todo.priorityHigh}</SelectItem>
+                        <SelectItem value="medium">{t.todo.priorityMedium}</SelectItem>
+                        <SelectItem value="low">{t.todo.priorityLow}</SelectItem>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div>
                   <label htmlFor="todo-due-date-input" className="text-xs font-medium text-slate-600 dark:text-[#a3a3a3] block mb-1">
                     {t.todo.dueDateLabel} {isEn ? "(Optional)" : "(Opsional)"}
                   </label>
-                  <input
+                  <DatePicker
                     id="todo-due-date-input"
-                    type="date"
                     value={newDueDate}
-                    onChange={(e) => setNewDueDate(e.target.value)}
-                    className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-[#1f1f1f] border border-slate-200/80 dark:border-[#2b2b2b] text-slate-800 dark:text-[#e5e5e5] focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                    onChange={(date) => setNewDueDate(date)}
+                    placeholder={isEn ? "Pick a due date..." : "Pilih target tanggal..."}
+                    isEn={isEn}
                   />
                 </div>
 
@@ -387,6 +554,73 @@ export default function TodoPage() {
                     onChange={(e) => setNewSubject(e.target.value)}
                     className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-[#1f1f1f] border border-slate-200/80 dark:border-[#2b2b2b] text-slate-800 dark:text-[#e5e5e5] focus:outline-none focus:ring-2 focus:ring-indigo-500/30 placeholder:text-slate-400 dark:placeholder:text-[#666]"
                   />
+                </div>
+              </div>
+
+              {/* Draft Subtasks Section */}
+              <div className="pt-1">
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-medium text-slate-600 dark:text-[#a3a3a3]">
+                    {t.todo.subtasksOptional}
+                  </label>
+                  {newSubtasks.length > 0 && (
+                    <span className="text-[11px] text-slate-400 dark:text-[#777]">
+                      {newSubtasks.length} {isEn ? "steps added" : "langkah ditambahkan"}
+                    </span>
+                  )}
+                </div>
+
+                {newSubtasks.length > 0 && (
+                  <div className="space-y-1.5 mb-2.5 max-h-36 overflow-y-auto pr-1">
+                    {newSubtasks.map((st, idx) => (
+                      <div
+                        key={st.id}
+                        className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-[#1a1a1a] border border-slate-200/60 dark:border-[#2a2a2a] text-xs"
+                      >
+                        <span className="text-slate-700 dark:text-[#ccc] truncate flex items-center gap-1.5">
+                          <span className="text-[10px] font-mono font-medium text-slate-400 dark:text-[#666]">
+                            {idx + 1}.
+                          </span>
+                          {st.title}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveDraftSubtask(st.id)}
+                          className="text-slate-400 hover:text-rose-500 transition-colors p-1 cursor-pointer"
+                          aria-label={isEn ? "Remove sub-step" : "Hapus sub-langkah"}
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    placeholder={t.todo.subtaskPlaceholder}
+                    value={draftSubtaskInput}
+                    onChange={(e) => setDraftSubtaskInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddDraftSubtask();
+                      }
+                    }}
+                    className="flex-1 px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-[#1f1f1f] border border-slate-200/80 dark:border-[#2b2b2b] text-slate-800 dark:text-[#e5e5e5] focus:outline-none focus:ring-2 focus:ring-indigo-500/30 placeholder:text-slate-400 dark:placeholder:text-[#666]"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAddDraftSubtask}
+                    disabled={!draftSubtaskInput.trim()}
+                    className="h-9 px-3 text-xs rounded-xl gap-1 shrink-0"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>{t.todo.addSubstepBtn}</span>
+                  </Button>
                 </div>
               </div>
 
@@ -406,6 +640,226 @@ export default function TodoPage() {
                   className="text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-2xs"
                 >
                   {t.todo.saveBtn}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Modal: Edit To-Do & Subtasks */}
+        <Dialog open={Boolean(editingTodo)} onOpenChange={(open) => { if (!open) setEditingTodo(null); }}>
+          <DialogContent
+            hideCloseButton
+            className="w-[calc(100%-1.5rem)] sm:w-full max-w-lg p-5 sm:p-6 space-y-4 rounded-2xl bg-white dark:bg-[#171717] border border-slate-100 dark:border-[#262626] shadow-2xl"
+          >
+            <DialogTitle className="sr-only">{t.todo.dialogEditTitle}</DialogTitle>
+            <DialogDescription className="sr-only">{t.todo.dialogEditDesc}</DialogDescription>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                  <Pencil className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-[#f3f3f3]">
+                    {t.todo.dialogEditTitle}
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-[#888]">
+                    {t.todo.dialogEditDesc}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingTodo(null)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-[#ccc] hover:bg-slate-100 dark:hover:bg-[#222] transition cursor-pointer"
+              >
+                <span className="sr-only">{isEn ? "Close" : "Tutup"}</span>
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEdit} className="space-y-3.5">
+              <div>
+                <label htmlFor="edit-todo-title" className="text-xs font-semibold text-slate-700 dark:text-[#ccc] block mb-1">
+                  {isEn ? "To-Do Title" : "Judul To-Do"}
+                </label>
+                <input
+                  id="edit-todo-title"
+                  type="text"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-slate-50 dark:bg-[#1f1f1f] border border-slate-200/80 dark:border-[#2b2b2b] text-slate-900 dark:text-[#f3f3f3] placeholder:text-slate-400 dark:placeholder:text-[#666] focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+                <div>
+                  <label className="text-xs font-medium text-slate-600 dark:text-[#a3a3a3] block mb-1">
+                    {t.todo.priorityLabel}
+                  </label>
+                  <Select
+                    value={editPriority}
+                    onValueChange={(val) => setEditPriority(val as "high" | "medium" | "low")}
+                  >
+                    <SelectTrigger
+                      id="edit-todo-priority"
+                      className="w-full h-9 px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-[#1f1f1f] border border-slate-200/80 dark:border-[#2b2b2b] text-slate-800 dark:text-[#e5e5e5] focus:ring-2 focus:ring-indigo-500/30"
+                    >
+                      <SelectValue placeholder={t.todo.priorityLabel} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectLabel>{t.todo.priorityLabel}</SelectLabel>
+                        <SelectItem value="high">{t.todo.priorityHigh}</SelectItem>
+                        <SelectItem value="medium">{t.todo.priorityMedium}</SelectItem>
+                        <SelectItem value="low">{t.todo.priorityLow}</SelectItem>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <label htmlFor="edit-todo-due-date" className="text-xs font-medium text-slate-600 dark:text-[#a3a3a3] block mb-1">
+                    {t.todo.dueDateLabel} {isEn ? "(Optional)" : "(Opsional)"}
+                  </label>
+                  <DatePicker
+                    id="edit-todo-due-date"
+                    value={editDueDate}
+                    onChange={(date) => setEditDueDate(date)}
+                    placeholder={isEn ? "Pick a due date..." : "Pilih target tanggal..."}
+                    isEn={isEn}
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="edit-todo-category" className="text-xs font-medium text-slate-600 dark:text-[#a3a3a3] block mb-1">
+                    {t.todo.categoryLabel}
+                  </label>
+                  <input
+                    id="edit-todo-category"
+                    type="text"
+                    placeholder={isEn ? "e.g. Algorithms" : "e.g. Algoritma"}
+                    value={editSubject}
+                    onChange={(e) => setEditSubject(e.target.value)}
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-[#1f1f1f] border border-slate-200/80 dark:border-[#2b2b2b] text-slate-800 dark:text-[#e5e5e5] focus:outline-none focus:ring-2 focus:ring-indigo-500/30 placeholder:text-slate-400 dark:placeholder:text-[#666]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="edit-todo-desc" className="text-xs font-medium text-slate-600 dark:text-[#a3a3a3] block mb-1">
+                  {isEn ? "Description (Optional)" : "Deskripsi (Opsional)"}
+                </label>
+                <textarea
+                  id="edit-todo-desc"
+                  rows={2}
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  placeholder={isEn ? "Add more context or details..." : "Tambah catatan atau detail tambahan..."}
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-[#1f1f1f] border border-slate-200/80 dark:border-[#2b2b2b] text-slate-800 dark:text-[#e5e5e5] focus:outline-none focus:ring-2 focus:ring-indigo-500/30 placeholder:text-slate-400 dark:placeholder:text-[#666] resize-none"
+                />
+              </div>
+
+              {/* Edit Subtasks Section */}
+              <div className="pt-1">
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-medium text-slate-600 dark:text-[#a3a3a3]">
+                    {t.todo.subtasksLabel} ({editSubtasks.filter((s) => s.isCompleted).length}/{editSubtasks.length})
+                  </label>
+                </div>
+
+                {editSubtasks.length > 0 && (
+                  <div className="space-y-1.5 mb-2.5 max-h-40 overflow-y-auto pr-1">
+                    {editSubtasks.map((st) => (
+                      <div
+                        key={st.id}
+                        className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-[#1a1a1a] border border-slate-200/60 dark:border-[#2a2a2a] text-xs"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => handleToggleEditSubtask(st.id)}
+                          className="cursor-pointer shrink-0"
+                          title={st.isCompleted ? (isEn ? "Mark uncompleted" : "Tandai belum selesai") : (isEn ? "Mark completed" : "Tandai selesai")}
+                        >
+                          <span
+                            className={`w-4 h-4 rounded flex items-center justify-center transition-all ${
+                              st.isCompleted
+                                ? "bg-emerald-500 text-white"
+                                : "border border-slate-300 dark:border-[#444]"
+                            }`}
+                          >
+                            {st.isCompleted && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                          </span>
+                        </button>
+                        <input
+                          type="text"
+                          value={st.title}
+                          onChange={(e) => handleUpdateEditSubtaskTitle(st.id, e.target.value)}
+                          className={`flex-1 bg-transparent border-none focus:outline-none text-xs ${
+                            st.isCompleted
+                              ? "line-through text-slate-400 dark:text-[#666]"
+                              : "text-slate-800 dark:text-[#e5e5e5]"
+                          }`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveEditSubtask(st.id)}
+                          className="text-slate-400 hover:text-rose-500 transition-colors p-1 cursor-pointer shrink-0"
+                          title={isEn ? "Delete sub-step" : "Hapus sub-langkah"}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    placeholder={t.todo.subtaskPlaceholder}
+                    value={editSubtaskInput}
+                    onChange={(e) => setEditSubtaskInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddEditSubtask();
+                      }
+                    }}
+                    className="flex-1 px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-[#1f1f1f] border border-slate-200/80 dark:border-[#2b2b2b] text-slate-800 dark:text-[#e5e5e5] focus:outline-none focus:ring-2 focus:ring-indigo-500/30 placeholder:text-slate-400 dark:placeholder:text-[#666]"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAddEditSubtask}
+                    disabled={!editSubtaskInput.trim()}
+                    className="h-9 px-3 text-xs rounded-xl gap-1 shrink-0"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>{t.todo.addSubstepBtn}</span>
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-[#262626]">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setEditingTodo(null)}
+                  className="text-xs text-slate-600 dark:text-[#888] rounded-xl"
+                >
+                  {t.todo.cancelBtn}
+                </Button>
+                <Button
+                  type="submit"
+                  size="sm"
+                  className="text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-2xs"
+                >
+                  {t.todo.saveChangesBtn}
                 </Button>
               </div>
             </form>
@@ -652,7 +1106,7 @@ export default function TodoPage() {
                       )}
 
                       {/* Subtasks Progress / Trigger */}
-                      {hasSubtasks && (
+                      {hasSubtasks ? (
                         <div className="mt-2.5">
                           <button
                             type="button"
@@ -673,58 +1127,162 @@ export default function TodoPage() {
 
                           {/* Subtasks List */}
                           {isExpanded && (
-                            <div className="mt-2 pl-2 space-y-1.5 border-l-2 border-slate-100 dark:border-[#222]">
+                            <div className="mt-2 pl-2 space-y-2 border-l-2 border-slate-100 dark:border-[#222]">
                               {item.subtasks?.map((subtask) => (
                                 <div
                                   key={subtask.id}
-                                  className="flex items-start gap-2 text-xs py-0.5"
+                                  className="group/sub flex items-center justify-between gap-2 text-xs py-0.5"
                                 >
-                                  <button
-                                    type="button"
-                                    onClick={() => handleToggleSubtask(item.id, subtask.id)}
-                                    className="min-w-[44px] min-h-[44px] -my-2.5 -ml-2.5 flex items-center justify-center cursor-pointer shrink-0 focus-visible:outline-none"
-                                    title={subtask.isCompleted ? (isEn ? "Mark subtask uncompleted" : "Tandai subtask belum selesai") : (isEn ? "Mark subtask completed" : "Tandai subtask selesai")}
-                                    aria-label={subtask.isCompleted ? (isEn ? `Mark subtask "${subtask.title}" uncompleted` : `Tandai subtask "${subtask.title}" belum selesai`) : (isEn ? `Mark subtask "${subtask.title}" completed` : `Tandai subtask "${subtask.title}" selesai`)}
-                                  >
+                                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleToggleSubtask(item.id, subtask.id)}
+                                      className="min-w-[28px] min-h-[28px] flex items-center justify-center cursor-pointer shrink-0 focus-visible:outline-none"
+                                      title={subtask.isCompleted ? (isEn ? "Mark subtask uncompleted" : "Tandai subtask belum selesai") : (isEn ? "Mark subtask completed" : "Tandai subtask selesai")}
+                                      aria-label={subtask.isCompleted ? (isEn ? `Mark subtask "${subtask.title}" uncompleted` : `Tandai subtask "${subtask.title}" belum selesai`) : (isEn ? `Mark subtask "${subtask.title}" completed` : `Tandai subtask "${subtask.title}" selesai`)}
+                                    >
+                                      <span
+                                        className={`w-3.5 h-3.5 rounded flex items-center justify-center transition-all focus-visible:ring-1 focus-visible:ring-emerald-500 ${
+                                          subtask.isCompleted
+                                            ? "bg-emerald-500 text-white"
+                                            : "border border-slate-300 dark:border-[#444]"
+                                        }`}
+                                      >
+                                        {subtask.isCompleted && (
+                                          <Check className="w-2 h-2 stroke-[3]" />
+                                        )}
+                                      </span>
+                                    </button>
                                     <span
-                                      className={`w-4 h-4 rounded flex items-center justify-center transition-all focus-visible:ring-1 focus-visible:ring-emerald-500 ${
+                                      className={`truncate ${
                                         subtask.isCompleted
-                                          ? "bg-emerald-500 text-white"
-                                          : "border border-slate-300 dark:border-[#444]"
+                                          ? "line-through text-slate-400 dark:text-[#666]"
+                                          : "text-slate-700 dark:text-[#ccc]"
                                       }`}
                                     >
-                                      {subtask.isCompleted && (
-                                        <Check className="w-2.5 h-2.5 stroke-[3]" />
-                                      )}
+                                      {subtask.title}
                                     </span>
-                                  </button>
-                                  <span
-                                    className={
-                                      subtask.isCompleted
-                                        ? "line-through text-slate-400 dark:text-[#666]"
-                                        : "text-slate-700 dark:text-[#ccc]"
-                                    }
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteCardSubtask(item.id, subtask.id)}
+                                    className="opacity-0 group-hover/sub:opacity-100 transition-opacity p-1 text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 cursor-pointer shrink-0"
+                                    title={isEn ? "Delete sub-step" : "Hapus sub-langkah"}
                                   >
-                                    {subtask.title}
-                                  </span>
+                                    <X className="w-3 h-3" />
+                                  </button>
                                 </div>
                               ))}
+
+                              {/* Inline Quick Add Subtask inside expanded list */}
+                              <div className="pt-1 flex items-center gap-1.5">
+                                <input
+                                  type="text"
+                                  placeholder={t.todo.quickAddSubtaskPlaceholder}
+                                  value={quickSubtaskInputs[item.id] || ""}
+                                  onChange={(e) =>
+                                    setQuickSubtaskInputs((prev) => ({
+                                      ...prev,
+                                      [item.id]: e.target.value,
+                                    }))
+                                  }
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      e.preventDefault();
+                                      handleInlineAddSubtask(item.id);
+                                    }
+                                  }}
+                                  className="flex-1 px-2.5 py-1 text-xs rounded-lg bg-slate-50 dark:bg-[#1a1a1a] border border-slate-200/80 dark:border-[#2a2a2a] text-slate-800 dark:text-[#e5e5e5] placeholder:text-slate-400 dark:placeholder:text-[#666] focus:outline-none focus:ring-1 focus:ring-indigo-500/30"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleInlineAddSubtask(item.id)}
+                                  disabled={!(quickSubtaskInputs[item.id] || "").trim()}
+                                  className="px-2.5 py-1 text-xs rounded-lg bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 dark:bg-[#222] dark:hover:bg-indigo-950/40 dark:hover:text-indigo-400 text-slate-600 dark:text-[#a3a3a3] disabled:opacity-40 transition-colors cursor-pointer flex items-center gap-1"
+                                >
+                                  <Plus className="w-3 h-3" />
+                                  <span>{isEn ? "Add" : "Tambah"}</span>
+                                </button>
+                              </div>
                             </div>
+                          )}
+                        </div>
+                      ) : (
+                        /* When no subtasks yet: Allow adding subtasks inline */
+                        <div className="mt-2">
+                          {addingSubtaskForId === item.id ? (
+                            <div className="flex items-center gap-1.5">
+                              <input
+                                autoFocus
+                                type="text"
+                                placeholder={t.todo.quickAddSubtaskPlaceholder}
+                                value={quickSubtaskInputs[item.id] || ""}
+                                onChange={(e) =>
+                                  setQuickSubtaskInputs((prev) => ({
+                                    ...prev,
+                                    [item.id]: e.target.value,
+                                  }))
+                                }
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    handleInlineAddSubtask(item.id);
+                                  } else if (e.key === "Escape") {
+                                    setAddingSubtaskForId(null);
+                                  }
+                                }}
+                                className="flex-1 px-2.5 py-1 text-xs rounded-lg bg-slate-50 dark:bg-[#1a1a1a] border border-slate-200/80 dark:border-[#2a2a2a] text-slate-800 dark:text-[#e5e5e5] placeholder:text-slate-400 dark:placeholder:text-[#666] focus:outline-none focus:ring-1 focus:ring-indigo-500/30"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleInlineAddSubtask(item.id)}
+                                disabled={!(quickSubtaskInputs[item.id] || "").trim()}
+                                className="px-2.5 py-1 text-xs rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-40 transition-colors cursor-pointer flex items-center gap-1"
+                              >
+                                <Plus className="w-3 h-3" />
+                                <span>{isEn ? "Add" : "Tambah"}</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setAddingSubtaskForId(null)}
+                                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-[#ccc] transition cursor-pointer"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setAddingSubtaskForId(item.id)}
+                              className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-400 hover:text-indigo-600 dark:text-[#737373] dark:hover:text-indigo-400 transition-colors cursor-pointer"
+                            >
+                              <Plus className="w-3 h-3" />
+                              <span>{t.todo.addSubstepBtn}</span>
+                            </button>
                           )}
                         </div>
                       )}
                     </div>
 
                     {/* Actions */}
-                    <div className="flex items-center gap-1 shrink-0">
+                    <div className="flex items-center gap-0.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEdit(item)}
+                        className="min-w-[40px] min-h-[40px] -m-1 flex items-center justify-center rounded-xl text-slate-400 hover:text-indigo-600 dark:text-[#737373] dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-[#202020] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                        title={t.todo.editBtn}
+                        aria-label={`${t.todo.editBtn} "${item.title}"`}
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
                       <button
                         type="button"
                         onClick={() => handleDeleteTodo(item.id)}
-                        className="min-w-[44px] min-h-[44px] -m-2 flex items-center justify-center rounded-xl text-slate-400 hover:text-rose-600 dark:text-[#737373] dark:hover:text-rose-400 hover:bg-slate-100 dark:hover:bg-[#202020] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
+                        className="min-w-[40px] min-h-[40px] -m-1 flex items-center justify-center rounded-xl text-slate-400 hover:text-rose-600 dark:text-[#737373] dark:hover:text-rose-400 hover:bg-slate-100 dark:hover:bg-[#202020] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
                         title={isEn ? "Delete To-Do" : "Hapus To-Do"}
                         aria-label={isEn ? `Delete to-do "${item.title}"` : `Hapus to-do "${item.title}"`}
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </div>
@@ -763,7 +1321,7 @@ export default function TodoPage() {
                 className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-[#ccc] hover:bg-slate-100 dark:hover:bg-[#222] transition cursor-pointer"
               >
                 <span className="sr-only">{isEn ? "Close" : "Tutup"}</span>
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 

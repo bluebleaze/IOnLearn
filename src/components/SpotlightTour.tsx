@@ -23,7 +23,7 @@ import { Button } from "@/components/ui/button";
 
 export interface SpotlightStep {
   targetSelector: string;
-  emoji: string;
+  emoji?: string;
   icon: React.ReactNode;
   tagId: string;
   tagEn: string;
@@ -45,7 +45,6 @@ interface SpotlightTourProps {
 const SPOTLIGHT_STEPS: SpotlightStep[] = [
   {
     targetSelector: '[data-tour="sidebar-nav"]',
-    emoji: "🧭",
     icon: <Compass className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />,
     tagId: "NAVIGASI UTAMA",
     tagEn: "MAIN NAVIGATION",
@@ -56,14 +55,13 @@ const SPOTLIGHT_STEPS: SpotlightStep[] = [
     descEn:
       "Quickly toggle between your Overview Dashboard, Classroom Tasks, AI Socratic Tutor, Daily To-Dos, and Study Notes.",
     userflowTipId:
-      "💡 Alur Utama: Mulai dari Dashboard -> buka detail tugas -> bedah materi bersama AI -> simpan rangkuman di Catatan.",
+      "Alur Utama: Mulai dari Dashboard -> buka detail tugas -> bedah materi bersama AI -> simpan rangkuman di Catatan.",
     userflowTipEn:
-      "💡 Core Flow: Start at Dashboard -> open assignments -> discuss with AI Tutor -> save summaries to Notes.",
+      "Core Flow: Start at Dashboard -> open assignments -> discuss with AI Tutor -> save summaries to Notes.",
     preferredPlacement: "right",
   },
   {
     targetSelector: '[data-tour="header-sync"]',
-    emoji: "🔄",
     icon: <RefreshCw className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />,
     tagId: "GOOGLE CLASSROOM",
     tagEn: "GOOGLE CLASSROOM",
@@ -74,14 +72,13 @@ const SPOTLIGHT_STEPS: SpotlightStep[] = [
     descEn:
       "One-click sync pulls your latest assignments, course attachments, and instructions directly from Google Classroom.",
     userflowTipId:
-      "💡 Praktik Terbaik: Klik tombol ini kapan pun guru atau dosenmu mengunggah tugas baru di Classroom.",
+      "Praktik Terbaik: Klik tombol ini kapan pun guru atau dosenmu mengunggah tugas baru di Classroom.",
     userflowTipEn:
-      "💡 Best Practice: Click this button whenever teachers post new materials or assignments in Classroom.",
+      "Best Practice: Click this button whenever teachers post new materials or assignments in Classroom.",
     preferredPlacement: "bottom",
   },
   {
     targetSelector: '[data-tour="quick-ai-btn"]',
-    emoji: "🤖",
     icon: <MessageSquareText className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />,
     tagId: "AI SOCRATIC TUTOR",
     tagEn: "AI SOCRATIC TUTOR",
@@ -92,14 +89,13 @@ const SPOTLIGHT_STEPS: SpotlightStep[] = [
     descEn:
       "Not just answer-dumping! The AI Tutor scaffolds your problem solving step-by-step using Socratic inquiry and syllabus analysis.",
     userflowTipId:
-      "💡 Tips: Jika mentok pada soal tugas, klik tombol ini dan upload lampiran soal untuk dibimbing sampai paham.",
+      "Tips: Jika mentok pada soal tugas, klik tombol ini dan upload lampiran soal untuk dibimbing sampai paham.",
     userflowTipEn:
-      "💡 Pro Tip: Whenever stuck on tricky homework, ask AI for hints and analogies to build genuine mastery.",
+      "Pro Tip: Whenever stuck on tricky homework, ask AI for hints and analogies to build genuine mastery.",
     preferredPlacement: "bottom",
   },
   {
     targetSelector: '[data-tour="urgent-tasks"]',
-    emoji: "⏳",
     icon: <Clock className="w-5 h-5 text-rose-500 dark:text-rose-400" />,
     tagId: "PRIORITAS TENGGAT",
     tagEn: "DEADLINE RADAR",
@@ -110,14 +106,13 @@ const SPOTLIGHT_STEPS: SpotlightStep[] = [
     descEn:
       "Assignments approaching deadlines (<48 hours) are automatically highlighted here so you never submit late.",
     userflowTipId:
-      "💡 Fitur Studio: Di halaman detail tugas, kamu bisa mengekspor makalah rapi (.docx), slide (.pptx), atau tabel (.xlsx).",
+      "Fitur Studio: Di halaman detail tugas, kamu bisa mengekspor makalah rapi (.docx), slide (.pptx), atau tabel (.xlsx).",
     userflowTipEn:
-      "💡 Studio Feature: Inside task details, you can generate academic papers (.docx), slides (.pptx), or spreadsheets (.xlsx).",
+      "Studio Feature: Inside task details, you can generate academic papers (.docx), slides (.pptx), or spreadsheets (.xlsx).",
     preferredPlacement: "top",
   },
   {
     targetSelector: '[data-tour="today-todos"]',
-    emoji: "✅",
     icon: <ListTodo className="w-5 h-5 text-amber-500 dark:text-amber-400" />,
     tagId: "PRODUKTIVITAS HARIAN",
     tagEn: "DAILY PRODUCTIVITY",
@@ -128,14 +123,13 @@ const SPOTLIGHT_STEPS: SpotlightStep[] = [
     descEn:
       "Set personal study checklists outside Classroom. Break down overwhelming tasks into bite-sized achievable goals.",
     userflowTipId:
-      "💡 Motivasi: Setiap kali mencentang to-do selesai, pelacak progres dan perayaan confetti akan menyemangatimu!",
+      "Motivasi: Setiap kali mencentang to-do selesai, pelacak progres dan perayaan confetti akan menyemangatimu!",
     userflowTipEn:
-      "💡 Motivation: Each completed checklist item updates your study momentum with celebratory confetti!",
+      "Motivation: Each completed checklist item updates your study momentum with celebratory confetti!",
     preferredPlacement: "top",
   },
   {
     targetSelector: '[data-tour="user-profile"]',
-    emoji: "⚙️",
     icon: <User className="w-5 h-5 text-slate-500 dark:text-slate-400" />,
     tagId: "PENGATURAN & AKUN",
     tagEn: "SETTINGS & PROFILE",
@@ -146,9 +140,9 @@ const SPOTLIGHT_STEPS: SpotlightStep[] = [
     descEn:
       "Switch Dark/Light theme, toggle Indonesian/English, manage Classroom accounts, or recalibrate onboarding preferences.",
     userflowTipId:
-      "💡 Selamat! Kamu sudah memahami seluruh alur kerja IOnLearn. Selamat belajar dan berprestasi! 🎓",
+      "Selamat! Kamu sudah memahami seluruh alur kerja IOnLearn. Selamat belajar dan berprestasi!",
     userflowTipEn:
-      "💡 You're all set! You understand the complete IOnLearn workflow. Happy studying and best of luck! 🎓",
+      "You're all set! You understand the complete IOnLearn workflow. Happy studying and best of luck!",
     preferredPlacement: "top",
   },
 ];
@@ -355,7 +349,7 @@ export function SpotlightTour({ isOpen, onClose, userEmail }: SpotlightTourProps
           {/* Top Bar: Tag & Step Counter */}
           <div className="flex items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-white/[0.06]">
             <div className="flex items-center gap-2">
-              <span className="text-base">{currentStep.emoji}</span>
+              {currentStep.icon}
               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/70 dark:border-indigo-800/60">
                 {isEn ? currentStep.tagEn : currentStep.tagId}
               </span>
@@ -432,8 +426,8 @@ export function SpotlightTour({ isOpen, onClose, userEmail }: SpotlightTourProps
                 <span>
                   {currentStepIndex === SPOTLIGHT_STEPS.length - 1
                     ? isEn
-                      ? "Start Learning 🚀"
-                      : "Mulai Belajar 🚀"
+                      ? "Start Learning"
+                      : "Mulai Belajar"
                     : isEn
                     ? "Next"
                     : "Lanjut"}

@@ -114,7 +114,7 @@ function DashboardContent() {
         urgentSectionTitle: "Upcoming Deadlines",
         viewAllBtn: "View All",
         noUrgentTitle: "No urgent deadlines",
-        noUrgentDesc: "All your coursework is currently well on track 🎉",
+        noUrgentDesc: "All your coursework is currently well on track",
         aiReadyBadge: "AI Ready",
 
         // Daily To-Dos section
@@ -177,7 +177,7 @@ function DashboardContent() {
       urgentSectionTitle: "Tugas Tenggat Terdekat",
       viewAllBtn: "Lihat Semua",
       noUrgentTitle: "Tidak ada tenggat mendesak",
-      noUrgentDesc: "Semua tugas kuliah saat ini terkendali dengan baik 🎉",
+      noUrgentDesc: "Semua tugas kuliah saat ini terkendali dengan baik",
       aiReadyBadge: "AI Siap",
 
       // Daily To-Dos section
