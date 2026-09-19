@@ -165,7 +165,7 @@ export function AppSidebar({
             {t.nav.mainMenu}
           </SidebarGroupLabel>
           <SidebarGroupContent className="overflow-hidden">
-            <SidebarMenu className="space-y-1 overflow-hidden group-data-[collapsible=icon]:items-center">
+            <SidebarMenu data-tour="sidebar-nav" className="space-y-1 overflow-hidden group-data-[collapsible=icon]:items-center">
               {navItems.map((item) => (
                 <SidebarMenuItem key={item.title} className="overflow-hidden group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:justify-center">
                   <SidebarMenuButton
@@ -203,7 +203,7 @@ export function AppSidebar({
       </SidebarContent>
 
       {/* Footer with Profile and Settings */}
-      <SidebarFooter className="border-0 p-2 pb-3.5 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:pt-2 group-data-[collapsible=icon]:pb-3.5 overflow-hidden whitespace-nowrap">
+      <SidebarFooter data-tour="user-profile" className="border-0 p-2 pb-3.5 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:pt-2 group-data-[collapsible=icon]:pb-3.5 overflow-hidden whitespace-nowrap">
         <NavUser
           user={user}
           onSyncClassroom={onSyncClassroom}

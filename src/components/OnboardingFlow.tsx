@@ -50,6 +50,7 @@ import {
   ONBOARDING_DONE_KEY,
   isOnboardingCompleted,
   setOnboardingCompleted,
+  setSpotlightPending,
 } from "@/lib/taskStore";
 import { ClassroomService } from "@/services/classroomService";
 import { DBService } from "@/services/dbService";
@@ -1274,6 +1275,8 @@ export function OnboardingFlow({
     }
 
     setIsSavingCloud(false);
+    setOnboardingCompleted(true, profile?.email);
+    setSpotlightPending(true, profile?.email);
     if (onComplete) {
       onComplete(finalPrefs);
     } else {
@@ -1282,9 +1285,9 @@ export function OnboardingFlow({
   };
 
   const handleSkip = () => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem(ONBOARDING_DONE_KEY, "true");
-    }
+    const profile = ClassroomService.getUserProfile();
+    setOnboardingCompleted(true, profile?.email);
+    setSpotlightPending(true, profile?.email);
     if (onSkip) {
       onSkip();
     } else {
@@ -1394,14 +1397,17 @@ export function OnboardingFlow({
           <button
             type="button"
             onClick={() => {
+              const profile = ClassroomService.getUserProfile();
+              setOnboardingCompleted(true, profile?.email);
+              setSpotlightPending(true, profile?.email);
               if (onSkip) {
                 onSkip();
               } else {
-                router.push("/");
+                router.push("/dashboard");
               }
             }}
             className="px-2.5 py-1 rounded-xl text-xs font-semibold flex items-center gap-1.5 border border-slate-200/80 dark:border-white/[0.08] bg-white/80 dark:bg-[#161616] text-slate-700 dark:text-[#a3a3a3] hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#202020] transition-colors cursor-pointer shadow-2xs"
-            title={isEn ? "Exit & Return to Home" : "Tutup & Kembali ke Beranda"}
+            title={isEn ? "Exit to Dashboard" : "Tutup & Masuk ke Dashboard"}
           >
             <X className="w-3.5 h-3.5 text-slate-500 hover:text-slate-900 dark:hover:text-white" />
             <span className="hidden sm:inline">{isEn ? "Exit" : "Tutup"}</span>

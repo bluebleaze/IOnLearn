@@ -330,6 +330,7 @@ function DashboardContent() {
               </Button>
 
               <Button
+                data-tour="quick-ai-btn"
                 onClick={() => router.push("/chat")}
                 className="h-9 px-3.5 text-xs font-medium rounded-xl bg-indigo-600 hover:bg-indigo-700 dark:bg-[#818cf8] dark:hover:bg-[#9ba3fa] text-white dark:text-[#0c0c0c] gap-1.5 shadow-2xs cursor-pointer"
               >
@@ -456,7 +457,7 @@ function DashboardContent() {
           {/* Left Column (8 cols): Urgent Deadlines & Today's To-Do */}
           <div className="lg:col-span-7 space-y-6">
             {/* Urgent Deadlines Snapshot */}
-            <div className="bg-white dark:bg-[#161616] rounded-2xl p-5 sm:p-6 shadow-2xs border border-slate-200/80 dark:border-[#262626] space-y-4">
+            <div data-tour="urgent-tasks" className="bg-white dark:bg-[#161616] rounded-2xl p-5 sm:p-6 shadow-2xs border border-slate-200/80 dark:border-[#262626] space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                   <div className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-[#202020] text-slate-700 dark:text-[#d0d0d0] flex items-center justify-center">
@@ -531,7 +532,7 @@ function DashboardContent() {
             </div>
 
             {/* Today's To-Do List Snapshot */}
-            <div className="bg-white dark:bg-[#161616] rounded-2xl p-5 sm:p-6 shadow-2xs border border-slate-200/80 dark:border-[#262626] space-y-4">
+            <div data-tour="today-todos" className="bg-white dark:bg-[#161616] rounded-2xl p-5 sm:p-6 shadow-2xs border border-slate-200/80 dark:border-[#262626] space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                   <div className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-[#202020] text-slate-700 dark:text-[#d0d0d0] flex items-center justify-center">

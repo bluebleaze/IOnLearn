@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { AppSidebar } from "./app-sidebar";
 import { LandingPage } from "./LandingPage";
 import { OnboardingModal } from "./OnboardingModal";
-import { FeatureTour } from "./FeatureTour";
+import { SpotlightTour } from "./SpotlightTour";
 import { toast } from "@/components/ui/sonner";
 import { ClassroomService, UserProfile } from "../services/classroomService";
 import { DBService } from "../services/dbService";
@@ -17,11 +17,14 @@ import {
   NOTES_STORAGE_KEY,
   PREFS_STORAGE_KEY,
   ONBOARDING_DONE_KEY,
-  FEATURE_TOUR_DONE_KEY,
+  SPOTLIGHT_TOUR_DONE_KEY,
+  SPOTLIGHT_PENDING_KEY,
   isOnboardingCompleted,
   setOnboardingCompleted,
-  isFeatureTourCompleted,
-  setFeatureTourCompleted,
+  isSpotlightTourCompleted,
+  setSpotlightTourCompleted,
+  isSpotlightPending,
+  setSpotlightPending,
   loadTasks,
   persist,
   loadPreferences,
@@ -82,7 +85,7 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [showFeatureTour, setShowFeatureTour] = useState(false);
+  const [showSpotlightTour, setShowSpotlightTour] = useState(false);
   const [isDark, setIsDark] = useState(false);
   const { isEn, t } = useLanguage();
 
@@ -114,12 +117,21 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
   }, []);
 
   useEffect(() => {
-    const handleTriggerTour = () => {
-      setShowFeatureTour(true);
+    const handleTriggerOnboarding = () => {
+      setShowOnboarding(true);
     };
-    window.addEventListener("start-feature-tour", handleTriggerTour);
+    const handleTriggerSpotlight = () => {
+      setShowSpotlightTour(true);
+    };
+
+    window.addEventListener("start-onboarding-flow", handleTriggerOnboarding);
+    window.addEventListener("start-feature-tour", handleTriggerOnboarding);
+    window.addEventListener("start-spotlight-tour", handleTriggerSpotlight);
+
     return () => {
-      window.removeEventListener("start-feature-tour", handleTriggerTour);
+      window.removeEventListener("start-onboarding-flow", handleTriggerOnboarding);
+      window.removeEventListener("start-feature-tour", handleTriggerOnboarding);
+      window.removeEventListener("start-spotlight-tour", handleTriggerSpotlight);
     };
   }, []);
 
@@ -263,6 +275,7 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
               JSON.stringify(cloudData.preferences)
             );
             setOnboardingCompleted(true, email);
+            setSpotlightTourCompleted(true, email); // Returning user who completed onboarding earlier
             isDone = true;
             window.dispatchEvent(new Event("taskStoreChange"));
           }
@@ -271,6 +284,8 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
 
       if (isMounted) {
         if (!isDone) {
+          // Flag as pending so when onboarding is completed or dismissed, spotlight will trigger
+          setSpotlightPending(true, email);
           if (
             pathname !== "/onboarding" &&
             pathname !== "/landing" &&
@@ -279,15 +294,28 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
           ) {
             router.replace("/onboarding");
           }
-        } else if ((pathname === "/dashboard" || pathname === "/") && !isFeatureTourCompleted(email)) {
-          setShowFeatureTour(true);
+        } else if (
+          (pathname === "/dashboard" || pathname === "/") &&
+          !isSpotlightTourCompleted(email)
+        ) {
+          if (isSpotlightPending(email)) {
+            setSpotlightPending(false, email);
+            setShowSpotlightTour(true);
+          }
         }
       }
     };
 
     checkUserOnboarding();
+
+    const handleTaskStoreChange = () => {
+      checkUserOnboarding();
+    };
+    window.addEventListener("taskStoreChange", handleTaskStoreChange);
+
     return () => {
       isMounted = false;
+      window.removeEventListener("taskStoreChange", handleTaskStoreChange);
     };
   }, [hydrated, token, userProfile?.email, pathname, router]);
 
@@ -343,6 +371,7 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
               cloudData.preferences.aiTone
             ) {
               setOnboardingCompleted(true, result.profile.email);
+              setSpotlightTourCompleted(true, result.profile.email);
             }
           }
           if (cloudData?.todos && cloudData.todos.length > 0) {
@@ -416,6 +445,13 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
   };
 
   const handleDisconnectGoogle = () => {
+    const currentEmail = userProfile?.email || ClassroomService.getUserProfile()?.email;
+    if (currentEmail === "pelajar@contoh.com") {
+      localStorage.removeItem(`${ONBOARDING_DONE_KEY}_pelajar@contoh.com`);
+      localStorage.removeItem(`${SPOTLIGHT_TOUR_DONE_KEY}_pelajar@contoh.com`);
+      localStorage.removeItem(`${SPOTLIGHT_PENDING_KEY}_pelajar@contoh.com`);
+      localStorage.removeItem(`onboarding_draft_pelajar@contoh.com`);
+    }
     ClassroomService.logout();
     setToken(null);
     setUserProfile(null);
@@ -429,17 +465,24 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
     setToken("DEMO_TOKEN");
     localStorage.setItem("classroom_access_token", "DEMO_TOKEN");
     localStorage.setItem("classroom_token_expiry", (Date.now() + 365 * 24 * 3600 * 1000).toString());
-    setUserProfile({
+    const demoProfile = {
       name: "Pelajar Simulasi",
       email: "pelajar@contoh.com",
       picture: "https://api.dicebear.com/7.x/avataaars/svg?seed=Pelajar",
-    });
+    };
+    setUserProfile(demoProfile);
+    localStorage.setItem("classroom_user_profile", JSON.stringify(demoProfile));
     const seed = ClassroomService.getInitialSeedTasks();
     localStorage.setItem(
       `${TASKS_STORAGE_KEY}_pelajar@contoh.com`,
       JSON.stringify(seed)
     );
     setLoginError(null);
+
+    if (!isSpotlightTourCompleted("pelajar@contoh.com")) {
+      localStorage.removeItem(`${ONBOARDING_DONE_KEY}_pelajar@contoh.com`);
+      setSpotlightPending(true, "pelajar@contoh.com");
+    }
 
     if (!isOnboardingCompleted("pelajar@contoh.com")) {
       router.replace("/onboarding");
@@ -450,32 +493,30 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
 
   const handleOnboardingSave = (prefs: UserPreferences) => {
     const existing = loadPreferences();
-    savePreferences({
-      ...prefs,
-      classroomDateRangeMonths:
-        existing?.classroomDateRangeMonths ?? DEFAULT_DATE_RANGE_MONTHS,
-      toastPosition: existing?.toastPosition ?? "top-right",
-    });
-    localStorage.setItem(ONBOARDING_DONE_KEY, "true");
+    savePreferences(
+      {
+        ...prefs,
+        classroomDateRangeMonths:
+          existing?.classroomDateRangeMonths ?? DEFAULT_DATE_RANGE_MONTHS,
+        toastPosition: existing?.toastPosition ?? "top-right",
+      },
+      userProfile?.email
+    );
+    setOnboardingCompleted(true, userProfile?.email);
     setShowOnboarding(false);
+    if (!isSpotlightTourCompleted(userProfile?.email)) {
+      setSpotlightPending(false, userProfile?.email);
+      setShowSpotlightTour(true);
+    }
   };
 
   const handleOnboardingSkip = () => {
-    localStorage.setItem(ONBOARDING_DONE_KEY, "true");
+    setOnboardingCompleted(true, userProfile?.email);
     setShowOnboarding(false);
-  };
-
-  const handleFeatureTourComplete = () => {
-    setFeatureTourCompleted(true, userProfile?.email);
-    setShowFeatureTour(false);
-    toast.success(
-      isEn ? "Tour completed! Happy studying!" : "Tur selesai! Selamat belajar di IOnLearn!"
-    );
-  };
-
-  const handleFeatureTourSkip = () => {
-    setFeatureTourCompleted(true, userProfile?.email);
-    setShowFeatureTour(false);
+    if (!isSpotlightTourCompleted(userProfile?.email)) {
+      setSpotlightPending(false, userProfile?.email);
+      setShowSpotlightTour(true);
+    }
   };
 
   if (!hydrated) return null;
@@ -487,15 +528,6 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
         onDemoMode={handleDemoMode}
         loginError={loginError}
         isAuthenticating={isAuthenticating}
-      />
-    );
-  }
-
-  if (showFeatureTour) {
-    return (
-      <FeatureTour
-        onComplete={handleFeatureTourComplete}
-        onSkip={handleFeatureTourSkip}
       />
     );
   }
@@ -592,6 +624,7 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
             <div className="flex items-center gap-2 sm:gap-2.5">
               {/* Refresh Sinkronisasi Button */}
               <button
+                data-tour="header-sync"
                 onClick={syncClassroom}
                 disabled={isSyncing}
                 title={
@@ -649,6 +682,12 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
           isOpen={showOnboarding}
           onSave={handleOnboardingSave}
           onSkip={handleOnboardingSkip}
+        />
+
+        <SpotlightTour
+          isOpen={showSpotlightTour}
+          onClose={() => setShowSpotlightTour(false)}
+          userEmail={userProfile?.email}
         />
       </SidebarProvider>
     </ShellContext.Provider>

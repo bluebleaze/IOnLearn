@@ -11,8 +11,12 @@ import {
   TODOS_STORAGE_KEY,
   NOTES_STORAGE_KEY,
   PREFS_STORAGE_KEY,
+  ONBOARDING_DONE_KEY,
   isOnboardingCompleted,
   setOnboardingCompleted,
+  isSpotlightTourCompleted,
+  setSpotlightTourCompleted,
+  setSpotlightPending,
   persist,
 } from "@/lib/taskStore";
 import { TodoTask } from "@/types";
@@ -77,6 +81,7 @@ export default function RootHomePage() {
               cloudData.preferences.aiTone
             ) {
               setOnboardingCompleted(true, result.profile.email);
+              setSpotlightTourCompleted(true, result.profile.email);
             }
           }
           if (cloudData?.todos && cloudData.todos.length > 0) {
@@ -170,6 +175,11 @@ export default function RootHomePage() {
       JSON.stringify(seed)
     );
     setLoginError(null);
+
+    if (!isSpotlightTourCompleted("pelajar@contoh.com")) {
+      localStorage.removeItem(`${ONBOARDING_DONE_KEY}_pelajar@contoh.com`);
+      setSpotlightPending(true, "pelajar@contoh.com");
+    }
 
     if (!isOnboardingCompleted("pelajar@contoh.com")) {
       router.replace("/onboarding");

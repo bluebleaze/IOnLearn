@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { CheckCircle2, Settings, RefreshCw, LogOut, Mail, Compass, Trash2 } from "lucide-react";
+import { CheckCircle2, Settings, RefreshCw, LogOut, Mail, Compass, Trash2, Sparkles } from "lucide-react";
 import { UserProfile } from "@/services/classroomService";
 import { useLanguage } from "@/context/LanguageContext";
 import { DeleteAccountModal } from "./DeleteAccountModal";
@@ -108,12 +108,24 @@ export const AccountModal: React.FC<AccountModalProps> = ({
               variant="ghost"
               onClick={() => {
                 onClose();
-                window.dispatchEvent(new CustomEvent("start-feature-tour"));
+                router.push("/onboarding");
               }}
               className="w-full justify-start text-xs font-medium h-10 px-3 rounded-xl text-slate-700 dark:text-[#ccc] hover:bg-slate-100 dark:hover:bg-[#202020] gap-2.5 cursor-pointer"
             >
-              <Compass className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
-              <span>{isEn ? "Feature Tour & Workflow Guide" : "Panduan & Tur Fitur IOnLearn"}</span>
+              <Sparkles className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
+              <span>{isEn ? "Personalization Questionnaire" : "Kuesioner Onboarding Belajar"}</span>
+            </Button>
+
+            <Button
+              variant="ghost"
+              onClick={() => {
+                onClose();
+                window.dispatchEvent(new CustomEvent("start-spotlight-tour"));
+              }}
+              className="w-full justify-start text-xs font-medium h-10 px-3 rounded-xl text-slate-700 dark:text-[#ccc] hover:bg-slate-100 dark:hover:bg-[#202020] gap-2.5 cursor-pointer"
+            >
+              <Compass className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
+              <span>{isEn ? "UI & Userflow Spotlight Tour" : "Tur Spotlight Fitur & UX"}</span>
             </Button>
 
             {onSyncClassroom && (

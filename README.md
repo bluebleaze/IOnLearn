@@ -7,13 +7,20 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/License-GPLv3-blue.svg?style=flat-square" alt="GPLv3 License" />
-  <img src="https://img.shields.io/badge/Next.js-16+-black?style=flat-square&logo=next.js" alt="Next.js" />
-  <img src="https://img.shields.io/badge/TypeScript-5.0+-blue?style=flat-square&logo=typescript" alt="TypeScript" />
-  <img src="https://img.shields.io/badge/Tailwind_CSS-3.4+-38B2AC?style=flat-square&logo=tailwind-css" alt="Tailwind CSS" />
-  <img src="https://img.shields.io/badge/Firebase-Auth_%26_Firestore-FFCA28?style=flat-square&logo=firebase" alt="Firebase" />
-  <img src="https://img.shields.io/badge/AI_Providers-Gemini_%7C_OpenAI_%7C_Local_LLM-8A2BE2?style=flat-square" alt="AI Providers" />
-  <img src="https://img.shields.io/badge/Open_Source-GPLv3-34A853?style=flat-square" alt="Open Source" />
+  <a href="https://www.gnu.org/licenses/gpl-3.0.html"><img src="https://img.shields.io/badge/License-GNU_GPLv3-blue?style=flat-square&logo=gnu&logoColor=white" alt="GPLv3 License" /></a>
+  <a href="https://nextjs.org"><img src="https://img.shields.io/badge/Next.js-16+-black?style=flat-square&logo=nextdotjs&logoColor=white" alt="Next.js" /></a>
+  <a href="https://www.typescriptlang.org"><img src="https://img.shields.io/badge/TypeScript-5.0+-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" /></a>
+  <a href="https://tailwindcss.com"><img src="https://img.shields.io/badge/Tailwind_CSS-3.4+-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white" alt="Tailwind CSS" /></a>
+  <a href="https://firebase.google.com"><img src="https://img.shields.io/badge/Firebase-Auth_%26_Firestore-FFCA28?style=flat-square&logo=firebase&logoColor=black" alt="Firebase" /></a>
+  <a href="https://www.cloudflare.com"><img src="https://img.shields.io/badge/Cloudflare-DNS_%26_CDN-F38020?style=flat-square&logo=cloudflare&logoColor=white" alt="Cloudflare" /></a>
+  <a href="https://vercel.com"><img src="https://img.shields.io/badge/Vercel-Edge_Platform-000000?style=flat-square&logo=vercel&logoColor=white" alt="Vercel" /></a>
+</p>
+
+<p align="center">
+  <a href="https://ai.google.dev"><img src="https://img.shields.io/badge/Google_Gemini-Flash_%7C_Pro-4285F4?style=flat-square&logo=google-gemini&logoColor=white" alt="Google Gemini" /></a>
+  <a href="https://openai.com"><img src="https://img.shields.io/badge/OpenAI-ChatGPT_API-412991?style=flat-square&logo=openai&logoColor=white" alt="OpenAI" /></a>
+  <a href="https://ollama.com"><img src="https://img.shields.io/badge/Local_LLMs-Ollama_%7C_vLLM-000000?style=flat-square&logo=ollama&logoColor=white" alt="Local LLMs" /></a>
+  <a href="https://developers.google.com/classroom"><img src="https://img.shields.io/badge/Google_Classroom-API_v1-0F9D58?style=flat-square&logo=googleclassroom&logoColor=white" alt="Google Classroom" /></a>
 </p>
 
 ---
@@ -42,36 +49,25 @@ IOnLearn was purposefully designed to embody this theme by bridging cutting-edge
                   │   Bridging Innovation & Sustainability for Impact      │
                   └──────────────────────────┬─────────────────────────────┘
                                              │
-         ┌───────────────────┬───────────────┴───────────────┬───────────────────┐
-         ▼                   ▼                               ▼                   ▼
-    🌱 SDG 4            ⚙️ SDG 9                        🏙️ SDG 11           🌍 SDG 13
-Quality Education   Industry, Innovation           Sustainable Cities    Climate Action
-(Inklusif & Merata) & Infrastructure (Tangguh)    & Communities (Aman)  (Paperless & Green)
+                       ┌─────────────────────┴─────────────────────┐
+                       ▼                                           ▼
+                  🎓 SDG 4                                    💡 SDG 9
+              Quality Education                          Industry, Innovation
+          (Pendidikan Berkualitas)                    & Infrastructure (Inovasi)
 ```
 
 ### 1. 🎓 [SDG 4 — Quality Education](https://sdgs.un.org/goals/goal4) (Pendidikan Berkualitas)
 *Mandat Subtema: "Menyediakan pendidikan yang inklusif, merata, dan berkualitas." — [UN SDG 4 Details](https://sdgs.un.org/goals/goal4)*
-- **Democratizing 1-on-1 Academic Tutoring**: Private human tutoring is often prohibitively expensive. IOnLearn is 100% free and open-source (GPLv3), providing every student—regardless of socioeconomic background—with a 24/7 personal tutor.
-- **Socratic Pedagogy (Anti-Cognitive Atrophy)**: Unlike generic LLMs that spoon-feed direct answers, IOnLearn guides students step-by-step using Socratic questioning, building genuine conceptual mastery and critical thinking skills.
+- **Democratizing 1-on-1 Academic Tutoring**: High-quality private tutoring is often prohibitively expensive. IOnLearn is 100% free and open-source (GPLv3), providing every student—regardless of socioeconomic background—with an equitable, 24/7 personal academic study companion.
+- **Socratic Pedagogy (Anti-Cognitive Atrophy)**: Unlike generic LLMs that spoon-feed direct answers and bypass critical thinking, IOnLearn guides students step-by-step using Socratic questioning, building genuine conceptual mastery and independent problem-solving capabilities.
 - **Inclusive & Adaptive Learning**: Features auto-detecting bilingual support (Indonesian and English), customizable learning styles (Visual, Step-by-Step, In-Depth), and full accessibility support (screen-reader friendly, responsive keyboard navigation, dark/light modes).
 
 ### 2. 💡 [SDG 9 — Industry, Innovation, and Infrastructure](https://sdgs.un.org/goals/goal9) (Industri, Inovasi, dan Infrastruktur)
 *Mandat Subtema: "Membangun infrastruktur yang tangguh dan mendorong inovasi." — [UN SDG 9 Details](https://sdgs.un.org/goals/goal9)*
-- **Model-Agnostic & Decentralized Edge AI**: IOnLearn breaks proprietary vendor lock-in by supporting local, offline LLMs (Ollama, LM Studio, vLLM) on consumer laptops, allowing students in remote areas with unstable internet to still access AI tutoring without relying on cloud data centers.
-- **Resilient Hybrid Architecture**: Uses local-first offline caching paired with Google Cloud Firestore synchronization, ensuring continuity of study sessions even during network disruptions.
+- **Model-Agnostic & Decentralized Edge AI**: IOnLearn breaks proprietary vendor lock-in by supporting local, offline LLMs ([Ollama](https://github.com/ollama/ollama), [LM Studio](https://lmstudio.ai/), [vLLM](https://github.com/vllm-project/vllm)) on consumer hardware, allowing students in remote areas with unstable internet to access AI tutoring without relying on cloud data centers.
+- **Resilient Multi-Tier Infrastructure**: Powered by Cloudflare Anycast Edge CDN and Vercel Serverless Platform, delivering zero-downtime, DDoS-protected, and low-latency access for learners nationwide.
+- **In-Browser Document Compilation (.docx, .pptx, .xlsx)**: Innovates client-side document synthesis and visual GUI customization in-memory without reliance on external proprietary conversion servers or third-party paid software.
 - **Open-Source Innovation (GPLv3)**: Open code guarantees transparency, security auditing, and continuous community development without reliance on closed commercial infrastructure.
-
-### 3. 🏙️ [SDG 11 — Sustainable Cities and Communities](https://sdgs.un.org/goals/goal11) (Kota dan Permukiman yang Berkelanjutan)
-*Mandat Subtema: "Mewujudkan kota yang aman, nyaman, dan ramah lingkungan." — [UN SDG 11 Details](https://sdgs.un.org/goals/goal11)*
-- **Decentralized Remote Study Hub**: Reduces urban traffic congestion and daily commuting burdens by enabling students and study groups to organize, analyze, and complete academic assignments from home or local community centers.
-- **Safe, Private, & Ethical Digital Community**: Enforces strictly read-only Google Classroom and Drive scopes. Student submissions and academic data are never monetized, sold, or used to train third-party foundation models.
-- **Community Learning Infrastructure**: Lightweight Progressive Web App (PWA) architecture runs smoothly on affordable devices in public libraries, school labs, and community centers.
-
-### 4. 🌿 [SDG 13 — Climate Action](https://sdgs.un.org/goals/goal13) (Penanganan Perubahan Iklim)
-*Mandat Subtema: "Mengambil tindakan untuk mengatasi perubahan iklim." — [UN SDG 13 Details](https://sdgs.un.org/goals/goal13)*
-- **100% Paperless Academic Lifecycle**: Eliminates physical paper printing for homework assignments, syllabus packets, study sheets, and flashcards by digitizing ingestion and providing rich-text note archiving.
-- **Green Computing & Low-Carbon AI**: Supports ultra-lightweight, quantized, energy-efficient models (such as `gemini-3.1-flash-lite`, `qwen2.5:7b`, and `llama3.2`) that consume significantly less electricity and compute power than massive server clusters.
-- **Reduction of Transportation Carbon Footprint**: By bringing interactive tutoring directly to learners' screens, IOnLearn eliminates unnecessary physical travel to tutoring centers, directly cutting vehicle greenhouse gas emissions.
 
 ---
 
@@ -91,7 +87,7 @@ Quality Education   Industry, Innovation           Sustainable Cities    Climate
   - **Step-by-Step Guided Reasoning**: Helps students dissect complex problems, understand core principles, and arrive at answers independently.
   - **Attachment & Document Ingestion**: Reads PDFs, slide decks, and documents attached to Classroom assignments so tutoring is grounded directly in official course materials.
   - **Adaptive Study Modes**: Automatically generates topic summaries, review flashcards, practice quizzes, and simplified conceptual breakdowns.
-- **Full-Page Interactive Onboarding Guide**: Comprehensive full-screen visual walkthrough for first-time visitors that introduces all platform capabilities and explains an effective 4-step daily study workflow.
+- **Comprehensive Academic Personalization Onboarding**: Interactive 19-step pedagogical questionnaire for first-time learners that calibrates education level, field of study, learning style, note preferences, and Socratic AI tutor persona.
 - **Adaptive Language & Geolocation Engine**: Automatically detects user timezone and browser locale to default to Indonesian or English, with instant manual toggle in Settings.
 - **Task & Deadline Management**: Automated sorting into actionable categories: To-Do, Upcoming, Late, and Completed.
 - **Study Notes Workspace**: Markdown-enabled notebook for archiving lecture summaries, AI conversations, and personal study insights grouped by course.

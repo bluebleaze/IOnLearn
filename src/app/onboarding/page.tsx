@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { OnboardingFlow } from "@/components/OnboardingFlow";
 import { useRouter } from "next/navigation";
 import { ClassroomService } from "@/services/classroomService";
+import { setOnboardingCompleted, setSpotlightPending } from "@/lib/taskStore";
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -19,10 +20,16 @@ export default function OnboardingPage() {
   }, [router]);
 
   const handleComplete = () => {
+    const profile = ClassroomService.getUserProfile();
+    setOnboardingCompleted(true, profile?.email);
+    setSpotlightPending(true, profile?.email);
     router.push("/dashboard");
   };
 
   const handleSkip = () => {
+    const profile = ClassroomService.getUserProfile();
+    setOnboardingCompleted(true, profile?.email);
+    setSpotlightPending(true, profile?.email);
     router.push("/dashboard");
   };
 

@@ -1446,12 +1446,12 @@ export default function SettingsPage() {
                 </div>
                 <div>
                   <h2 className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-[#f5f5f5]">
-                    {isEn ? "Learning Profile Onboarding" : "Personalisasi Profil Belajar"}
+                    {isEn ? "Learning Profile Questionnaire" : "Kuesioner Profil Belajar"}
                   </h2>
                   <p className="text-[11px] sm:text-xs text-slate-500 dark:text-[#a3a3a3]">
                     {isEn
-                      ? "Re-run the interactive onboarding wizard to update your learning identity & AI preferences."
-                      : "Jalankan kembali wizard onboarding untuk memperbarui jenjang pendidikan & preferensi AI."}
+                      ? "Re-run the interactive questionnaire to update your education level & AI preferences."
+                      : "Jalankan kembali kuesioner onboarding untuk memperbarui jenjang pendidikan & preferensi AI."}
                   </p>
                 </div>
               </div>
@@ -1464,11 +1464,11 @@ export default function SettingsPage() {
                 className="text-xs h-8.5 px-3.5 rounded-[10px] border-orange-200 dark:border-orange-900/60 text-orange-700 dark:text-orange-300 hover:text-orange-900 dark:hover:text-orange-100 hover:bg-orange-50 dark:hover:bg-orange-950/60 gap-1.5 cursor-pointer self-start transition-colors"
               >
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>{isEn ? "Open Onboarding" : "Buka Onboarding"}</span>
+                <span>{isEn ? "Open Questionnaire" : "Buka Kuesioner"}</span>
               </Button>
             </div>
 
-            {/* Feature Tour */}
+            {/* Spotlight Tour */}
             <div className="flex flex-col justify-between gap-3 p-4 rounded-xl border border-slate-200/80 dark:border-white/[0.08] bg-slate-50/50 dark:bg-[#141414]/50">
               <div className="flex items-center gap-2.5">
                 <div className="p-2 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 shrink-0">
@@ -1476,12 +1476,12 @@ export default function SettingsPage() {
                 </div>
                 <div>
                   <h2 className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-[#f5f5f5]">
-                    {isEn ? "Feature Tour & Learning Guide" : "Panduan & Tur Fitur IOnLearn"}
+                    {isEn ? "UI & Userflow Spotlight Tour" : "Tur Spotlight Antarmuka & UX"}
                   </h2>
                   <p className="text-[11px] sm:text-xs text-slate-500 dark:text-[#a3a3a3]">
                     {isEn
-                      ? "Revisit the visual tour explaining each tool and study workflow."
-                      : "Buka kembali tur interaktif yang menjelaskan fungsi setiap fitur dan alur kerja."}
+                      ? "Revisit the interactive spotlight walkthrough highlighting core navigation and tools."
+                      : "Buka kembali sorotan spotlight interaktif yang menjelaskan fungsi tombol dan alur belajar."}
                   </p>
                 </div>
               </div>
@@ -1490,11 +1490,11 @@ export default function SettingsPage() {
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => window.dispatchEvent(new CustomEvent("start-feature-tour"))}
+                onClick={() => window.dispatchEvent(new CustomEvent("start-spotlight-tour"))}
                 className="text-xs h-8.5 px-3.5 rounded-[10px] border-indigo-200 dark:border-indigo-900/60 text-indigo-700 dark:text-indigo-300 hover:text-indigo-900 dark:hover:text-indigo-100 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 gap-1.5 cursor-pointer self-start transition-colors"
               >
                 <Compass className="w-3.5 h-3.5" />
-                <span>{isEn ? "Launch Tour" : "Mulai Tur"}</span>
+                <span>{isEn ? "Launch Spotlight" : "Mulai Spotlight"}</span>
               </Button>
             </div>
           </div>

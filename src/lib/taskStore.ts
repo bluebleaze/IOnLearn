@@ -19,6 +19,8 @@ export const PREFS_STORAGE_KEY = "classroom_ai_user_prefs_v1";
 export const AI_CONFIG_STORAGE_KEY = "classroom_ai_config_v1";
 export const ONBOARDING_DONE_KEY = "ionlearn_onboarding_v2_done";
 export const FEATURE_TOUR_DONE_KEY = "ionlearn_feature_tour_done_v1";
+export const SPOTLIGHT_TOUR_DONE_KEY = "ionlearn_spotlight_tour_v1_done";
+export const SPOTLIGHT_PENDING_KEY = "ionlearn_spotlight_pending_v1";
 
 export const DEMO_EMAIL = "pelajar@contoh.com";
 
@@ -78,6 +80,66 @@ export function setFeatureTourCompleted(completed: boolean = true, userEmail?: s
     localStorage.setItem(`${FEATURE_TOUR_DONE_KEY}_${email}`, val);
   }
   localStorage.setItem(FEATURE_TOUR_DONE_KEY, val);
+}
+
+export function isSpotlightTourCompleted(userEmail?: string): boolean {
+  if (typeof window === "undefined") return false;
+  const profile = ClassroomService.getUserProfile();
+  const email = userEmail || profile?.email;
+  if (email) {
+    return localStorage.getItem(`${SPOTLIGHT_TOUR_DONE_KEY}_${email}`) === "true";
+  }
+  return localStorage.getItem(SPOTLIGHT_TOUR_DONE_KEY) === "true";
+}
+
+export function setSpotlightTourCompleted(completed: boolean = true, userEmail?: string): void {
+  if (typeof window === "undefined") return;
+  const profile = ClassroomService.getUserProfile();
+  const email = userEmail || profile?.email;
+  const val = completed ? "true" : "false";
+
+  if (email) {
+    localStorage.setItem(`${SPOTLIGHT_TOUR_DONE_KEY}_${email}`, val);
+  }
+  localStorage.setItem(SPOTLIGHT_TOUR_DONE_KEY, val);
+}
+
+export function isSpotlightPending(userEmail?: string): boolean {
+  if (typeof window === "undefined") return false;
+  const profile = ClassroomService.getUserProfile();
+  const email = userEmail || profile?.email;
+  if (email) {
+    return (
+      localStorage.getItem(`${SPOTLIGHT_PENDING_KEY}_${email}`) === "true" ||
+      sessionStorage.getItem("show_spotlight_after_onboarding") === "true"
+    );
+  }
+  return (
+    localStorage.getItem(SPOTLIGHT_PENDING_KEY) === "true" ||
+    sessionStorage.getItem("show_spotlight_after_onboarding") === "true"
+  );
+}
+
+export function setSpotlightPending(pending: boolean = true, userEmail?: string): void {
+  if (typeof window === "undefined") return;
+  const profile = ClassroomService.getUserProfile();
+  const email = userEmail || profile?.email;
+  const val = pending ? "true" : "false";
+
+  if (email) {
+    if (pending) {
+      localStorage.setItem(`${SPOTLIGHT_PENDING_KEY}_${email}`, val);
+    } else {
+      localStorage.removeItem(`${SPOTLIGHT_PENDING_KEY}_${email}`);
+    }
+  }
+  if (pending) {
+    localStorage.setItem(SPOTLIGHT_PENDING_KEY, val);
+    sessionStorage.setItem("show_spotlight_after_onboarding", "true");
+  } else {
+    localStorage.removeItem(SPOTLIGHT_PENDING_KEY);
+    sessionStorage.removeItem("show_spotlight_after_onboarding");
+  }
 }
 
 export function setOnboardingCompleted(completed: boolean = true, userEmail?: string): void {
@@ -493,8 +555,9 @@ export function savePreferences(prefs: UserPreferences, userEmail?: string): voi
   const email = userEmail || profile?.email;
   if (email) {
     localStorage.setItem(`${PREFS_STORAGE_KEY}_${email}`, JSON.stringify(prefs));
+  } else {
+    localStorage.setItem(PREFS_STORAGE_KEY, JSON.stringify(prefs));
   }
-  localStorage.setItem(PREFS_STORAGE_KEY, JSON.stringify(prefs));
   syncAllUserDataToCloud();
   window.dispatchEvent(new Event("taskStoreChange"));
   window.dispatchEvent(new Event("task-modal-style-changed"));
