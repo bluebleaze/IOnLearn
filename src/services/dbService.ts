@@ -12,11 +12,18 @@ export interface FullUserData {
   updatedAt?: string;
 }
 
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
+  ]);
+}
+
 export class DBService {
   private static async getUserId(): Promise<string | null> {
     if (auth.currentUser?.uid) return auth.currentUser.uid;
     return new Promise((resolve) => {
-      const timeout = setTimeout(() => resolve(null), 2000);
+      const timeout = setTimeout(() => resolve(null), 1000);
       const unsubscribe = auth.onAuthStateChanged((user) => {
         clearTimeout(timeout);
         unsubscribe();
@@ -39,91 +46,113 @@ export class DBService {
     const cleanTodos = JSON.parse(JSON.stringify(todos || []));
     const cleanNotes = JSON.parse(JSON.stringify(notes || []));
 
-    // 1. Primary: Save to shared server API cache per account (instant sync across all browsers/devices)
-    if (userEmail) {
-      try {
-        await fetch('/api/user-cache', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: userEmail,
-            tasks: cleanTasks,
-            preferences: cleanPrefs,
-            aiConfig: cleanConfig,
-            todos: cleanTodos,
-            notes: cleanNotes,
-          }),
-        });
-      } catch (e) {
-        console.warn('Could not save to /api/user-cache:', e);
+    const saveOperation = async () => {
+      // 1. Primary: Save to shared server API cache per account (instant sync across all browsers/devices)
+      if (userEmail) {
+        try {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 1200);
+          await fetch('/api/user-cache', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: userEmail,
+              tasks: cleanTasks,
+              preferences: cleanPrefs,
+              aiConfig: cleanConfig,
+              todos: cleanTodos,
+              notes: cleanNotes,
+            }),
+            signal: controller.signal,
+          });
+          clearTimeout(timer);
+        } catch (e) {
+          console.warn('Could not save to /api/user-cache:', e);
+        }
       }
-    }
 
-    // 2. Secondary: Firestore Cloud if configured and enabled
-    const uid = await this.getUserId();
-    if (uid) {
+      // 2. Secondary: Firestore Cloud if configured and enabled
       try {
-        const userRef = doc(db, 'users', uid);
-        await setDoc(userRef, {
-          tasks: cleanTasks,
-          preferences: cleanPrefs,
-          aiConfig: cleanConfig,
-          todos: cleanTodos,
-          notes: cleanNotes,
-          updatedAt: new Date().toISOString()
-        }, { merge: true });
+        const uid = await withTimeout(this.getUserId(), 800, null);
+        if (uid) {
+          const userRef = doc(db, 'users', uid);
+          await withTimeout(
+            setDoc(userRef, {
+              tasks: cleanTasks,
+              preferences: cleanPrefs,
+              aiConfig: cleanConfig,
+              todos: cleanTodos,
+              notes: cleanNotes,
+              updatedAt: new Date().toISOString()
+            }, { merge: true }),
+            1000,
+            undefined
+          );
+        }
       } catch (error) {
         // Silently skip if Firestore API is disabled in console
       }
-    }
+    };
+
+    await withTimeout(saveOperation(), 1500, undefined);
   }
 
   static async loadUserData(userEmail?: string): Promise<FullUserData | null> {
-    // 1. Primary: Load from shared server API cache per account
-    if (userEmail) {
+    const fetchCloud = async (): Promise<FullUserData | null> => {
+      // 1. Primary: Load from shared server API cache per account (with timeout 800ms)
+      if (userEmail) {
+        try {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 800);
+          const res = await fetch(`/api/user-cache?email=${encodeURIComponent(userEmail)}`, {
+            signal: controller.signal,
+          });
+          clearTimeout(timer);
+          if (res.ok) {
+            const json = await res.json();
+            if (json.data) {
+              return {
+                tasks: json.data.tasks || [],
+                preferences: json.data.preferences || null,
+                aiConfig: json.data.aiConfig || null,
+                todos: json.data.todos || [],
+                notes: json.data.notes || [],
+                updatedAt: json.data.updatedAt,
+              };
+            }
+          }
+        } catch (e) {
+          // Silently skip timeout or network error
+        }
+      }
+
+      // 2. Secondary: Load from Firestore Cloud (with timeout 800ms)
       try {
-        const res = await fetch(`/api/user-cache?email=${encodeURIComponent(userEmail)}`);
-        if (res.ok) {
-          const json = await res.json();
-          if (json.data) {
+        const uid = await withTimeout(this.getUserId(), 800, null);
+        if (uid) {
+          const userRef = doc(db, 'users', uid);
+          const snap = await withTimeout(getDoc(userRef), 800, null);
+          if (snap && snap.exists()) {
+            const data = snap.data();
             return {
-              tasks: json.data.tasks || [],
-              preferences: json.data.preferences || null,
-              aiConfig: json.data.aiConfig || null,
-              todos: json.data.todos || [],
-              notes: json.data.notes || [],
-              updatedAt: json.data.updatedAt,
+              tasks: data.tasks || [],
+              preferences: data.preferences || null,
+              aiConfig: data.aiConfig || null,
+              todos: data.todos || [],
+              notes: data.notes || [],
+              updatedAt: data.updatedAt,
             };
           }
-        }
-      } catch (e) {
-        console.warn('Could not load from /api/user-cache:', e);
-      }
-    }
-
-    // 2. Secondary: Load from Firestore Cloud
-    const uid = await this.getUserId();
-    if (uid) {
-      try {
-        const userRef = doc(db, 'users', uid);
-        const snap = await getDoc(userRef);
-        if (snap.exists()) {
-          const data = snap.data();
-          return {
-            tasks: data.tasks || [],
-            preferences: data.preferences || null,
-            aiConfig: data.aiConfig || null,
-            todos: data.todos || [],
-            notes: data.notes || [],
-            updatedAt: data.updatedAt,
-          };
         }
       } catch (error) {
         // Silently skip if Firestore API is disabled in console
       }
-    }
 
-    return null;
+      return null;
+    };
+
+    // Global hard timeout of 1200ms: loadUserData will NEVER hang longer than 1.2s under any circumstances
+    return withTimeout(fetchCloud(), 1200, null);
   }
 
   static async deleteUserData(userEmail?: string): Promise<boolean> {

@@ -51,8 +51,9 @@ export default function RootHomePage() {
     try {
       const result = await ClassroomService.requestToken();
       if (result) {
-        const key = result.profile.email
-          ? `${TASKS_STORAGE_KEY}_${result.profile.email}`
+        const email = result.profile.email;
+        const key = email
+          ? `${TASKS_STORAGE_KEY}_${email}`
           : TASKS_STORAGE_KEY;
         const saved = localStorage.getItem(key);
         let newTasks: TodoTask[] = [];
@@ -61,17 +62,21 @@ export default function RootHomePage() {
             const parsed: TodoTask[] = JSON.parse(saved);
             newTasks = parsed.filter(
               (t) =>
-                (!t.userEmail || t.userEmail === result.profile.email) &&
+                (!t.userEmail || t.userEmail === email) &&
                 !t.id.startsWith("seed-")
             );
           } catch {}
         }
 
+        // Fast, non-blocking cloud preferences & data hydrate (maximum 500ms race)
         try {
-          const cloudData = await DBService.loadUserData(result.profile.email);
+          const cloudDataPromise = DBService.loadUserData(email);
+          const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 500));
+          const cloudData = await Promise.race([cloudDataPromise, timeoutPromise]);
+
           if (cloudData?.preferences) {
             localStorage.setItem(
-              `${PREFS_STORAGE_KEY}_${result.profile.email}`,
+              `${PREFS_STORAGE_KEY}_${email}`,
               JSON.stringify(cloudData.preferences)
             );
             if (
@@ -79,26 +84,26 @@ export default function RootHomePage() {
               cloudData.preferences.learningStyle &&
               cloudData.preferences.aiTone
             ) {
-              setOnboardingCompleted(true, result.profile.email);
-              setSpotlightTourCompleted(true, result.profile.email);
+              setOnboardingCompleted(true, email);
+              setSpotlightTourCompleted(true, email);
             }
           }
           if (cloudData?.todos && cloudData.todos.length > 0) {
             localStorage.setItem(
-              `${TODOS_STORAGE_KEY}_${result.profile.email}`,
+              `${TODOS_STORAGE_KEY}_${email}`,
               JSON.stringify(cloudData.todos)
             );
           }
           if (cloudData?.notes && cloudData.notes.length > 0) {
             localStorage.setItem(
-              `${NOTES_STORAGE_KEY}_${result.profile.email}`,
+              `${NOTES_STORAGE_KEY}_${email}`,
               JSON.stringify(cloudData.notes)
             );
           }
           if (cloudData?.tasks && cloudData.tasks.length > 0) {
             const cloudTasks = cloudData.tasks.filter(
               (t) =>
-                (!t.userEmail || t.userEmail === result.profile.email) &&
+                (!t.userEmail || t.userEmail === email) &&
                 !t.id.startsWith("seed-")
             );
             if (cloudTasks.length > 0) {
@@ -126,22 +131,29 @@ export default function RootHomePage() {
               }
             }
           }
-        } catch {}
+        } catch (cloudErr) {
+          console.warn("Non-blocking cloud load skipped on login:", cloudErr);
+        }
 
-        localStorage.setItem(key, JSON.stringify(newTasks));
-        persist(newTasks);
+        try {
+          localStorage.setItem(key, JSON.stringify(newTasks));
+          persist(newTasks);
+        } catch {}
 
         // Run sync in background so login redirect is instantaneous
         SyncManager.sync(result.token, {
           overrideTasks: newTasks,
-          overrideEmail: result.profile.email,
+          overrideEmail: email,
           silent: true,
         }).catch((err) => console.warn("Background sync error on login:", err));
 
-        const targetUrl = !isOnboardingCompleted(result.profile.email)
+        const targetUrl = !isOnboardingCompleted(email)
           ? "/onboarding"
           : "/dashboard";
-        window.location.href = targetUrl;
+
+        // Guaranteed instant redirect
+        window.location.replace(targetUrl);
+        return;
       } else {
         setLoginError("Gagal mendapatkan akses dari Google.");
       }
