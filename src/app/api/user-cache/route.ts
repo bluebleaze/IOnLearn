@@ -63,3 +63,24 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: e.message || 'Failed to save cache' }, { status: 500 });
   }
 }
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const email = searchParams.get('email');
+
+    if (!email) {
+      return NextResponse.json({ error: 'Email parameter required' }, { status: 400 });
+    }
+
+    const cache = readCache();
+    if (cache[email]) {
+      delete cache[email];
+      writeCache(cache);
+    }
+
+    return NextResponse.json({ success: true, message: `Account data for ${email} has been deleted.` });
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message || 'Failed to delete cache' }, { status: 500 });
+  }
+}

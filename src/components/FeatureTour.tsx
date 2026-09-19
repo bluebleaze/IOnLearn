@@ -314,9 +314,6 @@ export function FeatureTour({ onComplete, onSkip }: FeatureTourProps) {
             <span className="font-bold tracking-tight text-base sm:text-lg font-heading">
               IOnLearn
             </span>
-            <span className="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-800/40">
-              {isEn ? "Onboarding Guide" : "Panduan Pengguna Baru"}
-            </span>
           </div>
         </div>
 
@@ -343,16 +340,6 @@ export function FeatureTour({ onComplete, onSkip }: FeatureTourProps) {
               <Moon className="w-4 h-4 text-indigo-600" />
             )}
           </button>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onSkip}
-            className="text-xs text-slate-500 hover:text-slate-800 dark:text-[#a0a0a0] dark:hover:text-white font-medium cursor-pointer h-8.5 px-3"
-          >
-            <X className="w-3.5 h-3.5 mr-1 sm:hidden" />
-            <span>{isEn ? "Skip Tour" : "Lewati Tur"}</span>
-          </Button>
         </div>
       </header>
 

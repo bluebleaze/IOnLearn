@@ -9,18 +9,18 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-indigo-600 text-white shadow-xs hover:bg-indigo-700 dark:bg-[#f5f5f5] dark:text-[#0c0c0c] dark:hover:bg-white",
+          "bg-indigo-600 text-white shadow-xs hover:bg-indigo-700 dark:bg-[#f5f5f5] dark:text-[#0c0c0c] dark:hover:bg-white dark:hover:text-black",
         outline:
-          "border-slate-200 bg-white text-slate-800 shadow-xs hover:bg-slate-100 hover:text-slate-900 dark:border-[#2b2b2b] dark:bg-[#141414] dark:text-[#f5f5f5] dark:hover:bg-[#1f1f1f] dark:hover:border-[#3b3b3b]",
+          "border-slate-200 bg-white text-slate-800 shadow-xs hover:bg-slate-100 hover:text-slate-900 dark:border-[#2b2b2b] dark:bg-[#141414] dark:text-[#f5f5f5] dark:hover:bg-[#1f1f1f] dark:hover:border-[#3b3b3b] dark:hover:text-[#f5f5f5]",
         secondary:
-          "bg-slate-100 text-slate-800 hover:bg-slate-200 dark:bg-[#161616] dark:text-[#f5f5f5] dark:border dark:border-[#2b2b2b] dark:hover:bg-[#1f1f1f]",
+          "bg-slate-100 text-slate-800 hover:bg-slate-200 hover:text-slate-900 dark:bg-[#161616] dark:text-[#f5f5f5] dark:border dark:border-[#2b2b2b] dark:hover:bg-[#1f1f1f] dark:hover:text-[#f5f5f5]",
         ghost:
           "text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-[#a3a3a3] dark:hover:bg-[#161616] dark:hover:text-[#f5f5f5]",
         destructive:
           "bg-rose-600 text-white shadow-xs hover:bg-rose-700 dark:bg-rose-950/60 dark:text-rose-200 dark:border dark:border-rose-900/60 dark:hover:bg-rose-900/60 dark:hover:text-rose-100",
         link: "text-indigo-600 dark:text-[#818cf8] underline-offset-4 hover:underline p-0 h-auto",
         primarySubtle:
-          "bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-100/80 dark:bg-[#141414] dark:text-[#a5b4fc] dark:border-[#2b2b2b] dark:hover:bg-[#1f1f1f] dark:hover:text-[#f5f5f5]",
+          "bg-indigo-50 text-indigo-700 hover:bg-indigo-100 hover:text-indigo-900 border border-indigo-100/80 dark:bg-[#141414] dark:text-[#a5b4fc] dark:border-[#2b2b2b] dark:hover:bg-[#1f1f1f] dark:hover:text-[#f5f5f5]",
         emerald:
           "bg-emerald-600 text-white shadow-xs hover:bg-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-200 dark:border dark:border-emerald-900/60 dark:hover:bg-emerald-900/60 dark:hover:text-emerald-100",
       },

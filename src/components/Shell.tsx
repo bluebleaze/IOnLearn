@@ -13,8 +13,15 @@ import { TodoTask, UserPreferences, DEFAULT_DATE_RANGE_MONTHS, ClassroomSyncProg
 import { SyncManager, useSyncManager } from "../services/syncManager";
 import {
   TASKS_STORAGE_KEY,
+  TODOS_STORAGE_KEY,
+  NOTES_STORAGE_KEY,
+  PREFS_STORAGE_KEY,
   ONBOARDING_DONE_KEY,
   FEATURE_TOUR_DONE_KEY,
+  isOnboardingCompleted,
+  setOnboardingCompleted,
+  isFeatureTourCompleted,
+  setFeatureTourCompleted,
   loadTasks,
   persist,
   loadPreferences,
@@ -183,21 +190,57 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
   };
 
   useEffect(() => {
-    if (hydrated && !token) router.replace("/");
-  }, [hydrated, token, router]);
+    if (!hydrated) return;
 
-  useEffect(() => {
-    if (token && typeof window !== "undefined") {
-      const isFeatureTourDone = localStorage.getItem(FEATURE_TOUR_DONE_KEY) === "true";
-      const isOnboardingDone = localStorage.getItem(ONBOARDING_DONE_KEY) === "true";
-
-      if (!isFeatureTourDone) {
-        setShowFeatureTour(true);
-      } else if (!isOnboardingDone) {
-        setShowOnboarding(true);
+    if (!token) {
+      if (pathname !== "/" && pathname !== "/onboarding") {
+        router.replace("/");
       }
+      return;
     }
-  }, [token]);
+
+    // If logged in, check onboarding status for this specific account
+    let isMounted = true;
+    const checkUserOnboarding = async () => {
+      const email = userProfile?.email;
+      let isDone = isOnboardingCompleted(email);
+
+      // If not done locally in this browser, check if cloud already has the completed onboarding profile
+      if (!isDone && email) {
+        try {
+          const cloudData = await DBService.loadUserData(email);
+          if (
+            cloudData?.preferences?.educationLevel &&
+            cloudData?.preferences?.learningStyle &&
+            cloudData?.preferences?.aiTone
+          ) {
+            localStorage.setItem(
+              `${PREFS_STORAGE_KEY}_${email}`,
+              JSON.stringify(cloudData.preferences)
+            );
+            setOnboardingCompleted(true, email);
+            isDone = true;
+            window.dispatchEvent(new Event("taskStoreChange"));
+          }
+        } catch {}
+      }
+
+      if (isMounted) {
+        if (!isDone) {
+          if (pathname !== "/onboarding") {
+            router.replace("/onboarding");
+          }
+        } else if (pathname === "/" && !isFeatureTourCompleted(email)) {
+          setShowFeatureTour(true);
+        }
+      }
+    };
+
+    checkUserOnboarding();
+    return () => {
+      isMounted = false;
+    };
+  }, [hydrated, token, userProfile?.email, pathname, router]);
 
   const syncClassroom = async () => {
     if (!token) return;
@@ -240,6 +283,31 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
 
         try {
           const cloudData = await DBService.loadUserData(result.profile.email);
+          if (cloudData?.preferences) {
+            localStorage.setItem(
+              `${PREFS_STORAGE_KEY}_${result.profile.email}`,
+              JSON.stringify(cloudData.preferences)
+            );
+            if (
+              cloudData.preferences.educationLevel &&
+              cloudData.preferences.learningStyle &&
+              cloudData.preferences.aiTone
+            ) {
+              setOnboardingCompleted(true, result.profile.email);
+            }
+          }
+          if (cloudData?.todos && cloudData.todos.length > 0) {
+            localStorage.setItem(
+              `${TODOS_STORAGE_KEY}_${result.profile.email}`,
+              JSON.stringify(cloudData.todos)
+            );
+          }
+          if (cloudData?.notes && cloudData.notes.length > 0) {
+            localStorage.setItem(
+              `${NOTES_STORAGE_KEY}_${result.profile.email}`,
+              JSON.stringify(cloudData.notes)
+            );
+          }
           if (cloudData?.tasks && cloudData.tasks.length > 0) {
             const cloudTasks = cloudData.tasks.filter(
               (t) =>
@@ -279,6 +347,10 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
           overrideTasks: newTasks,
           overrideEmail: result.profile.email,
         });
+
+        if (!isOnboardingCompleted(result.profile.email)) {
+          router.replace("/onboarding");
+        }
       } else {
         setLoginError("Gagal mendapatkan akses dari Google.");
       }
@@ -316,6 +388,10 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
       JSON.stringify(seed)
     );
     setLoginError(null);
+
+    if (!isOnboardingCompleted("pelajar@contoh.com")) {
+      router.replace("/onboarding");
+    }
   };
 
   const handleOnboardingSave = (prefs: UserPreferences) => {
@@ -336,22 +412,16 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
   };
 
   const handleFeatureTourComplete = () => {
-    localStorage.setItem(FEATURE_TOUR_DONE_KEY, "true");
+    setFeatureTourCompleted(true, userProfile?.email);
     setShowFeatureTour(false);
-    if (typeof window !== "undefined" && localStorage.getItem(ONBOARDING_DONE_KEY) !== "true") {
-      setShowOnboarding(true);
-    }
     toast.success(
       isEn ? "Tour completed! Happy studying!" : "Tur selesai! Selamat belajar di IOnLearn!"
     );
   };
 
   const handleFeatureTourSkip = () => {
-    localStorage.setItem(FEATURE_TOUR_DONE_KEY, "true");
+    setFeatureTourCompleted(true, userProfile?.email);
     setShowFeatureTour(false);
-    if (typeof window !== "undefined" && localStorage.getItem(ONBOARDING_DONE_KEY) !== "true") {
-      setShowOnboarding(true);
-    }
   };
 
   if (!hydrated) return null;

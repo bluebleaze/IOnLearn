@@ -338,7 +338,7 @@ export function SettingsModal({ isOpen, onClose, userPreferences, aiConfig, onSa
                     description: "Notifikasi berhasil ditampilkan dengan tombol tutup.",
                   });
                 }}
-                className="gap-1.5 text-xs font-bold text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 shrink-0"
+                className="gap-1.5 text-xs font-bold text-indigo-700 dark:text-indigo-300 hover:text-indigo-900 dark:hover:text-indigo-100 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 shrink-0 transition-colors"
               >
                 <Bell className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
                 <span>Uji Coba Notifikasi</span>
@@ -488,15 +488,15 @@ export function SettingsModal({ isOpen, onClose, userPreferences, aiConfig, onSa
               ))}
             </div>
 
-            {/* DEFAULT GEMINI NOTICE */}
+            {/* DEFAULT AI NOTICE */}
             {config.provider === 'gemini' && (
               <div className="p-4 bg-indigo-50/60 dark:bg-indigo-950/30 rounded-2xl border border-indigo-100/80 dark:border-indigo-900/50 space-y-1.5 text-xs text-indigo-950 dark:text-indigo-200">
                 <div className="font-bold flex items-center gap-1.5 text-indigo-900 dark:text-indigo-300">
                   <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                  <span>Google Gemini Cloud Bawaan Aktif</span>
+                  <span>AI Tutor Cerdas Aktif & Siap Pakai</span>
                 </div>
                 <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
-                  Aplikasi menggunakan kunci API Gemini default yang telah dikonfigurasi di server. Anda tidak perlu memasukkan API Key secara manual untuk menganalisis tugas dan bertanya ke AI Tutor.
+                  AI Tutor telah aktif dan siap mendampingi sesi belajarmu. Kamu bisa langsung berdiskusi dan menganalisis tugas tanpa perlu konfigurasi tambahan.
                 </p>
               </div>
             )}

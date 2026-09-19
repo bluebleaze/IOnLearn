@@ -43,10 +43,12 @@ import {
   Globe,
   X,
   Compass,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toggleThemeWithCircularAnimation } from "@/lib/theme";
 import { toast } from "@/components/ui/sonner";
+import { DeleteAccountModal } from "@/components/DeleteAccountModal";
 
 const GEMINI_MODELS = [
   { value: "gemini-3.1-flash-lite", label: "Gemini 3.1 Flash Lite (Default Bawaan)" },
@@ -168,6 +170,7 @@ export default function SettingsPage() {
   }, []);
 
   const [pendingNavigationUrl, setPendingNavigationUrl] = useState<string | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const hasChanges = useMemo(() => {
     return (
@@ -651,7 +654,7 @@ export default function SettingsPage() {
                   description: isEn ? `Preview notification position at ${currentLabel}.` : `Preview posisi notifikasi pop-up di sudut ${currentLabel}.`,
                 });
               }}
-              className="h-8 px-2.5 rounded-[8px] gap-1 text-xs text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 border-indigo-200/60 dark:border-indigo-900/40 cursor-pointer"
+              className="h-8 px-2.5 rounded-[8px] gap-1 text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-100 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 border-indigo-200/60 dark:border-indigo-900/40 cursor-pointer transition-colors"
             >
               <Bell className="w-3 h-3" />
               <span>{isEn ? "Test Toast" : "Uji Coba"}</span>
@@ -1176,17 +1179,17 @@ export default function SettingsPage() {
             ))}
           </div>
 
-          {/* DEFAULT GEMINI NOTICE */}
+          {/* DEFAULT AI NOTICE */}
           {config.provider === "gemini" && (
             <div className="p-3.5 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40 text-xs text-indigo-950 dark:text-indigo-200 space-y-1">
               <div className="font-semibold text-indigo-900 dark:text-indigo-300 flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                <span>{isEn ? "Google Gemini Cloud Server Active" : "Google Gemini Cloud Server Aktif"}</span>
+                <span>{isEn ? "Smart AI Tutor Active & Ready" : "AI Tutor Cerdas Aktif & Siap Pakai"}</span>
               </div>
               <p className="text-xs text-indigo-900/80 dark:text-indigo-300/80 leading-relaxed">
                 {isEn
-                  ? "Application connected to default cloud server. No manual API key required to start analyzing tasks and chatting with AI Tutor."
-                  : "Aplikasi terhubung ke backend server bawaan. Anda tidak perlu memasukkan API key manual untuk mulai menganalisis tugas dan berdiskusi dengan AI Tutor."}
+                  ? "AI Tutor is fully connected and ready to assist your study sessions. No manual configuration required."
+                  : "AI Tutor telah aktif dan siap mendampingi sesi belajarmu. Kamu bisa langsung berdiskusi dan menganalisis tugas tanpa perlu konfigurasi tambahan."}
               </p>
             </div>
           )}
@@ -1410,35 +1413,108 @@ export default function SettingsPage() {
 
         {/* SECTION: Panduan & Tur Fitur */}
         <section className="space-y-3.5">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 rounded-xl border border-slate-200/80 dark:border-white/[0.08] bg-slate-50/50 dark:bg-[#141414]/50">
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 shrink-0">
-                <Compass className="w-4 h-4" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            {/* Onboarding & Personalisasi */}
+            <div className="flex flex-col justify-between gap-3 p-4 rounded-xl border border-slate-200/80 dark:border-white/[0.08] bg-slate-50/50 dark:bg-[#141414]/50">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-lg bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 shrink-0">
+                  <Sparkles className="w-4 h-4" />
+                </div>
+                <div>
+                  <h2 className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-[#f5f5f5]">
+                    {isEn ? "Learning Profile Onboarding" : "Personalisasi Profil Belajar"}
+                  </h2>
+                  <p className="text-[11px] sm:text-xs text-slate-500 dark:text-[#a3a3a3]">
+                    {isEn
+                      ? "Re-run the interactive onboarding wizard to update your learning identity & AI preferences."
+                      : "Jalankan kembali wizard onboarding untuk memperbarui jenjang pendidikan & preferensi AI."}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-[#f5f5f5]">
-                  {isEn ? "Feature Tour & Learning Guide" : "Panduan & Tur Fitur IOnLearn"}
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => router.push("/onboarding")}
+                className="text-xs h-8.5 px-3.5 rounded-[10px] border-orange-200 dark:border-orange-900/60 text-orange-700 dark:text-orange-300 hover:text-orange-900 dark:hover:text-orange-100 hover:bg-orange-50 dark:hover:bg-orange-950/60 gap-1.5 cursor-pointer self-start transition-colors"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>{isEn ? "Open Onboarding" : "Buka Onboarding"}</span>
+              </Button>
+            </div>
+
+            {/* Feature Tour */}
+            <div className="flex flex-col justify-between gap-3 p-4 rounded-xl border border-slate-200/80 dark:border-white/[0.08] bg-slate-50/50 dark:bg-[#141414]/50">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 shrink-0">
+                  <Compass className="w-4 h-4" />
+                </div>
+                <div>
+                  <h2 className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-[#f5f5f5]">
+                    {isEn ? "Feature Tour & Learning Guide" : "Panduan & Tur Fitur IOnLearn"}
+                  </h2>
+                  <p className="text-[11px] sm:text-xs text-slate-500 dark:text-[#a3a3a3]">
+                    {isEn
+                      ? "Revisit the visual tour explaining each tool and study workflow."
+                      : "Buka kembali tur interaktif yang menjelaskan fungsi setiap fitur dan alur kerja."}
+                  </p>
+                </div>
+              </div>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => window.dispatchEvent(new CustomEvent("start-feature-tour"))}
+                className="text-xs h-8.5 px-3.5 rounded-[10px] border-indigo-200 dark:border-indigo-900/60 text-indigo-700 dark:text-indigo-300 hover:text-indigo-900 dark:hover:text-indigo-100 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 gap-1.5 cursor-pointer self-start transition-colors"
+              >
+                <Compass className="w-3.5 h-3.5" />
+                <span>{isEn ? "Launch Tour" : "Mulai Tur"}</span>
+              </Button>
+            </div>
+          </div>
+        </section>
+
+        <hr className="border-slate-200/60 dark:border-white/[0.06]" />
+
+        {/* SECTION: Zona Berbahaya / Danger Zone */}
+        <section className="space-y-3.5">
+          <div className="p-4 sm:p-5 rounded-2xl border border-rose-200/80 dark:border-rose-950/60 bg-rose-50/40 dark:bg-rose-950/15 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="p-2.5 rounded-xl bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5">
+                <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
+              </div>
+              <div className="space-y-0.5">
+                <h2 className="text-xs sm:text-sm font-bold text-rose-950 dark:text-rose-200">
+                  {isEn ? "Danger Zone: Delete Account & All Data" : "Zona Berbahaya: Hapus Akun & Semua Data"}
                 </h2>
-                <p className="text-[11px] sm:text-xs text-slate-500 dark:text-[#a3a3a3]">
+                <p className="text-[11px] sm:text-xs text-rose-700/80 dark:text-rose-300/70 max-w-xl leading-relaxed">
                   {isEn
-                    ? "Revisit the visual onboarding tour and study workflow overview anytime."
-                    : "Buka kembali tur interaktif yang menjelaskan fungsi setiap fitur dan alur kerja di IOnLearn."}
+                    ? "Permanently delete your profile, study notes, to-dos, and all saved learning records."
+                    : "Hapus akun secara permanen beserta seluruh catatan belajar, to-do list, dan semua data riwayat akun Anda."}
                 </p>
               </div>
             </div>
 
             <Button
               type="button"
-              variant="outline"
+              variant="destructive"
               size="sm"
-              onClick={() => window.dispatchEvent(new CustomEvent("start-feature-tour"))}
-              className="text-xs h-8.5 px-3.5 rounded-[10px] border-indigo-200 dark:border-indigo-900/60 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 gap-1.5 cursor-pointer shrink-0 self-start sm:self-auto"
+              onClick={() => setShowDeleteModal(true)}
+              className="text-xs h-9 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white gap-1.5 cursor-pointer shrink-0 self-start sm:self-auto font-semibold shadow-xs"
             >
-              <Compass className="w-3.5 h-3.5" />
-              <span>{isEn ? "Launch Tour" : "Mulai Tur"}</span>
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>{isEn ? "Delete Account" : "Hapus Akun"}</span>
             </Button>
           </div>
         </section>
+
+        {/* DELETE ACCOUNT MODAL */}
+        <DeleteAccountModal
+          isOpen={showDeleteModal}
+          onClose={() => setShowDeleteModal(false)}
+        />
 
         {/* STICKY BOTTOM ACTION BAR (Centered at bottom when there are unsaved changes) */}
         {hasChanges && (

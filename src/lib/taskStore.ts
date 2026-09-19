@@ -17,14 +17,78 @@ export const TODOS_STORAGE_KEY = "classroom_ai_personal_todos_v1";
 export const NOTES_STORAGE_KEY = "classroom_ai_study_notes_v1";
 export const PREFS_STORAGE_KEY = "classroom_ai_user_prefs_v1";
 export const AI_CONFIG_STORAGE_KEY = "classroom_ai_config_v1";
-export const ONBOARDING_DONE_KEY = "classroom_ai_onboarding_done_v1";
+export const ONBOARDING_DONE_KEY = "ionlearn_onboarding_v2_done";
 export const FEATURE_TOUR_DONE_KEY = "ionlearn_feature_tour_done_v1";
 
 export const DEMO_EMAIL = "pelajar@contoh.com";
 
-function getStorageKey(baseKey: string): string {
+function getStorageKey(baseKey: string, userEmail?: string): string {
   const profile = ClassroomService.getUserProfile();
-  return profile?.email ? `${baseKey}_${profile.email}` : baseKey;
+  const email = userEmail || profile?.email;
+  return email ? `${baseKey}_${email}` : baseKey;
+}
+
+export function isOnboardingCompleted(userEmail?: string): boolean {
+  if (typeof window === "undefined") return false;
+  const profile = ClassroomService.getUserProfile();
+  const email = userEmail || profile?.email;
+  
+  if (email) {
+    const userKey = `${ONBOARDING_DONE_KEY}_${email}`;
+    const userStatus = localStorage.getItem(userKey);
+    if (userStatus === "true") return true;
+    if (userStatus === "false") return false;
+
+    // Check if THIS specific account has educationLevel & learningStyle & aiTone in saved preferences
+    const accountPrefsKey = `${PREFS_STORAGE_KEY}_${email}`;
+    const savedPrefs = localStorage.getItem(accountPrefsKey);
+    if (savedPrefs) {
+      try {
+        const parsed = JSON.parse(savedPrefs);
+        if (parsed?.educationLevel && parsed?.learningStyle && parsed?.aiTone) {
+          localStorage.setItem(userKey, "true");
+          return true;
+        }
+      } catch {}
+    }
+    return false;
+  }
+
+  // If no email yet, do not assume completed
+  return false;
+}
+
+export function isFeatureTourCompleted(userEmail?: string): boolean {
+  if (typeof window === "undefined") return false;
+  const profile = ClassroomService.getUserProfile();
+  const email = userEmail || profile?.email;
+  if (email) {
+    return localStorage.getItem(`${FEATURE_TOUR_DONE_KEY}_${email}`) === "true";
+  }
+  return localStorage.getItem(FEATURE_TOUR_DONE_KEY) === "true";
+}
+
+export function setFeatureTourCompleted(completed: boolean = true, userEmail?: string): void {
+  if (typeof window === "undefined") return;
+  const profile = ClassroomService.getUserProfile();
+  const email = userEmail || profile?.email;
+  const val = completed ? "true" : "false";
+
+  if (email) {
+    localStorage.setItem(`${FEATURE_TOUR_DONE_KEY}_${email}`, val);
+  }
+  localStorage.setItem(FEATURE_TOUR_DONE_KEY, val);
+}
+
+export function setOnboardingCompleted(completed: boolean = true, userEmail?: string): void {
+  if (typeof window === "undefined") return;
+  const profile = ClassroomService.getUserProfile();
+  const email = userEmail || profile?.email;
+  const val = completed ? "true" : "false";
+
+  if (email) {
+    localStorage.setItem(`${ONBOARDING_DONE_KEY}_${email}`, val);
+  }
 }
 
 // -------------------------------------------------------------
@@ -399,10 +463,13 @@ export function deleteNote(noteId: string): void {
 // -------------------------------------------------------------
 // PREFERENCES & AI CONFIG
 // -------------------------------------------------------------
-export function loadPreferences(): UserPreferences | null {
+export function loadPreferences(userEmail?: string): UserPreferences | null {
   if (typeof window === "undefined") return null;
   try {
-    const saved = localStorage.getItem(PREFS_STORAGE_KEY);
+    const profile = ClassroomService.getUserProfile();
+    const email = userEmail || profile?.email;
+    const key = email ? `${PREFS_STORAGE_KEY}_${email}` : PREFS_STORAGE_KEY;
+    const saved = localStorage.getItem(key);
     if (saved) {
       const parsed = JSON.parse(saved);
       return {
@@ -418,9 +485,15 @@ export function loadPreferences(): UserPreferences | null {
   return null;
 }
 
-export function savePreferences(prefs: UserPreferences): void {
+export function savePreferences(prefs: UserPreferences, userEmail?: string): void {
   if (typeof window === "undefined") return;
-  localStorage.setItem(PREFS_STORAGE_KEY, JSON.stringify(prefs));
+  const profile = ClassroomService.getUserProfile();
+  const email = userEmail || profile?.email;
+  if (email) {
+    localStorage.setItem(`${PREFS_STORAGE_KEY}_${email}`, JSON.stringify(prefs));
+  } else {
+    localStorage.setItem(PREFS_STORAGE_KEY, JSON.stringify(prefs));
+  }
   syncAllUserDataToCloud();
   window.dispatchEvent(new Event("taskStoreChange"));
   window.dispatchEvent(new Event("task-modal-style-changed"));
@@ -440,4 +513,39 @@ export function loadAIConfig(): AIConfig | null {
 export function saveAIConfig(config: AIConfig): void {
   localStorage.setItem(AI_CONFIG_STORAGE_KEY, JSON.stringify(config));
   syncAllUserDataToCloud();
+}
+
+// -------------------------------------------------------------
+// ACCOUNT DELETION & FULL LOCAL WIPE
+// -------------------------------------------------------------
+export function clearAllUserLocalData(userEmail?: string): void {
+  if (typeof window === "undefined") return;
+  const profile = ClassroomService.getUserProfile();
+  const email = userEmail || profile?.email;
+
+  if (email) {
+    localStorage.removeItem(`${TASKS_STORAGE_KEY}_${email}`);
+    localStorage.removeItem(`${TODOS_STORAGE_KEY}_${email}`);
+    localStorage.removeItem(`${NOTES_STORAGE_KEY}_${email}`);
+    localStorage.removeItem(`${PREFS_STORAGE_KEY}_${email}`);
+    localStorage.removeItem(`${ONBOARDING_DONE_KEY}_${email}`);
+    localStorage.removeItem(`${FEATURE_TOUR_DONE_KEY}_${email}`);
+    localStorage.removeItem(`onboarding_draft_${email}`);
+  }
+
+  // Clear global/fallback keys
+  localStorage.removeItem(TASKS_STORAGE_KEY);
+  localStorage.removeItem(TODOS_STORAGE_KEY);
+  localStorage.removeItem(NOTES_STORAGE_KEY);
+  localStorage.removeItem(PREFS_STORAGE_KEY);
+  localStorage.removeItem(ONBOARDING_DONE_KEY);
+  localStorage.removeItem(FEATURE_TOUR_DONE_KEY);
+  localStorage.removeItem("onboarding_draft");
+  localStorage.removeItem("classroom_user_profile");
+  localStorage.removeItem("last_classroom_sync");
+  localStorage.removeItem("classroom_ai_token");
+  localStorage.removeItem("classroom_ai_token_expiry");
+
+  ClassroomService.logout().catch(() => {});
+  window.dispatchEvent(new Event("taskStoreChange"));
 }

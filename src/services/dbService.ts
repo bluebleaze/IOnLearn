@@ -1,4 +1,5 @@
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, deleteDoc } from 'firebase/firestore';
+import { deleteUser } from 'firebase/auth';
 import { TodoTask, UserPreferences, AIConfig, PersonalTodo, StudyNote } from '../types';
 import { auth, db } from '@/lib/firebase';
 
@@ -123,5 +124,43 @@ export class DBService {
     }
 
     return null;
+  }
+
+  static async deleteUserData(userEmail?: string): Promise<boolean> {
+    let success = true;
+
+    // 1. Delete from shared server cache API
+    if (userEmail) {
+      try {
+        await fetch(`/api/user-cache?email=${encodeURIComponent(userEmail)}`, {
+          method: 'DELETE',
+        });
+      } catch (e) {
+        console.warn('Could not delete from /api/user-cache:', e);
+        success = false;
+      }
+    }
+
+    // 2. Delete from Firestore
+    const uid = await this.getUserId();
+    if (uid) {
+      try {
+        const userRef = doc(db, 'users', uid);
+        await deleteDoc(userRef);
+      } catch (error) {
+        console.warn('Could not delete from Firestore:', error);
+      }
+    }
+
+    // 3. Delete Firebase Auth User account if authenticated
+    try {
+      if (auth.currentUser) {
+        await deleteUser(auth.currentUser);
+      }
+    } catch (authErr) {
+      console.warn('Could not delete Firebase Auth user:', authErr);
+    }
+
+    return success;
   }
 }

@@ -260,9 +260,24 @@ export type ToastPosition =
   | 'bottom-right';
 
 export interface UserPreferences {
+  educationLevel?: string; // e.g., 'SMP', 'SMA/SMK', 'Mahasiswa S1', 'Pascasarjana', 'Profesional'
+  majorOrField?: string; // e.g., 'Teknologi & Komputer', 'Sains', 'Bisnis', dll.
+  dailyStudyHours?: string; // e.g., '< 1 jam', '1 - 2 jam', '2 - 4 jam', '> 4 jam'
+  studyEnvironment?: string; // e.g., 'Mandiri & Hening', 'Di Kampus/Kelas', 'Sambil Bekerja'
   learningStyle: string; // e.g., 'Visual', 'Membaca/Menulis', 'Praktik'
+  problemSolvingStyle?: string; // e.g., 'Step-by-step', 'Konsep Dasar', 'Latihan Soal'
+  noteFormat?: string; // e.g., 'Bullet points', 'Mindmap', 'Tabel'
+  favoriteFeatures?: string[]; // e.g., ['Tugas Classroom', 'AI Tutor', 'Catatan']
+  deadlineHandling?: string; // e.g., 'Dicicil', 'Dekat Deadline'
   explanationDetail: string; // e.g., 'Singkat', 'Detail', 'Bertahap'
   aiTone: string; // e.g., 'Santai', 'Tegas', 'Socratic'
+  aiRole?: string; // e.g., 'Pembimbing', 'Validator', 'Analogi'
+  socraticFrequency?: string; // e.g., 'Sering', 'Secukupnya', 'Jarang'
+  studyGoal?: string; // e.g., 'Manajemen Tugas', 'Pemahaman Konsep', 'Persiapan Ujian', 'Produktivitas'
+  focusTopics?: string[]; // e.g., ['Matematika', 'Pemrograman', 'Bahasa']
+  biggestChallenge?: string; // e.g., 'Prokrastinasi', 'Materi Sulit', 'Waktu Terbatas'
+  productiveTime?: string; // e.g., 'Pagi', 'Malam', 'Akhir Pekan'
+  notificationStyle?: string; // e.g., 'Toast & In-App', 'Dashboard Ringkas'
   defaultStudyMode?: 'socratic' | 'direct' | 'quizzer'; // Mode default AI Chat: 'socratic', 'direct', 'quizzer'
   classroomDateRangeMonths?: number; // Filter rentang bulan sinkronisasi tugas: 1, 2 (default), 3, 6, 12, atau 0 (semua)
   toastPosition?: ToastPosition; // Posisi notifikasi toast sonner (default: 'top-right')
