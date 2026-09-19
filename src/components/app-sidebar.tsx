@@ -118,7 +118,10 @@ export function AppSidebar({
       {...props}
     >
       {/* Header with Brand */}
-      <SidebarHeader className="border-0 min-h-[3.75rem] p-2 group-data-[collapsible=icon]:h-14 group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:px-0 flex flex-col justify-center overflow-hidden whitespace-nowrap">
+      <SidebarHeader className={cn(
+        "border-0 min-h-[3.75rem] p-2 group-data-[collapsible=icon]:h-14 group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:px-0 flex flex-col justify-center overflow-hidden whitespace-nowrap",
+        isMobile && "pr-10"
+      )}>
         <SidebarMenu className="overflow-hidden group-data-[collapsible=icon]:items-center">
           <SidebarMenuItem className="overflow-hidden group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:justify-center">
             <SidebarMenuButton
@@ -159,13 +162,13 @@ export function AppSidebar({
       </SidebarHeader>
 
       {/* Main Content */}
-      <SidebarContent className="px-2 group-data-[collapsible=icon]:px-0 py-2 overflow-hidden whitespace-nowrap transition-[padding] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]">
-        <SidebarGroup className="p-0 overflow-hidden">
+      <SidebarContent className="px-2 group-data-[collapsible=icon]:px-0 py-2 whitespace-nowrap transition-[padding] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]">
+        <SidebarGroup className="p-0">
           <SidebarGroupLabel className="text-xs font-semibold tracking-wider text-slate-500 dark:text-[#6e6e73] uppercase px-2 mb-1.5 whitespace-nowrap truncate select-none">
             {t.nav.mainMenu}
           </SidebarGroupLabel>
-          <SidebarGroupContent className="overflow-hidden">
-            <SidebarMenu data-tour="sidebar-nav" className="space-y-1 overflow-hidden group-data-[collapsible=icon]:items-center">
+          <SidebarGroupContent>
+            <SidebarMenu data-tour="sidebar-nav" className="space-y-1 group-data-[collapsible=icon]:items-center">
               {navItems.map((item) => (
                 <SidebarMenuItem key={item.title} className="overflow-hidden group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:justify-center">
                   <SidebarMenuButton
@@ -203,7 +206,7 @@ export function AppSidebar({
       </SidebarContent>
 
       {/* Footer with Profile and Settings */}
-      <SidebarFooter data-tour="user-profile" className="border-0 p-2 pb-3.5 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:pt-2 group-data-[collapsible=icon]:pb-3.5 overflow-hidden whitespace-nowrap">
+      <SidebarFooter data-tour="user-profile" className="mt-auto border-t border-slate-200/60 dark:border-white/[0.08] p-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:pt-2 group-data-[collapsible=icon]:pb-3.5 shrink-0 overflow-hidden whitespace-nowrap">
         <NavUser
           user={user}
           onSyncClassroom={onSyncClassroom}

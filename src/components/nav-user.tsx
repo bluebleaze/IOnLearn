@@ -92,10 +92,10 @@ export function NavUser({
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
-            className="w-56 min-w-56 rounded-xl bg-white dark:bg-[#0c0c0e] border border-slate-200/80 dark:border-white/[0.08] p-1.5 shadow-lg outline-none focus:outline-none"
-            side={isMobile ? "bottom" : "right"}
-            align="end"
-            sideOffset={6}
+            className="w-56 min-w-56 rounded-xl bg-white dark:bg-[#0c0c0e] border border-slate-200/80 dark:border-white/[0.08] p-1.5 shadow-lg outline-none focus:outline-none z-50"
+            side={isMobile ? "top" : "right"}
+            align={isMobile ? "start" : "end"}
+            sideOffset={8}
           >
             <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-2.5 px-2 py-1.5 text-left">

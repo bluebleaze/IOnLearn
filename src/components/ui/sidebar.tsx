@@ -201,7 +201,7 @@ function Sidebar({
           data-slot="sidebar"
           data-mobile="true"
           className={cn(
-            "w-[280px] max-w-[85vw] bg-white dark:bg-black text-slate-900 dark:text-[#f5f5f5] border-r border-slate-200 dark:border-[#242424] p-0 shadow-none overflow-hidden",
+            "!w-[290px] sm:!w-[310px] !max-w-[85vw] !h-[100dvh] !max-h-[100dvh] bg-white dark:bg-black text-slate-900 dark:text-[#f5f5f5] border-r border-slate-200 dark:border-[#242424] p-0 shadow-2xl flex flex-col justify-between overflow-hidden",
             className
           )}
           style={
@@ -216,7 +216,7 @@ function Sidebar({
             <SheetTitle>Sidebar</SheetTitle>
             <SheetDescription>Displays the mobile sidebar.</SheetDescription>
           </SheetHeader>
-          <div className="flex h-full w-full flex-col bg-white dark:bg-black text-slate-900 dark:text-[#f5f5f5] overflow-y-auto">
+          <div className="flex h-full max-h-[100dvh] w-full flex-col bg-white dark:bg-black text-slate-900 dark:text-[#f5f5f5] overflow-y-auto overflow-x-hidden">
             {children}
           </div>
         </SheetContent>
@@ -390,7 +390,7 @@ function SidebarContent({ className, ...props }: React.ComponentProps<"div">) {
       data-slot="sidebar-content"
       data-sidebar="content"
       className={cn(
-        "no-scrollbar flex min-h-0 flex-1 flex-col gap-2 overflow-hidden whitespace-nowrap",
+        "no-scrollbar flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overflow-x-hidden whitespace-nowrap",
         className
       )}
       {...props}

@@ -69,7 +69,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
     if (typeof task.dueTimestamp === "number" && !isNaN(task.dueTimestamp) && task.dueTimestamp < now) {
       return {
         label: isEn ? "Overdue" : "Telat",
-        badgeClass: "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200/70 dark:border-rose-800/50",
+        badgeClass: "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200/70 dark:border-amber-800/50",
         icon: AlertCircle,
       };
     }
@@ -81,7 +81,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
     if (isUrgent) {
       return {
         label: isEn ? "Action Needed" : "Perlu Dikerjakan",
-        badgeClass: "bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border-indigo-200/70 dark:border-indigo-800/50",
+        badgeClass: "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200/70 dark:border-rose-800/50",
         icon: Clock,
       };
     }

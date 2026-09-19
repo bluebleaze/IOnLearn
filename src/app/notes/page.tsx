@@ -244,6 +244,7 @@ export default function NotesPage() {
   // Active / selected note for viewing or editing
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [isMobileDetailOpen, setIsMobileDetailOpen] = useState(false);
 
   // Editor View State: Visual (WYSIWYG), Markdown, or Preview
   const [editorTab, setEditorTab] = useState<"visual" | "markdown" | "preview">("visual");
@@ -310,7 +311,19 @@ export default function NotesPage() {
     });
   }, [notes, selectedSubject, searchQuery]);
 
+  const handleSelectNote = (note: StudyNote) => {
+    setActiveNoteId(note.id);
+    setIsEditing(false);
+    setActiveQuiz(note.aiQuiz || null);
+    setUserAnswers({});
+    setQuizSubmitted(false);
+    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+      setIsMobileDetailOpen(true);
+    }
+  };
+
   const handleStartCreate = () => {
+    setIsMobileDetailOpen(false);
     setActiveNoteId(null);
     setFormTitle("");
     setFormSubject("");
@@ -327,6 +340,7 @@ export default function NotesPage() {
   };
 
   const handleStartEdit = (note: StudyNote) => {
+    setIsMobileDetailOpen(false);
     setActiveNoteId(note.id);
     setFormTitle(note.title || "");
     setFormSubject(note.subject || "");
@@ -688,6 +702,7 @@ export default function NotesPage() {
         setActiveNoteId(null);
         setIsEditing(false);
         setActiveQuiz(null);
+        setIsMobileDetailOpen(false);
       }
       toast.success(t.notes.toastDeleted);
     }
@@ -812,6 +827,73 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
     }
   };
 
+  const [copiedNoteId, setCopiedNoteId] = useState<string | null>(null);
+
+  const handleCopyNote = async (note: StudyNote, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    try {
+      let textToCopy = `# ${note.title || "Catatan"}\n`;
+      if (note.subject) {
+        textToCopy += `📚 Mata Kuliah / Pelajaran: ${note.subject}\n`;
+      }
+      if (note.tags && note.tags.length > 0) {
+        textToCopy += `🏷️ Tags: ${note.tags.map((t) => `#${t}`).join(" ")}\n`;
+      }
+      textToCopy += `\n${note.content || ""}\n`;
+      if (note.summary) {
+        textToCopy += `\n---\n✨ Rangkuman AI:\n${note.summary}\n`;
+      }
+
+      await navigator.clipboard.writeText(textToCopy.trim());
+      setCopiedNoteId(note.id);
+      toast.success(
+        isEn ? "Full note copied to clipboard! 📋" : "Seluruh isi catatan berhasil disalin! 📋",
+        {
+          description: isEn
+            ? "Title, subject, content, and AI summary copied."
+            : "Judul, materi, dan rangkuman AI tersalin rapi.",
+        }
+      );
+      setTimeout(() => {
+        setCopiedNoteId(null);
+      }, 2000);
+    } catch {
+      toast.error(isEn ? "Failed to copy note to clipboard." : "Gagal menyalin catatan ke clipboard.");
+    }
+  };
+
+  const handleCopyAllNotes = async () => {
+    if (filteredNotes.length === 0) {
+      toast.info(isEn ? "No notes to copy." : "Tidak ada catatan untuk disalin.");
+      return;
+    }
+    try {
+      let allText = `# 📚 Kumpulan Catatan Materi (${filteredNotes.length} Catatan)\n\n`;
+      filteredNotes.forEach((note, idx) => {
+        allText += `## ${idx + 1}. ${note.title || (isEn ? "Untitled" : "Tanpa Judul")}\n`;
+        if (note.subject) allText += `*Mata Kuliah / Pelajaran: ${note.subject}*\n`;
+        if (note.tags && note.tags.length > 0) allText += `*Tags: ${note.tags.map((t) => `#${t}`).join(" ")}*\n`;
+        allText += `\n${note.content || ""}\n`;
+        if (note.summary) allText += `\n> **Rangkuman AI:**\n> ${note.summary.replace(/\n/g, "\n> ")}\n`;
+        allText += `\n---\n\n`;
+      });
+
+      await navigator.clipboard.writeText(allText.trim());
+      toast.success(
+        isEn
+          ? `All ${filteredNotes.length} notes copied to clipboard! 📋`
+          : `Semua ${filteredNotes.length} catatan berhasil disalin ke clipboard! 📋`,
+        {
+          description: isEn
+            ? "All notes formatted in Markdown and ready to paste."
+            : "Semua catatan tersalin rapi dalam format Markdown.",
+        }
+      );
+    } catch {
+      toast.error(isEn ? "Failed to copy notes." : "Gagal menyalin semua catatan.");
+    }
+  };
+
   const handleOpenInChat = () => {
     if (!activeNote) return;
     sessionStorage.setItem("chat_context_note", JSON.stringify(activeNote));
@@ -832,11 +914,23 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {filteredNotes.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCopyAllNotes}
+                className="gap-1.5 rounded-[10px] text-xs font-semibold border-slate-200/80 dark:border-[#27272a] bg-white dark:bg-[#1c1c20] text-slate-700 dark:text-zinc-200 hover:bg-slate-50 dark:hover:bg-[#25252b] shadow-2xs cursor-pointer"
+                title={isEn ? "Copy all notes" : "Salin semua catatan sekaligus"}
+              >
+                <Copy className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400" />
+                <span>{isEn ? "Copy All Notes" : "Salin Semua Catatan"}</span>
+              </Button>
+            )}
             <Button
               size="sm"
               onClick={handleStartCreate}
-              className="gap-1.5 rounded-[10px] text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs"
+              className="gap-1.5 rounded-[10px] text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>{t.notes.newNoteBtn}</span>
@@ -955,46 +1049,55 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-2.5">
                 {filteredNotes.map((note) => {
                   const isSelected = activeNoteId === note.id;
+                  const isCopied = copiedNoteId === note.id;
                   return (
                     <div
                       key={note.id}
                       role="button"
                       tabIndex={0}
-                      onClick={() => {
-                        setActiveNoteId(note.id);
-                        setIsEditing(false);
-                        setActiveQuiz(note.aiQuiz || null);
-                        setUserAnswers({});
-                        setQuizSubmitted(false);
-                      }}
+                      onClick={() => handleSelectNote(note)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault();
-                          setActiveNoteId(note.id);
-                          setIsEditing(false);
-                          setActiveQuiz(note.aiQuiz || null);
-                          setUserAnswers({});
-                          setQuizSubmitted(false);
+                          handleSelectNote(note);
                         }
                       }}
-                      className={`p-3 rounded-xl border transition-all cursor-pointer text-left flex flex-col justify-between ${isSelected
+                      className={`p-3 rounded-xl border transition-all cursor-pointer text-left flex flex-col justify-between group ${isSelected
                           ? "bg-white dark:bg-[#1c1c22] border-indigo-500/80 dark:border-indigo-500/80 shadow-xs ring-1 ring-indigo-500/30"
                           : "bg-white dark:bg-[#151518] border-slate-200/80 dark:border-[#27272a] hover:border-slate-300 dark:hover:border-[#3a3a40] dark:hover:bg-[#19191d]"
                         }`}
                     >
                       <div className="space-y-1.5">
-                        <div className="flex items-center gap-1 flex-wrap">
-                          {note.subject && (
-                            <span className="px-1.5 py-0.5 rounded text-[10.5px] font-semibold bg-indigo-50 dark:bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 border border-transparent dark:border-indigo-500/30 truncate max-w-full">
-                              {note.subject}
-                            </span>
-                          )}
-                          {note.summary && (
-                            <span className="px-1 py-0.5 rounded text-[10px] font-medium bg-purple-50 dark:bg-purple-500/15 text-purple-600 dark:text-purple-300 border border-transparent dark:border-purple-500/30 flex items-center gap-0.5">
-                              <Sparkles className="w-2.5 h-2.5" />
-                              <span>AI</span>
-                            </span>
-                          )}
+                        <div className="flex items-center justify-between gap-1">
+                          <div className="flex items-center gap-1 flex-wrap min-w-0">
+                            {note.subject && (
+                              <span className="px-1.5 py-0.5 rounded text-[10.5px] font-semibold bg-indigo-50 dark:bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 border border-transparent dark:border-indigo-500/30 truncate max-w-[140px]">
+                                {note.subject}
+                              </span>
+                            )}
+                            {note.summary && (
+                              <span className="px-1 py-0.5 rounded text-[10px] font-medium bg-purple-50 dark:bg-purple-500/15 text-purple-600 dark:text-purple-300 border border-transparent dark:border-purple-500/30 flex items-center gap-0.5">
+                                <Sparkles className="w-2.5 h-2.5" />
+                                <span>AI</span>
+                              </span>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => handleCopyNote(note, e)}
+                            className={`p-1 rounded-md transition cursor-pointer shrink-0 ${
+                              isCopied
+                                ? "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40"
+                                : "text-slate-400 hover:text-slate-700 dark:text-zinc-500 dark:hover:text-zinc-200 hover:bg-slate-100 dark:hover:bg-[#202026]"
+                            }`}
+                            title={isEn ? "Copy Note" : "Salin Catatan"}
+                          >
+                            {isCopied ? (
+                              <Check className="w-3.5 h-3.5" />
+                            ) : (
+                              <Copy className="w-3.5 h-3.5" />
+                            )}
+                          </button>
                         </div>
                         <h4 className="text-xs font-semibold text-slate-900 dark:text-zinc-100 line-clamp-2">
                           {note.title || "Tanpa Judul"}
@@ -1012,26 +1115,17 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
               <div className="space-y-2">
                 {filteredNotes.map((note) => {
                   const isSelected = activeNoteId === note.id;
+                  const isCopied = copiedNoteId === note.id;
                   return (
                     <div
                       key={note.id}
                       role="button"
                       tabIndex={0}
-                      onClick={() => {
-                        setActiveNoteId(note.id);
-                        setIsEditing(false);
-                        setActiveQuiz(note.aiQuiz || null);
-                        setUserAnswers({});
-                        setQuizSubmitted(false);
-                      }}
+                      onClick={() => handleSelectNote(note)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault();
-                          setActiveNoteId(note.id);
-                          setIsEditing(false);
-                          setActiveQuiz(note.aiQuiz || null);
-                          setUserAnswers({});
-                          setQuizSubmitted(false);
+                          handleSelectNote(note);
                         }
                       }}
                       className={`p-3.5 rounded-2xl border transition-all cursor-pointer text-left group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#121212] ${isSelected
@@ -1063,14 +1157,33 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                       </div>
 
                       <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-[#242428] flex items-center justify-between text-xs text-slate-400 dark:text-zinc-500">
-                        <div className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          <span>
-                            {new Date(note.updatedAt || note.createdAt).toLocaleDateString(isEn ? "en-US" : "id-ID", {
-                              day: "numeric",
-                              month: "short",
-                            })}
-                          </span>
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            <span>
+                              {new Date(note.updatedAt || note.createdAt).toLocaleDateString(isEn ? "en-US" : "id-ID", {
+                                day: "numeric",
+                                month: "short",
+                              })}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => handleCopyNote(note, e)}
+                            className={`p-1 rounded-md text-[11px] font-medium transition cursor-pointer flex items-center gap-1 hover:bg-slate-100 dark:hover:bg-[#202026] ${
+                              isCopied
+                                ? "text-emerald-600 dark:text-emerald-400 font-semibold"
+                                : "text-slate-400 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+                            }`}
+                            title={isEn ? "Copy Note" : "Salin Catatan"}
+                          >
+                            {isCopied ? (
+                              <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                            ) : (
+                              <Copy className="w-3 h-3" />
+                            )}
+                            <span>{isCopied ? (isEn ? "Copied" : "Tersalin") : (isEn ? "Copy" : "Salin")}</span>
+                          </button>
                         </div>
                         <div className="flex items-center gap-1 font-semibold text-indigo-600 dark:text-indigo-400 group-hover:translate-x-0.5 transition-transform">
                           <span>{isEn ? "View Note" : "Lihat Catatan"}</span>
@@ -1084,8 +1197,8 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
             )}
           </div>
 
-          {/* Right Column: Note Reader / Detailed Viewer */}
-          <div className="lg:col-span-8">
+          {/* Right Column: Note Reader / Detailed Viewer (Desktop Only - hidden on mobile) */}
+          <div className="hidden lg:block lg:col-span-8">
             {activeNote ? (
               /* Note Detail View with AI Tools & Markdown Prose */
               <div className="bg-white dark:bg-[#151518] rounded-2xl p-5 sm:p-6 shadow-2xs border border-slate-200/80 dark:border-[#27272a] space-y-5">
@@ -1114,8 +1227,26 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                     <Button
                       variant="outline"
                       size="sm"
+                      onClick={() => handleCopyNote(activeNote)}
+                      className={`text-xs h-8 gap-1.5 rounded-lg border-0 transition-all cursor-pointer ${
+                        copiedNoteId === activeNote.id
+                          ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 font-semibold"
+                          : "bg-slate-100 dark:bg-[#222228] text-slate-700 dark:text-zinc-300 hover:bg-slate-200 dark:hover:bg-[#2a2a32]"
+                      }`}
+                      title={isEn ? "Copy full note" : "Salin semua isi catatan"}
+                    >
+                      {copiedNoteId === activeNote.id ? (
+                        <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                      ) : (
+                        <Copy className="w-3.5 h-3.5 text-slate-600 dark:text-zinc-400" />
+                      )}
+                      <span>{copiedNoteId === activeNote.id ? (isEn ? "Copied!" : "Tersalin!") : (isEn ? "Copy Note" : "Salin Catatan")}</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => handleStartEdit(activeNote)}
-                      className="text-xs h-8 gap-1.5 rounded-lg border-0 bg-slate-100 dark:bg-[#222228] text-slate-700 dark:text-zinc-300 hover:bg-slate-200 dark:hover:bg-[#2a2a32]"
+                      className="text-xs h-8 gap-1.5 rounded-lg border-0 bg-slate-100 dark:bg-[#222228] text-slate-700 dark:text-zinc-300 hover:bg-slate-200 dark:hover:bg-[#2a2a32] cursor-pointer"
                     >
                       <Edit3 className="w-3.5 h-3.5 text-slate-600 dark:text-zinc-400" />
                       <span>Edit Markdown</span>
@@ -1124,7 +1255,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                       variant="ghost"
                       size="sm"
                       onClick={() => handleDeleteNote(activeNote.id)}
-                      className="text-xs h-8 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg p-2"
+                      className="text-xs h-8 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg p-2 cursor-pointer"
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -1142,7 +1273,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                     size="sm"
                     onClick={handleAISummarize}
                     disabled={isSummarizing}
-                    className="h-7 text-xs font-semibold bg-white hover:bg-slate-50 text-indigo-700 shadow-sm border border-transparent dark:border-[#363642] dark:bg-[#26262e] dark:hover:bg-[#2e2e38] dark:text-indigo-300 rounded-lg gap-1.5"
+                    className="h-7 text-xs font-semibold bg-white hover:bg-slate-50 text-indigo-700 shadow-sm border border-transparent dark:border-[#363642] dark:bg-[#26262e] dark:hover:bg-[#2e2e38] dark:text-indigo-300 rounded-lg gap-1.5 cursor-pointer"
                   >
                     {isSummarizing ? (
                       <Loader2 className="w-3 h-3 animate-spin" />
@@ -1156,7 +1287,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                     size="sm"
                     onClick={handleAIGenerateQuiz}
                     disabled={isGeneratingQuiz}
-                    className="h-7 text-xs font-semibold bg-white hover:bg-slate-50 text-purple-700 shadow-sm border border-transparent dark:border-[#363642] dark:bg-[#26262e] dark:hover:bg-[#2e2e38] dark:text-purple-300 rounded-lg gap-1.5"
+                    className="h-7 text-xs font-semibold bg-white hover:bg-slate-50 text-purple-700 shadow-sm border border-transparent dark:border-[#363642] dark:bg-[#26262e] dark:hover:bg-[#2e2e38] dark:text-purple-300 rounded-lg gap-1.5 cursor-pointer"
                   >
                     {isGeneratingQuiz ? (
                       <Loader2 className="w-3 h-3 animate-spin" />
@@ -1173,7 +1304,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                   <Button
                     size="sm"
                     onClick={handleOpenInChat}
-                    className="h-7 text-xs font-semibold bg-white hover:bg-slate-50 text-slate-800 shadow-sm border border-transparent dark:border-[#363642] dark:bg-[#26262e] dark:hover:bg-[#2e2e38] dark:text-zinc-100 rounded-lg gap-1.5"
+                    className="h-7 text-xs font-semibold bg-white hover:bg-slate-50 text-slate-800 shadow-sm border border-transparent dark:border-[#363642] dark:bg-[#26262e] dark:hover:bg-[#2e2e38] dark:text-zinc-100 rounded-lg gap-1.5 cursor-pointer"
                   >
                     <MessageSquareText className="w-3 h-3 text-indigo-500" />
                     <span>{t.notes.askAITutor}</span>
@@ -1306,7 +1437,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                             }
                           }}
                           disabled={Object.keys(userAnswers).length < activeQuiz.length}
-                          className="text-xs font-semibold bg-purple-600 hover:bg-purple-700 text-white rounded-xl"
+                          className="text-xs font-semibold bg-purple-600 hover:bg-purple-700 text-white rounded-xl cursor-pointer"
                         >
                           {isEn ? "Check Answers" : "Periksa Jawaban"}
                         </Button>
@@ -1327,7 +1458,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                               setUserAnswers({});
                               setQuizSubmitted(false);
                             }}
-                            className="text-xs rounded-xl"
+                            className="text-xs rounded-xl cursor-pointer"
                           >
                             {isEn ? "Try Again" : "Coba Lagi"}
                           </Button>
@@ -1354,7 +1485,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                 <Button
                   size="sm"
                   onClick={handleStartCreate}
-                  className="text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-xs"
+                  className="text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-xs cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5 mr-1" />
                   {t.notes.newNoteBtn}
@@ -1363,6 +1494,317 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
             )}
           </div>
         </div>
+
+        {/* ── Mobile Popup: Note Viewer Modal / Sheet (Seperti fitur catatan di HP) ── */}
+        {activeNote && (
+          <Dialog open={isMobileDetailOpen} onOpenChange={setIsMobileDetailOpen}>
+            <DialogContent
+              hideCloseButton
+              className="w-[calc(100%-1.25rem)] max-w-lg max-h-[90dvh] h-[90dvh] p-0 flex flex-col shadow-2xl rounded-2xl sm:rounded-3xl bg-white dark:bg-[#151518] border border-slate-200/80 dark:border-[#27272a] font-inter overflow-hidden outline-none"
+            >
+              <DialogTitle className="sr-only">
+                {activeNote.title || "Detail Catatan"}
+              </DialogTitle>
+              <DialogDescription className="sr-only">
+                {activeNote.subject || "Detail Catatan Materi"}
+              </DialogDescription>
+
+              {/* Top Navigation Bar */}
+              <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-slate-100 dark:border-[#242428] bg-white/95 dark:bg-[#151518]/95 backdrop-blur-sm shrink-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <button
+                    type="button"
+                    onClick={() => setIsMobileDetailOpen(false)}
+                    className="p-1.5 -ml-1 rounded-xl text-slate-600 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#202026] transition cursor-pointer flex items-center gap-1 shrink-0"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    <span className="text-xs font-semibold">{isEn ? "Back" : "Kembali"}</span>
+                  </button>
+                  {activeNote.subject && (
+                    <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-indigo-50 dark:bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 border border-transparent dark:border-indigo-500/30 truncate max-w-[120px]">
+                      {activeNote.subject}
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => handleCopyNote(activeNote)}
+                    className={`p-1.5 rounded-xl transition cursor-pointer flex items-center gap-1 ${
+                      copiedNoteId === activeNote.id
+                        ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400"
+                        : "text-slate-600 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-[#222228]"
+                    }`}
+                    title={isEn ? "Copy Note" : "Salin Catatan"}
+                  >
+                    {copiedNoteId === activeNote.id ? (
+                      <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    ) : (
+                      <Copy className="w-4 h-4" />
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleStartEdit(activeNote)}
+                    className="p-1.5 rounded-xl text-slate-600 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-[#222228] transition cursor-pointer"
+                    title="Edit Markdown"
+                  >
+                    <Edit3 className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleOpenInChat}
+                    className="p-1.5 rounded-xl text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition cursor-pointer"
+                    title="Tanya AI"
+                  >
+                    <MessageSquareText className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteNote(activeNote.id)}
+                    className="p-1.5 rounded-xl text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition cursor-pointer"
+                    title="Hapus"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsMobileDetailOpen(false)}
+                    className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-slate-100 dark:hover:bg-[#202026] transition cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Scrollable Body */}
+              <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 no-scrollbar">
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900 dark:text-zinc-100 leading-snug">
+                    {activeNote.title}
+                  </h2>
+                  <div className="flex items-center gap-2 mt-1.5 flex-wrap text-xs text-slate-500 dark:text-zinc-400">
+                    <span className="flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      {new Date(activeNote.updatedAt || activeNote.createdAt).toLocaleDateString(isEn ? "en-US" : "id-ID", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      })}
+                    </span>
+                    {activeNote.tags?.map((t) => (
+                      <span
+                        key={t}
+                        className="px-1.5 py-0.5 rounded text-[10.5px] bg-slate-100 dark:bg-[#202026] text-slate-600 dark:text-zinc-400 border border-transparent dark:border-[#2e2e36]"
+                      >
+                        #{t}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* AI Interactive Toolbar */}
+                <div className="flex flex-wrap items-center gap-1.5 bg-slate-100/90 dark:bg-[#1c1c22] border border-slate-200/80 dark:border-[#2c2c34] p-2.5 rounded-xl">
+                  <span className="text-[11px] font-bold text-slate-800 dark:text-zinc-200 flex items-center gap-1 mr-1">
+                    <Sparkles className="w-3 h-3 text-indigo-500" />
+                    AI:
+                  </span>
+                  <Button
+                    size="sm"
+                    onClick={handleAISummarize}
+                    disabled={isSummarizing}
+                    className="h-6.5 text-[11px] font-semibold bg-white hover:bg-slate-50 text-indigo-700 shadow-2xs border border-transparent dark:border-[#363642] dark:bg-[#26262e] dark:hover:bg-[#2e2e38] dark:text-indigo-300 rounded-lg gap-1 px-2.5 cursor-pointer"
+                  >
+                    {isSummarizing ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <FileText className="w-3 h-3" />
+                    )}
+                    <span>{isSummarizing ? t.notes.summarizing : (activeNote.summary ? t.notes.resummarizeBtn : t.notes.summarizeBtn)}</span>
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleAIGenerateQuiz}
+                    disabled={isGeneratingQuiz}
+                    className="h-6.5 text-[11px] font-semibold bg-white hover:bg-slate-50 text-purple-700 shadow-2xs border border-transparent dark:border-[#363642] dark:bg-[#26262e] dark:hover:bg-[#2e2e38] dark:text-purple-300 rounded-lg gap-1 px-2.5 cursor-pointer"
+                  >
+                    {isGeneratingQuiz ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <BrainCircuit className="w-3 h-3" />
+                    )}
+                    <span>
+                      {isGeneratingQuiz ? t.notes.generatingQuiz : (activeNote.aiQuiz && activeNote.aiQuiz.length > 0
+                        ? (isEn ? `Quiz (${activeNote.aiQuiz.length})` : `Kuis (${activeNote.aiQuiz.length})`)
+                        : t.notes.quizBtn)}
+                    </span>
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleOpenInChat}
+                    className="h-6.5 text-[11px] font-semibold bg-white hover:bg-slate-50 text-slate-800 shadow-2xs border border-transparent dark:border-[#363642] dark:bg-[#26262e] dark:hover:bg-[#2e2e38] dark:text-zinc-100 rounded-lg gap-1 px-2.5 cursor-pointer"
+                  >
+                    <MessageSquareText className="w-3 h-3 text-indigo-500" />
+                    <span>{t.notes.askAITutor}</span>
+                  </Button>
+                </div>
+
+                {/* AI Summary Box */}
+                {activeNote.summary && (
+                  <div className="bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-800/40 rounded-xl p-3.5 space-y-1.5">
+                    <div className="flex items-center gap-1.5 text-[11px] font-bold text-indigo-700 dark:text-indigo-300">
+                      <FileText className="w-3 h-3" />
+                      <span>{isEn ? "AI Summary" : "Rangkuman AI"}</span>
+                    </div>
+                    <div className="prose prose-sm dark:prose-invert max-w-none text-xs text-slate-700 dark:text-zinc-300 leading-relaxed">
+                      <Markdown
+                        remarkPlugins={[remarkGfm]}
+                        components={noteMarkdownComponents}
+                      >
+                        {formatMarkdownTables(activeNote.summary)}
+                      </Markdown>
+                    </div>
+                  </div>
+                )}
+
+                {/* Main Content Markdown */}
+                <div className="prose prose-sm dark:prose-invert max-w-none leading-relaxed break-words font-sans bg-slate-50/50 dark:bg-[#18181d] p-4 rounded-xl border border-slate-100 dark:border-[#27272e]">
+                  <Markdown
+                    remarkPlugins={[remarkGfm]}
+                    components={noteMarkdownComponents}
+                  >
+                    {formatMarkdownTables(activeNote.content || "")}
+                  </Markdown>
+                </div>
+
+                {/* Practice Quiz Panel */}
+                {activeQuiz && (
+                  <div className="pt-3 border-t border-slate-100 dark:border-[#242428] space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <BrainCircuit className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                        <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-zinc-100">
+                          {isEn ? "Comprehension Quiz" : "Kuis Pemahaman"}
+                        </h4>
+                      </div>
+                      <span className="text-xs text-slate-500 dark:text-zinc-400">
+                        {activeQuiz.length} {isEn ? "Questions" : "Soal"}
+                      </span>
+                    </div>
+
+                    <div className="space-y-3">
+                      {activeQuiz.map((q, qIndex) => {
+                        const isCorrect = userAnswers[qIndex] === q.correctAnswer;
+                        return (
+                          <div
+                            key={qIndex}
+                            className="bg-slate-50 dark:bg-[#1c1c22] border border-slate-200/80 dark:border-[#2c2c34] p-3 rounded-xl space-y-2"
+                          >
+                            <div className="text-xs font-semibold text-slate-900 dark:text-zinc-100">
+                              {qIndex + 1}. {q.question}
+                            </div>
+                            <div className="space-y-1">
+                              {q.options.map((opt, optIndex) => {
+                                const selected = userAnswers[qIndex] === optIndex;
+                                let btnStyle =
+                                  "bg-white dark:bg-[#222228] border border-slate-200 dark:border-[#2e2e36] text-slate-700 dark:text-zinc-300";
+                                if (quizSubmitted) {
+                                  if (optIndex === q.correctAnswer) {
+                                    btnStyle =
+                                      "bg-emerald-50 dark:bg-emerald-950/50 border-emerald-500 text-emerald-700 dark:text-emerald-300 font-semibold";
+                                  } else if (selected && !isCorrect) {
+                                    btnStyle =
+                                      "bg-rose-50 dark:bg-rose-950/50 border-rose-500 text-rose-700 dark:text-rose-300";
+                                  }
+                                } else if (selected) {
+                                  btnStyle =
+                                    "bg-indigo-50 dark:bg-indigo-950/50 border-indigo-500 text-indigo-700 dark:text-indigo-300 font-semibold";
+                                }
+
+                                return (
+                                  <button
+                                    key={optIndex}
+                                    disabled={quizSubmitted}
+                                    onClick={() =>
+                                      setUserAnswers((prev) => ({ ...prev, [qIndex]: optIndex }))
+                                    }
+                                    className={`w-full text-left p-2 rounded-lg text-xs transition-all cursor-pointer ${btnStyle}`}
+                                  >
+                                    <span className="font-semibold mr-1.5">
+                                      {String.fromCharCode(65 + optIndex)}.
+                                    </span>
+                                    {opt}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                            {quizSubmitted && q.explanation && (
+                              <div className="p-2 rounded-lg bg-indigo-50/50 dark:bg-indigo-950/30 text-xs text-indigo-900 dark:text-indigo-200 leading-relaxed border border-indigo-100 dark:border-indigo-900/40">
+                                <span className="font-bold">{isEn ? "Explanation: " : "Penjelasan: "}</span>
+                                {q.explanation}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1">
+                      {!quizSubmitted ? (
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            setQuizSubmitted(true);
+                            const correctCount = activeQuiz.reduce(
+                              (acc, q, idx) =>
+                                userAnswers[idx] === q.correctAnswer ? acc + 1 : acc,
+                              0
+                            );
+                            if (correctCount === activeQuiz.length) {
+                              try {
+                                confetti({
+                                  particleCount: 50,
+                                  spread: 60,
+                                  origin: { y: 0.7 },
+                                });
+                              } catch {}
+                            }
+                          }}
+                          disabled={Object.keys(userAnswers).length < activeQuiz.length}
+                          className="text-xs font-semibold bg-purple-600 hover:bg-purple-700 text-white rounded-xl"
+                        >
+                          {isEn ? "Check Answers" : "Periksa Jawaban"}
+                        </Button>
+                      ) : (
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs font-bold text-slate-800 dark:text-zinc-100">
+                            {isEn ? "Score: " : "Skor: "}
+                            {
+                              activeQuiz.filter((q, i) => userAnswers[i] === q.correctAnswer).length
+                            }{" "}
+                            / {activeQuiz.length} {isEn ? "Correct" : "Benar"}
+                          </span>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setUserAnswers({});
+                              setQuizSubmitted(false);
+                            }}
+                            className="text-xs rounded-xl"
+                          >
+                            {isEn ? "Try Again" : "Coba Lagi"}
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
 
         {/* ── Modal: Note Create / Edit Dialog (Centered with Full-Screen Backdrop Blur & Font Inter) ── */}
         {isEditing && (

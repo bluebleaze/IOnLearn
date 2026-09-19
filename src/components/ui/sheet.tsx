@@ -62,7 +62,7 @@ function SheetContent({
         data-slot="sheet-content"
         data-side={side}
         className={cn(
-          "fixed z-50 flex flex-col bg-white dark:bg-[#0c0c0c] text-slate-900 dark:text-[#f5f5f5] shadow-2xl outline-none data-[side=bottom]:inset-x-0 data-[side=bottom]:bottom-0 data-[side=bottom]:h-auto data-[side=bottom]:border-t data-[side=left]:inset-y-0 data-[side=left]:left-0 data-[side=left]:h-full data-[side=left]:w-3/4 data-[side=left]:border-r border-slate-200 dark:border-[#242424] data-[side=right]:inset-y-0 data-[side=right]:right-0 data-[side=right]:h-full data-[side=right]:w-3/4 data-[side=right]:border-l data-[side=top]:inset-x-0 data-[side=top]:top-0 data-[side=top]:h-auto data-[side=top]:border-b data-[side=left]:sm:max-w-sm data-[side=right]:sm:max-w-sm",
+          "fixed z-50 flex flex-col bg-white dark:bg-[#0c0c0c] text-slate-900 dark:text-[#f5f5f5] shadow-2xl outline-none data-[side=bottom]:inset-x-0 data-[side=bottom]:bottom-0 data-[side=bottom]:h-auto data-[side=bottom]:border-t data-[side=left]:inset-y-0 data-[side=left]:left-0 data-[side=left]:h-[100dvh] data-[side=left]:max-h-[100dvh] data-[side=left]:w-3/4 data-[side=left]:border-r border-slate-200 dark:border-[#242424] data-[side=right]:inset-y-0 data-[side=right]:right-0 data-[side=right]:h-[100dvh] data-[side=right]:max-h-[100dvh] data-[side=right]:w-3/4 data-[side=right]:border-l data-[side=top]:inset-x-0 data-[side=top]:top-0 data-[side=top]:h-auto data-[side=top]:border-b data-[side=left]:sm:max-w-sm data-[side=right]:sm:max-w-sm",
           className
         )}
         {...props}

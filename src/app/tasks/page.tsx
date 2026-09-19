@@ -228,7 +228,7 @@ export default function TasksPage() {
   const getTaskStatusInfo = (t: TodoTask) => {
     if (t.isCompleted) {
       return {
-        label: "Selesai",
+        label: isEn ? "Completed" : "Selesai",
         badgeClass: "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200/70 dark:border-emerald-800/50",
         icon: CheckCircle2,
       };
@@ -236,8 +236,8 @@ export default function TasksPage() {
     const now = Date.now();
     if (typeof t.dueTimestamp === "number" && !isNaN(t.dueTimestamp) && t.dueTimestamp < now) {
       return {
-        label: "Telat",
-        badgeClass: "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200/70 dark:border-rose-800/50",
+        label: isEn ? "Overdue" : "Telat",
+        badgeClass: "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200/70 dark:border-amber-800/50",
         icon: AlertCircle,
       };
     }
@@ -248,13 +248,13 @@ export default function TasksPage() {
 
     if (isUrgent) {
       return {
-        label: "Perlu Dikerjakan",
-        badgeClass: "bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border-indigo-200/70 dark:border-indigo-800/50",
+        label: isEn ? "Action Needed" : "Perlu Dikerjakan",
+        badgeClass: "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200/70 dark:border-rose-800/50",
         icon: Clock,
       };
     }
     return {
-      label: "Nanti",
+      label: isEn ? "Later" : "Nanti",
       badgeClass: "bg-slate-100 dark:bg-[#1e1e24] text-slate-700 dark:text-slate-300 border-slate-200/70 dark:border-[#30303a]",
       icon: Calendar,
     };
