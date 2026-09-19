@@ -125,7 +125,7 @@ export default function TaskDetailPage() {
           isOpen
           pageMode
           pageClassName="h-full flex flex-col overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#161616]"
-          onClose={() => router.push("/")}
+          onClose={() => router.push("/dashboard")}
           onAnalyzeWithAI={handleAnalyzeWithAI}
           onToggleChecklistItem={handleToggleChecklistItem}
           onSaveNotes={handleSaveNotes}

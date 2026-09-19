@@ -15,5 +15,5 @@ tsconfig.tsbuildinfo
 .gemini/
 .impeccable/
 .opencode/
-
+skills-lock.json
 .vercel

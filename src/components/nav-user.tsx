@@ -27,6 +27,7 @@ import {
   RefreshCw,
   LogOut,
   User,
+  Globe,
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 

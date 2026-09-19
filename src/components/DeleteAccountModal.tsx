@@ -43,11 +43,15 @@ export function DeleteAccountModal({
 
     setIsDeleting(true);
     try {
-      // 1. Delete cloud database & server cache
-      await DBService.deleteUserData(email);
-
-      // 2. Clear all local storage and session
+      // 1. Wipe local session & all stored tokens immediately so user is logged out
       clearAllUserLocalData(email);
+
+      // 2. Delete cloud database & server cache in background/with timeout
+      try {
+        await DBService.deleteUserData(email);
+      } catch (cloudErr) {
+        console.warn("Cloud deletion warning:", cloudErr);
+      }
 
       toast.success(
         isEn
@@ -61,16 +65,14 @@ export function DeleteAccountModal({
       );
 
       onClose();
-      // Hard refresh to landing page to ensure all state is wiped
-      window.location.href = "/";
+      // Hard redirect to landing page to ensure clean unauthenticated state
+      window.location.replace("/");
     } catch (err: any) {
-      toast.error(
-        isEn ? "Failed to delete account data." : "Gagal menghapus data akun.",
-        {
-          description: err.message || (isEn ? "Please try again later." : "Silakan coba lagi nanti."),
-        }
-      );
-      setIsDeleting(false);
+      console.error("Delete account error:", err);
+      // Even if error occurs, ensure local session is cleared and user is safely returned
+      clearAllUserLocalData(email);
+      onClose();
+      window.location.replace("/");
     }
   };
 

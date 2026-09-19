@@ -1,11 +1,13 @@
 "use client";
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import Lenis from "lenis";
+import { useRouter } from "next/navigation";
 import {
   AlertCircle,
   Sun,
   Moon,
   LogIn,
+  LayoutDashboard,
   ChevronDown,
   MonitorPlay,
   ArrowUpRight,
@@ -19,6 +21,7 @@ import { CTABanner } from "@/components/CTABanner";
 import { LandingFooter } from "@/components/LandingFooter";
 import confetti from "canvas-confetti";
 import { toast } from "@/components/ui/sonner";
+import { ClassroomService } from "@/services/classroomService";
 
 type Language = "ENG" | "IND";
 
@@ -27,6 +30,7 @@ interface LandingPageProps {
   onDemoMode: () => void;
   loginError?: string | null;
   isAuthenticating?: boolean;
+  isLoggedIn?: boolean;
 }
 
 export function LandingPage({
@@ -34,7 +38,9 @@ export function LandingPage({
   onDemoMode,
   loginError,
   isAuthenticating,
+  isLoggedIn: propIsLoggedIn,
 }: LandingPageProps) {
+  const router = useRouter();
   const [isDark, setIsDark] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState<Language>("ENG");
   const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false);
@@ -43,6 +49,14 @@ export function LandingPage({
   const [heroScale, setHeroScale] = useState(1);
   const [aboutDrift, setAboutDrift] = useState(0);
   const [heroPointer, setHeroPointer] = useState({ x: 0, y: 0, active: false });
+  const [hasActiveToken, setHasActiveToken] = useState(false);
+
+  useEffect(() => {
+    const token = ClassroomService.getStoredToken();
+    setHasActiveToken(Boolean(token));
+  }, []);
+
+  const isLoggedIn = propIsLoggedIn ?? hasActiveToken;
 
   // Easter Egg: Kawaii Mode on consecutive clicks + Squish Jelly animation
   const [isKawaiiMode, setIsKawaiiMode] = useState(false);
@@ -72,10 +86,16 @@ export function LandingPage({
     hero: {
       tagline: selectedLanguage === "IND" ? "tempat belajar yang tepat\nuntukmu" : "a perfect place for you\nto study",
       demoButton: selectedLanguage === "IND" ? "Mode Demo" : "Demo Mode",
-      syncButton: selectedLanguage === "IND" ? "Masuk dengan Google" : "Sign In with Google",
-      syncButtonMobile: selectedLanguage === "IND" ? "Masuk Google" : "Google Sign-In",
+      syncButton: isLoggedIn
+        ? (selectedLanguage === "IND" ? "Buka Dashboard" : "Open Dashboard")
+        : (selectedLanguage === "IND" ? "Masuk dengan Google" : "Sign In with Google"),
+      syncButtonMobile: isLoggedIn
+        ? (selectedLanguage === "IND" ? "Dashboard" : "Dashboard")
+        : (selectedLanguage === "IND" ? "Masuk Google" : "Google Sign-In"),
       loading: selectedLanguage === "IND" ? "Menghubungkan..." : "Connecting...",
-      signIn: selectedLanguage === "IND" ? "Masuk" : "Sign In",
+      signIn: isLoggedIn
+        ? (selectedLanguage === "IND" ? "Dashboard" : "Dashboard")
+        : (selectedLanguage === "IND" ? "Masuk" : "Sign In"),
       simulation: selectedLanguage === "IND" ? "Mode Simulasi" : "Simulation Mode",
       scroll: selectedLanguage === "IND" ? "Gulir" : "Scroll",
       loginErrorTitle: selectedLanguage === "IND" ? "Gagal Masuk Google" : "Google Sign-In Failed",
@@ -493,14 +513,24 @@ export function LandingPage({
               )}
             </button>
 
-            {/* Masuk Google CTA */}
+            {/* Masuk Google / Buka Dashboard CTA */}
             <button
               type="button"
-              onClick={onConnectGoogle}
+              onClick={() => {
+                if (isLoggedIn) {
+                  router.push("/dashboard");
+                } else {
+                  onConnectGoogle();
+                }
+              }}
               disabled={isAuthenticating}
               className="font-montserrat inline-flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold rounded-[10px] bg-slate-900 hover:bg-[#fbbf24] dark:bg-[#f5f5f5] dark:hover:bg-[#fbbf24] text-white dark:text-[#0c0c0c] transition cursor-pointer disabled:opacity-50 active:scale-95 shadow-xs whitespace-nowrap"
             >
-              <LogIn className="w-3.5 h-3.5" />
+              {isLoggedIn ? (
+                <LayoutDashboard className="w-3.5 h-3.5" />
+              ) : (
+                <LogIn className="w-3.5 h-3.5" />
+              )}
               <span>{isAuthenticating ? uiText.hero.loading : uiText.hero.signIn}</span>
             </button>
           </div>
@@ -737,10 +767,16 @@ export function LandingPage({
               </span>
             </button>
 
-            {/* Masuk dengan Google Button (Primary) */}
+            {/* Masuk dengan Google / Buka Dashboard Button (Primary) */}
             <button
               type="button"
-              onClick={onConnectGoogle}
+              onClick={() => {
+                if (isLoggedIn) {
+                  router.push("/dashboard");
+                } else {
+                  onConnectGoogle();
+                }
+              }}
               disabled={isAuthenticating}
               className={`group relative overflow-hidden rounded-2xl px-5 sm:px-7 py-3 sm:py-3.5 text-white hover:px-6 sm:hover:px-8 transition-all duration-300 ease-out cursor-pointer disabled:opacity-50 active:scale-95 w-full sm:w-auto ${isKawaiiMode
                 ? "bg-[#f43f5e] hover:bg-[#e11d48] dark:bg-[#f43f5e] dark:hover:bg-[#e11d48] shadow-[0_10px_24px_rgba(244,63,94,0.35)] hover:shadow-[0_14px_30px_rgba(244,63,94,0.45)]"
@@ -748,13 +784,17 @@ export function LandingPage({
                 }`}
             >
               <span className="relative flex items-center justify-center gap-2 text-sm sm:text-base font-semibold transition-all duration-300 ease-out group-hover:gap-2.5">
-                {/* Clean SVG Google icon */}
-                <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
-                  <path fill="#ffffff" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" opacity="0.9" />
-                  <path fill="#ffffff" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" opacity="0.95" />
-                  <path fill="#ffffff" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" opacity="0.9" />
-                  <path fill="#ffffff" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" opacity="0.95" />
-                </svg>
+                {isLoggedIn ? (
+                  <LayoutDashboard className="w-4 h-4 shrink-0" />
+                ) : (
+                  /* Clean SVG Google icon */
+                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                    <path fill="#ffffff" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" opacity="0.9" />
+                    <path fill="#ffffff" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" opacity="0.95" />
+                    <path fill="#ffffff" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" opacity="0.9" />
+                    <path fill="#ffffff" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" opacity="0.95" />
+                  </svg>
+                )}
                 <span>
                   {isAuthenticating ? (
                     uiText.hero.loading

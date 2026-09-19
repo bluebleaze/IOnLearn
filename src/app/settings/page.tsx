@@ -14,7 +14,12 @@ import {
   loadAIConfig,
   savePreferences,
   saveAIConfig,
+  loadTasks,
+  loadTodos,
+  loadNotes,
 } from "@/lib/taskStore";
+import { DBService } from "@/services/dbService";
+import { ClassroomService } from "@/services/classroomService";
 import {
   Sun,
   Moon,
@@ -282,11 +287,15 @@ export default function SettingsPage() {
     setIsCustomModel(false);
   };
 
-  const handleSave = () => {
-    savePreferences(prefs);
+  const handleSave = async () => {
+    const profile = ClassroomService.getUserProfile();
+    const email = profile?.email;
+
+    savePreferences(prefs, email);
     saveAIConfig(config);
     setInitialPrefs(prefs);
     setInitialConfig(config);
+
     if (typeof window !== "undefined") {
       window.dispatchEvent(
         new CustomEvent("toast-position-changed", {
@@ -299,7 +308,22 @@ export default function SettingsPage() {
         })
       );
       window.dispatchEvent(new Event("taskStoreChange"));
+      window.dispatchEvent(new Event("chat-layout-changed"));
     }
+
+    try {
+      await DBService.saveUserData(
+        loadTasks(),
+        prefs,
+        config,
+        email,
+        loadTodos(),
+        loadNotes()
+      );
+    } catch (e) {
+      console.warn("Could not save settings to cloud:", e);
+    }
+
     toast.success(isEn ? "Settings Saved Successfully" : "Pengaturan Berhasil Disimpan", {
       description: isEn
         ? "All learning preferences, date filters, and AI configurations have been updated."
@@ -407,9 +431,9 @@ export default function SettingsPage() {
             size="sm"
             onClick={() => {
               if (hasChanges) {
-                setPendingNavigationUrl("/");
+                setPendingNavigationUrl("/dashboard");
               } else {
-                router.push("/");
+                router.push("/dashboard");
               }
             }}
             className="self-start sm:self-auto h-9 px-3 rounded-[10px] gap-1.5 text-xs text-slate-600 dark:text-[#a3a3a3] hover:text-slate-900 dark:hover:text-[#f5f5f5] border-slate-200/80 dark:border-white/[0.08] dark:bg-[#141414] cursor-pointer"

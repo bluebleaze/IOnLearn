@@ -108,6 +108,34 @@ class SyncManagerClass {
         if (email && !options?.overrideTasks) {
           try {
             const cloudData = await DBService.loadUserData(email);
+            if (cloudData?.preferences) {
+              localStorage.setItem(
+                `ionlearn_preferences_${email}`,
+                JSON.stringify(cloudData.preferences)
+              );
+              localStorage.setItem(
+                `ionlearn_preferences`,
+                JSON.stringify(cloudData.preferences)
+              );
+            }
+            if (cloudData?.aiConfig) {
+              localStorage.setItem(
+                "classroom_ai_config",
+                JSON.stringify(cloudData.aiConfig)
+              );
+            }
+            if (cloudData?.todos && cloudData.todos.length > 0) {
+              localStorage.setItem(
+                `ionlearn_todos_${email}`,
+                JSON.stringify(cloudData.todos)
+              );
+            }
+            if (cloudData?.notes && cloudData.notes.length > 0) {
+              localStorage.setItem(
+                `ionlearn_notes_${email}`,
+                JSON.stringify(cloudData.notes)
+              );
+            }
             if (cloudData?.tasks && cloudData.tasks.length > 0) {
               const cloudTasks = cloudData.tasks.filter(
                 (t) =>
@@ -135,6 +163,9 @@ class SyncManagerClass {
                 }
               }
             }
+            window.dispatchEvent(new Event("taskStoreChange"));
+            window.dispatchEvent(new Event("task-modal-style-changed"));
+            window.dispatchEvent(new Event("chat-layout-changed"));
           } catch {}
         }
 

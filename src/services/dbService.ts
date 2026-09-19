@@ -129,37 +129,43 @@ export class DBService {
   static async deleteUserData(userEmail?: string): Promise<boolean> {
     let success = true;
 
-    // 1. Delete from shared server cache API
-    if (userEmail) {
-      try {
-        await fetch(`/api/user-cache?email=${encodeURIComponent(userEmail)}`, {
-          method: 'DELETE',
-        });
-      } catch (e) {
-        console.warn('Could not delete from /api/user-cache:', e);
-        success = false;
+    const deletePromise = (async () => {
+      // 1. Delete from shared server cache API
+      if (userEmail) {
+        try {
+          await fetch(`/api/user-cache?email=${encodeURIComponent(userEmail)}`, {
+            method: 'DELETE',
+          });
+        } catch (e) {
+          console.warn('Could not delete from /api/user-cache:', e);
+          success = false;
+        }
       }
-    }
 
-    // 2. Delete from Firestore
-    const uid = await this.getUserId();
-    if (uid) {
+      // 2. Delete from Firestore
       try {
-        const userRef = doc(db, 'users', uid);
-        await deleteDoc(userRef);
+        const uid = await this.getUserId();
+        if (uid) {
+          const userRef = doc(db, 'users', uid);
+          await deleteDoc(userRef);
+        }
       } catch (error) {
         console.warn('Could not delete from Firestore:', error);
       }
-    }
 
-    // 3. Delete Firebase Auth User account if authenticated
-    try {
-      if (auth.currentUser) {
-        await deleteUser(auth.currentUser);
+      // 3. Delete Firebase Auth User account if authenticated
+      try {
+        if (auth.currentUser) {
+          await deleteUser(auth.currentUser);
+        }
+      } catch (authErr) {
+        console.warn('Could not delete Firebase Auth user:', authErr);
       }
-    } catch (authErr) {
-      console.warn('Could not delete Firebase Auth user:', authErr);
-    }
+    })();
+
+    // Ensure we never block the user for more than 2.5 seconds
+    const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 2500));
+    await Promise.race([deletePromise, timeoutPromise]);
 
     return success;
   }

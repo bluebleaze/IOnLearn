@@ -152,25 +152,64 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
       }
     };
 
+    const refreshCloudPreferences = async () => {
+      const email = userProfile?.email;
+      if (!email) return;
+      try {
+        const cloudData = await DBService.loadUserData(email);
+        if (cloudData?.preferences) {
+          localStorage.setItem(
+            `${PREFS_STORAGE_KEY}_${email}`,
+            JSON.stringify(cloudData.preferences)
+          );
+          localStorage.setItem(
+            PREFS_STORAGE_KEY,
+            JSON.stringify(cloudData.preferences)
+          );
+          window.dispatchEvent(new Event("taskStoreChange"));
+          window.dispatchEvent(new Event("task-modal-style-changed"));
+          window.dispatchEvent(new Event("chat-layout-changed"));
+        }
+        if (cloudData?.aiConfig) {
+          localStorage.setItem(
+            "classroom_ai_config",
+            JSON.stringify(cloudData.aiConfig)
+          );
+        }
+      } catch {}
+    };
+
     // Periodic check every 30 seconds
-    const interval = setInterval(checkSession, 30000);
+    const interval = setInterval(() => {
+      checkSession();
+      refreshCloudPreferences();
+    }, 30000);
 
     // Check immediately when user switches back to tab or focuses window
     const handleVisibilityChange = () => {
       if (!document.hidden) {
         checkSession();
+        refreshCloudPreferences();
       }
     };
 
+    const handleFocus = () => {
+      checkSession();
+      refreshCloudPreferences();
+    };
+
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    window.addEventListener("focus", checkSession);
+    window.addEventListener("focus", handleFocus);
+
+    // Initial check
+    refreshCloudPreferences();
 
     return () => {
       clearInterval(interval);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener("focus", checkSession);
+      window.removeEventListener("focus", handleFocus);
     };
-  }, [hydrated, token]);
+  }, [hydrated, token, userProfile?.email]);
 
   // Proactive background sync on initial load to verify token validity against Google Classroom API immediately
   useEffect(() => {
@@ -182,7 +221,7 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
     }).catch((err) => {
       console.warn("Initial silent sync check error:", err);
     });
-  }, [hydrated, token]);
+  }, [hydrated, token, userProfile?.email]);
 
   const handleToggleTheme = (e: React.MouseEvent) => {
     const nextTheme = toggleThemeWithCircularAnimation(e);
@@ -193,7 +232,12 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
     if (!hydrated) return;
 
     if (!token) {
-      if (pathname !== "/" && pathname !== "/onboarding") {
+      if (
+        pathname !== "/" &&
+        pathname !== "/landing" &&
+        pathname !== "/privacy" &&
+        pathname !== "/terms"
+      ) {
         router.replace("/");
       }
       return;
@@ -227,10 +271,15 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
 
       if (isMounted) {
         if (!isDone) {
-          if (pathname !== "/onboarding") {
+          if (
+            pathname !== "/onboarding" &&
+            pathname !== "/landing" &&
+            pathname !== "/privacy" &&
+            pathname !== "/terms"
+          ) {
             router.replace("/onboarding");
           }
-        } else if (pathname === "/" && !isFeatureTourCompleted(email)) {
+        } else if ((pathname === "/dashboard" || pathname === "/") && !isFeatureTourCompleted(email)) {
           setShowFeatureTour(true);
         }
       }
@@ -350,6 +399,8 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
 
         if (!isOnboardingCompleted(result.profile.email)) {
           router.replace("/onboarding");
+        } else {
+          router.replace("/dashboard");
         }
       } else {
         setLoginError("Gagal mendapatkan akses dari Google.");
@@ -368,6 +419,7 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
     ClassroomService.logout();
     setToken(null);
     setUserProfile(null);
+    router.replace("/");
     toast.info(t.nav.logoutConfirmTitle, {
       description: t.nav.logoutConfirmDesc,
     });
@@ -391,6 +443,8 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
 
     if (!isOnboardingCompleted("pelajar@contoh.com")) {
       router.replace("/onboarding");
+    } else {
+      router.replace("/dashboard");
     }
   };
 
@@ -447,7 +501,7 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
   }
 
   const getPageTitle = (path: string) => {
-    if (path === "/") return t.nav.dashboard;
+    if (path === "/dashboard" || path === "/") return t.nav.dashboard;
     if (path.startsWith("/tasks")) return t.nav.allTasks;
     if (path.startsWith("/chat")) return t.nav.askAI;
     if (path.startsWith("/todo")) return t.nav.todoList;
@@ -503,17 +557,17 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
                 <BreadcrumbList>
                   <BreadcrumbItem className="hidden md:block">
                     <BreadcrumbLink
-                      href="/"
+                      href="/dashboard"
                       onClick={(e) => {
                         e.preventDefault();
-                        router.push("/");
+                        router.push("/dashboard");
                       }}
                       className="text-xs font-medium text-slate-500 dark:text-[#a3a3a3] hover:text-slate-900 dark:hover:text-[#f5f5f5]"
                     >
                       IOnLearn
                     </BreadcrumbLink>
                   </BreadcrumbItem>
-                  {pathname !== "/" && (
+                  {pathname !== "/dashboard" && (
                     <>
                       <BreadcrumbSeparator className="hidden md:block text-slate-400 dark:text-[#737373]" />
                       <BreadcrumbItem>
@@ -523,7 +577,7 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
                       </BreadcrumbItem>
                     </>
                   )}
-                  {pathname === "/" && (
+                  {pathname === "/dashboard" && (
                     <BreadcrumbItem>
                       <BreadcrumbPage className="text-xs font-semibold text-slate-900 dark:text-[#f5f5f5]">
                         {t.nav.dashboard}

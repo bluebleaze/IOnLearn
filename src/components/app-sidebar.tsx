@@ -75,9 +75,9 @@ export function AppSidebar({
   const navItems = [
     {
       title: t.nav.dashboard,
-      url: "/",
+      url: "/dashboard",
       icon: LayoutDashboard,
-      isActive: pathname === "/",
+      isActive: pathname === "/dashboard",
     },
     {
       title: t.nav.allTasks,
@@ -126,7 +126,7 @@ export function AppSidebar({
               tooltip="IOnLearn"
               onClick={() => {
                 if (isMobile) setOpenMobile(false);
-                router.push("/");
+                router.push("/dashboard");
               }}
               className="cursor-pointer hover:bg-slate-100/80 dark:hover:bg-[#141416] transition-colors rounded-xl overflow-hidden whitespace-nowrap h-auto py-1.5 px-2 group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:mx-auto"
             >
