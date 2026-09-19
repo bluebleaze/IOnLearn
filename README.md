@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="logos/IOnLearnKawaistyle.png" alt="IOnLearn - Switch ON Your Learning" width="700" />
+  <img src="public/logos/IOnLearnKawaistyle.png" alt="IOnLearn - Switch ON Your Learning" width="700" />
 </p>
 
 <p align="center">
