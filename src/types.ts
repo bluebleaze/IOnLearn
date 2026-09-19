@@ -282,7 +282,7 @@ export interface UserPreferences {
   classroomDateRangeMonths?: number; // Filter rentang bulan sinkronisasi tugas: 1, 2 (default), 3, 6, 12, atau 0 (semua)
   toastPosition?: ToastPosition; // Posisi notifikasi toast sonner (default: 'top-right')
   taskModalStyle?: 'modal' | 'drawer'; // Gaya pop-up detail tugas: 'drawer' (panel samping) atau 'modal' (tengah layar)
-  chatLayout?: 'sidebar' | 'split' | 'minimal'; // Tata letak AI Chat: 'sidebar' (default), 'split' (dual workspace), atau 'minimal'
+  chatLayout?: 'sidebar' | 'split' | 'minimal'; // Tata letak AI Chat: 'minimal' (default minimalis terfokus), 'sidebar', atau 'split'
   language?: 'id' | 'en'; // Bahasa antarmuka: 'id' (Indonesia) atau 'en' (English)
 }
 

@@ -478,7 +478,7 @@ export function loadPreferences(userEmail?: string): UserPreferences | null {
           parsed.classroomDateRangeMonths ?? DEFAULT_DATE_RANGE_MONTHS,
         toastPosition: parsed.toastPosition ?? "top-right",
         taskModalStyle: parsed.taskModalStyle ?? "drawer",
-        chatLayout: parsed.chatLayout ?? "sidebar",
+        chatLayout: parsed.chatLayout ?? "minimal",
       };
     }
   } catch {}

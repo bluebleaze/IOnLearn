@@ -35,6 +35,7 @@ import {
   Sun,
   Moon,
   Globe,
+  X,
 } from "lucide-react";
 import confetti from "canvas-confetti";
 import { UserPreferences } from "@/types";
@@ -42,6 +43,7 @@ import {
   loadPreferences,
   savePreferences,
   ONBOARDING_DONE_KEY,
+  isOnboardingCompleted,
   setOnboardingCompleted,
 } from "@/lib/taskStore";
 import { ClassroomService } from "@/services/classroomService";
@@ -1107,7 +1109,7 @@ export function OnboardingFlow({
       classroomDateRangeMonths: draftData.classroomDateRangeMonths || existing?.classroomDateRangeMonths || 2,
       toastPosition: draftData.toastPosition || existing?.toastPosition || "top-right",
       taskModalStyle: draftData.taskModalStyle || existing?.taskModalStyle || "drawer",
-      chatLayout: draftData.chatLayout || existing?.chatLayout || "sidebar",
+      chatLayout: draftData.chatLayout || existing?.chatLayout || "minimal",
       language: draftData.language || existing?.language || (isEn ? "en" : "id"),
     };
   });
@@ -1272,6 +1274,15 @@ export function OnboardingFlow({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [currentStepIndex, isCurrentStepAnswered]);
 
+  const [alreadyCompleted, setAlreadyCompleted] = useState(false);
+
+  useEffect(() => {
+    const profile = ClassroomService.getUserProfile();
+    if (isOnboardingCompleted(profile?.email)) {
+      setAlreadyCompleted(true);
+    }
+  }, []);
+
   const activeSectionIdx = currentStep.sectionIndex;
 
   const sectionSteps = useMemo(() => {
@@ -1304,7 +1315,7 @@ export function OnboardingFlow({
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[350px] bg-gradient-to-b from-indigo-500/10 via-violet-500/5 to-transparent blur-3xl pointer-events-none rounded-full -z-0" />
       <div className="absolute bottom-0 right-1/4 w-[450px] h-[250px] bg-blue-600/5 blur-3xl pointer-events-none rounded-full -z-0" />
 
-      {/* Top Utility Controls (Language Toggle & Theme Toggle) */}
+      {/* Top Utility Controls (Language Toggle, Theme Toggle & Conditional Close Button) */}
       <div className="relative z-10 w-full max-w-2xl mx-auto flex items-center justify-between pb-2">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-xl flex items-center justify-center scale-200">
@@ -1344,6 +1355,25 @@ export function OnboardingFlow({
               <Moon className="w-3.5 h-3.5 text-indigo-600" />
             )}
           </button>
+
+          {/* Close / Exit Button (Only shown if user has ALREADY completed onboarding before) */}
+          {alreadyCompleted && (
+            <button
+              type="button"
+              onClick={() => {
+                if (onSkip) {
+                  onSkip();
+                } else {
+                  router.push("/");
+                }
+              }}
+              className="px-2.5 py-1 rounded-xl text-xs font-semibold flex items-center gap-1.5 border border-slate-200/80 dark:border-white/[0.08] bg-white/80 dark:bg-[#161616] text-slate-700 dark:text-[#a3a3a3] hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#202020] transition-colors cursor-pointer shadow-2xs"
+              title={isEn ? "Exit & Return to Dashboard" : "Tutup & Kembali ke Dashboard"}
+            >
+              <X className="w-3.5 h-3.5 text-slate-500 hover:text-slate-900 dark:hover:text-white" />
+              <span className="hidden sm:inline">{isEn ? "Exit" : "Tutup"}</span>
+            </button>
+          )}
         </div>
       </div>
 

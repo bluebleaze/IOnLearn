@@ -545,7 +545,7 @@ export const AIChat: React.FC<AIChatProps> = ({
 
   // Layout Modes: 'sidebar' | 'split' | 'minimal'
   const [layoutMode, setLayoutMode] = useState<"sidebar" | "split" | "minimal">(() => {
-    return userPreferences?.chatLayout || loadPreferences()?.chatLayout || "sidebar";
+    return userPreferences?.chatLayout || loadPreferences()?.chatLayout || "minimal";
   });
   const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = useState(true);
   const [splitWorkspaceTab, setSplitWorkspaceTab] = useState<"task" | "note">("task");

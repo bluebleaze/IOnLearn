@@ -813,7 +813,7 @@ export default function SettingsPage() {
               type="button"
               onClick={() => handleChatLayoutChange("sidebar")}
               className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-3 ${
-                (prefs.chatLayout ?? "sidebar") === "sidebar"
+                (prefs.chatLayout ?? "minimal") === "sidebar"
                   ? "border-indigo-600 bg-indigo-50/60 dark:bg-indigo-950/30 text-indigo-950 dark:text-indigo-200 ring-1 ring-indigo-500/20 shadow-2xs"
                   : "border-slate-200/80 dark:border-white/[0.08] hover:bg-slate-50 dark:hover:bg-[#161616] text-slate-700 dark:text-[#a3a3a3]"
               }`}
@@ -822,7 +822,7 @@ export default function SettingsPage() {
                 <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 flex items-center justify-center shrink-0">
                   <PanelLeft className="w-4 h-4" />
                 </div>
-                {(prefs.chatLayout ?? "sidebar") === "sidebar" && (
+                {(prefs.chatLayout ?? "minimal") === "sidebar" && (
                   <div className="w-4 h-4 rounded-full bg-indigo-600 text-white flex items-center justify-center shrink-0">
                     <Check className="w-2.5 h-2.5 stroke-[3]" />
                   </div>
@@ -830,7 +830,7 @@ export default function SettingsPage() {
               </div>
               <div>
                 <div className="text-xs font-semibold text-slate-900 dark:text-[#f5f5f5]">
-                  {isEn ? "Sidebar + Feed (Standard)" : "Sidebar + Feed (Standar)"}
+                  {isEn ? "Sidebar + Feed" : "Sidebar + Feed"}
                 </div>
                 <div className="text-xs text-slate-500 dark:text-[#a3a3a3] mt-0.5 leading-relaxed">
                   {isEn
@@ -845,7 +845,7 @@ export default function SettingsPage() {
               type="button"
               onClick={() => handleChatLayoutChange("split")}
               className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-3 ${
-                prefs.chatLayout === "split"
+                (prefs.chatLayout ?? "minimal") === "split"
                   ? "border-indigo-600 bg-indigo-50/60 dark:bg-indigo-950/30 text-indigo-950 dark:text-indigo-200 ring-1 ring-indigo-500/20 shadow-2xs"
                   : "border-slate-200/80 dark:border-white/[0.08] hover:bg-slate-50 dark:hover:bg-[#161616] text-slate-700 dark:text-[#a3a3a3]"
               }`}
@@ -854,7 +854,7 @@ export default function SettingsPage() {
                 <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 flex items-center justify-center shrink-0">
                   <Columns2 className="w-4 h-4" />
                 </div>
-                {prefs.chatLayout === "split" && (
+                {(prefs.chatLayout ?? "minimal") === "split" && (
                   <div className="w-4 h-4 rounded-full bg-indigo-600 text-white flex items-center justify-center shrink-0">
                     <Check className="w-2.5 h-2.5 stroke-[3]" />
                   </div>
@@ -872,12 +872,12 @@ export default function SettingsPage() {
               </div>
             </button>
 
-            {/* Minimalist Focused Layout */}
+            {/* Minimalist Focused Layout (Default) */}
             <button
               type="button"
               onClick={() => handleChatLayoutChange("minimal")}
               className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-3 ${
-                prefs.chatLayout === "minimal"
+                (prefs.chatLayout ?? "minimal") === "minimal"
                   ? "border-indigo-600 bg-indigo-50/60 dark:bg-indigo-950/30 text-indigo-950 dark:text-indigo-200 ring-1 ring-indigo-500/20 shadow-2xs"
                   : "border-slate-200/80 dark:border-white/[0.08] hover:bg-slate-50 dark:hover:bg-[#161616] text-slate-700 dark:text-[#a3a3a3]"
               }`}
@@ -888,7 +888,7 @@ export default function SettingsPage() {
                     <div className="w-2.5 h-0.5 bg-current rounded-full" />
                   </div>
                 </div>
-                {prefs.chatLayout === "minimal" && (
+                {(prefs.chatLayout ?? "minimal") === "minimal" && (
                   <div className="w-4 h-4 rounded-full bg-indigo-600 text-white flex items-center justify-center shrink-0">
                     <Check className="w-2.5 h-2.5 stroke-[3]" />
                   </div>
@@ -896,7 +896,7 @@ export default function SettingsPage() {
               </div>
               <div>
                 <div className="text-xs font-semibold text-slate-900 dark:text-[#f5f5f5]">
-                  {isEn ? "Minimalist Focused" : "Minimalis Terfokus"}
+                  {isEn ? "Minimalist Focused (Standard)" : "Minimalis Terfokus (Standar)"}
                 </div>
                 <div className="text-xs text-slate-500 dark:text-[#a3a3a3] mt-0.5 leading-relaxed">
                   {isEn
