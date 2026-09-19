@@ -143,15 +143,15 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
   // ── Inner Content (Top Navigation First -> Overview & Actions -> Detail Content) ──
   const renderModalContent = () => (
-    <div className="flex flex-col h-full overflow-hidden bg-white dark:bg-[#141417] text-slate-900 dark:text-[#f3f3f3] animate-in slide-in-from-right duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]">
+    <div className="flex flex-col h-full overflow-hidden bg-white dark:bg-[#161616] text-slate-900 dark:text-[#f3f3f3] animate-in slide-in-from-right duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]">
 
       {/* ── 1. TOP NAVIGATION / TASK TABS (Sesuai QA #4) ── */}
-      <div className="px-3.5 sm:px-6 pt-3 pb-0 border-b border-slate-200/80 dark:border-[#26262e] bg-slate-50/80 dark:bg-[#18181f] flex items-center justify-between shrink-0">
+      <div className="px-3.5 sm:px-6 pt-3 pb-0 border-b border-slate-200/80 dark:border-[#262626] bg-slate-50/80 dark:bg-[#181818] flex items-center justify-between shrink-0">
         <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto no-scrollbar scroll-smooth">
           <button
             onClick={() => setActiveTab("summary")}
             className={`min-h-[42px] py-2 px-3 sm:px-3.5 text-xs font-semibold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${activeTab === "summary"
-                ? "border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400 bg-white dark:bg-[#141417] rounded-t-lg shadow-2xs"
+                ? "border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400 bg-white dark:bg-[#161616] rounded-t-lg shadow-2xs"
                 : "border-transparent text-slate-600 dark:text-[#a3a3a3] hover:text-slate-900 dark:hover:text-[#f0f0f0]"
               }`}
           >
@@ -162,7 +162,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
           <button
             onClick={() => setActiveTab("checklist")}
             className={`min-h-[42px] py-2 px-3 sm:px-3.5 text-xs font-semibold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${activeTab === "checklist"
-                ? "border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400 bg-white dark:bg-[#141417] rounded-t-lg shadow-2xs"
+                ? "border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400 bg-white dark:bg-[#161616] rounded-t-lg shadow-2xs"
                 : "border-transparent text-slate-600 dark:text-[#a3a3a3] hover:text-slate-900 dark:hover:text-[#f0f0f0]"
               }`}
           >
@@ -173,7 +173,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
           <button
             onClick={() => setActiveTab("youtube")}
             className={`min-h-[42px] py-2 px-3 sm:px-3.5 text-xs font-semibold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${activeTab === "youtube"
-                ? "border-rose-600 text-rose-600 dark:border-rose-400 dark:text-rose-400 bg-white dark:bg-[#141417] rounded-t-lg shadow-2xs"
+                ? "border-rose-600 text-rose-600 dark:border-rose-400 dark:text-rose-400 bg-white dark:bg-[#161616] rounded-t-lg shadow-2xs"
                 : "border-transparent text-slate-600 dark:text-[#a3a3a3] hover:text-slate-900 dark:hover:text-[#f0f0f0]"
               }`}
           >
@@ -184,7 +184,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
           <button
             onClick={() => setActiveTab("notes")}
             className={`min-h-[42px] py-2 px-3 sm:px-3.5 text-xs font-semibold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${activeTab === "notes"
-                ? "border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400 bg-white dark:bg-[#141417] rounded-t-lg shadow-2xs"
+                ? "border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400 bg-white dark:bg-[#161616] rounded-t-lg shadow-2xs"
                 : "border-transparent text-slate-600 dark:text-[#a3a3a3] hover:text-slate-900 dark:hover:text-[#f0f0f0]"
               }`}
           >
@@ -196,7 +196,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
         {/* Close button */}
         <button
           onClick={onClose}
-          className="size-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-[#fff] hover:bg-slate-200/70 dark:hover:bg-[#25252e] transition cursor-pointer mb-1 shrink-0"
+          className="size-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-[#fff] hover:bg-slate-200/70 dark:hover:bg-[#252525] transition cursor-pointer mb-1 shrink-0"
           title={isEn ? "Close (Esc)" : "Tutup (Esc)"}
           aria-label="Tutup"
         >
@@ -205,7 +205,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
       </div>
 
       {/* ── 2. TASK OVERVIEW & ACTIONS ── */}
-      <div className="p-4 sm:p-5 border-b border-slate-200/80 dark:border-[#26262e] bg-white dark:bg-[#141417] shrink-0 space-y-2.5">
+      <div className="p-4 sm:p-5 border-b border-slate-200/80 dark:border-[#262626] bg-white dark:bg-[#161616] shrink-0 space-y-2.5">
         {/* Title & subtle metadata */}
         <div>
           <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-[#f3f3f3] font-heading tracking-tight leading-snug">
@@ -634,7 +634,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
       </div>
 
       {/* Footer Rail */}
-      <div className="p-3.5 sm:p-4 border-t border-slate-200/80 dark:border-[#26262e] bg-slate-50/70 dark:bg-[#15151c] flex items-center justify-between gap-3 shrink-0 text-xs">
+      <div className="p-3.5 sm:p-4 border-t border-slate-200/80 dark:border-[#262626] bg-slate-50/70 dark:bg-[#181818] flex items-center justify-between gap-3 shrink-0 text-xs">
         <span className="text-slate-500 dark:text-[#888] truncate text-xs">
           IOnLearn Smart Task Detail
         </span>
@@ -642,7 +642,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
           variant="outline"
           size="sm"
           onClick={onClose}
-          className="text-xs rounded-xl border-slate-200/80 dark:border-[#2b2b35] px-4 shrink-0 cursor-pointer"
+          className="text-xs rounded-xl border-slate-200/80 dark:border-[#2b2b2b] px-4 shrink-0 cursor-pointer"
         >
           {isEn ? "Close" : "Tutup"}
         </Button>
@@ -675,7 +675,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
         {/* Slide-over sheet from right to left */}
         <div className="fixed inset-y-0 right-0 max-w-full flex pl-0 sm:pl-10 z-50 pointer-events-none">
-          <div className="w-full sm:w-[44rem] max-w-full bg-white dark:bg-[#141417] border-l border-slate-200/80 dark:border-[#26262e] shadow-2xl pointer-events-auto flex flex-col h-full animate-in slide-in-from-right duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]">
+          <div className="w-full sm:w-[44rem] max-w-full bg-white dark:bg-[#161616] border-l border-slate-200/80 dark:border-[#262626] shadow-2xl pointer-events-auto flex flex-col h-full animate-in slide-in-from-right duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]">
             {renderModalContent()}
           </div>
         </div>
@@ -688,7 +688,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent
         hideCloseButton
-        className="w-[calc(100%-1.5rem)] sm:w-full max-w-2xl max-h-[85vh] p-0 flex flex-col gap-0 overflow-hidden bg-white dark:bg-[#141417] border-slate-200/80 dark:border-[#26262e] shadow-2xl rounded-2xl animate-in slide-in-from-right duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
+        className="w-[calc(100%-1.5rem)] sm:w-full max-w-2xl max-h-[85vh] p-0 flex flex-col gap-0 overflow-hidden bg-white dark:bg-[#161616] border-slate-200/80 dark:border-[#262626] shadow-2xl rounded-2xl animate-in slide-in-from-right duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
       >
         <DialogTitle className="sr-only">{task.title}</DialogTitle>
         <DialogDescription className="sr-only">Detail tugas dan rangkuman materi pembelajaran</DialogDescription>

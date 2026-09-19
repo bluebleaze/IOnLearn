@@ -87,7 +87,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
     }
     return {
       label: isEn ? "Later" : "Nanti",
-      badgeClass: "bg-slate-100 dark:bg-[#1e1e24] text-slate-700 dark:text-slate-300 border-slate-200/70 dark:border-[#30303a]",
+      badgeClass: "bg-slate-100 dark:bg-[#202020] text-slate-700 dark:text-slate-300 border-slate-200/70 dark:border-[#303030]",
       icon: Calendar,
     };
   };
@@ -114,8 +114,8 @@ export const TaskCard: React.FC<TaskCardProps> = ({
         onClick={() => onOpenDetails(task)}
         onKeyDown={handleKeyDown}
         className={`group rounded-2xl p-4 sm:p-5 shadow-xs border transition-all duration-200 flex flex-col justify-between cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#121212] ${task.isCompleted
-            ? "bg-slate-50/70 dark:bg-[#131316] border-slate-200/60 dark:border-[#222228] opacity-85"
-            : "bg-white dark:bg-[#16161b] border-slate-200/80 dark:border-[#26262e] hover:border-indigo-400 dark:hover:border-indigo-700/60 hover:shadow-md hover:-translate-y-0.5"
+            ? "bg-slate-50/70 dark:bg-[#121212] border-slate-200/60 dark:border-[#222222] opacity-85"
+            : "bg-white dark:bg-[#161616] border-slate-200/80 dark:border-[#262626] hover:border-indigo-400 dark:hover:border-indigo-600/70 hover:shadow-md hover:-translate-y-0.5"
           }`}
       >
         <div className="space-y-3">
@@ -200,7 +200,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
         </div>
 
         {/* Quiet Status Footer */}
-        <div className="mt-3.5 pt-2.5 border-t border-slate-100 dark:border-[#222228] flex items-center justify-between text-xs text-slate-500 dark:text-[#888]">
+        <div className="mt-3.5 pt-2.5 border-t border-slate-100 dark:border-[#262626] flex items-center justify-between text-xs text-slate-500 dark:text-[#888]">
           {task.aiLoading ? (
             <div className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 text-xs font-medium animate-pulse">
               <Loader2 className="w-3 h-3 animate-spin" />
@@ -208,7 +208,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
             </div>
           ) : task.aiAnalysis ? (
             <div className="flex items-center gap-2">
-              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-indigo-50 dark:bg-[#1f1f28] text-indigo-700 dark:text-[#a5b4fc]">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-indigo-50 dark:bg-[#202020] text-indigo-700 dark:text-[#a5b4fc]">
                 {isEn ? "Summary" : "Rangkuman"}
               </span>
               {checklistTotal > 0 && (

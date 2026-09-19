@@ -255,7 +255,7 @@ export default function TasksPage() {
     }
     return {
       label: isEn ? "Later" : "Nanti",
-      badgeClass: "bg-slate-100 dark:bg-[#1e1e24] text-slate-700 dark:text-slate-300 border-slate-200/70 dark:border-[#30303a]",
+      badgeClass: "bg-slate-100 dark:bg-[#202020] text-slate-700 dark:text-slate-300 border-slate-200/70 dark:border-[#303030]",
       icon: Calendar,
     };
   };
@@ -790,7 +790,7 @@ export default function TasksPage() {
                               }}
                             >
                               <div className="flex items-start justify-between gap-2">
-                                <span className="text-xs font-semibold px-2 py-0.5 rounded bg-indigo-50 dark:bg-[#1f1f28] text-indigo-700 dark:text-[#a5b4fc] truncate max-w-[140px]">
+                                <span className="text-xs font-semibold px-2 py-0.5 rounded bg-indigo-50 dark:bg-[#202020] text-indigo-700 dark:text-[#a5b4fc] truncate max-w-[140px]">
                                   {task.courseName || "Kuliah"}
                                 </span>
                                 <button
@@ -999,16 +999,16 @@ export default function TasksPage() {
             {viewMode === "table" && (
               <div className="bg-white dark:bg-[#161616] rounded-2xl border border-slate-200/80 dark:border-[#262626] overflow-hidden shadow-2xs">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs border-collapse">
+                  <table className="w-full text-left text-xs border-collapse min-w-[980px]">
                     <thead>
                       <tr className="border-b border-slate-200/80 dark:border-[#262626] bg-slate-50/70 dark:bg-[#181818] text-slate-600 dark:text-[#888]">
-                        <th className="py-3 px-4 w-12 text-center">{isEn ? "Check" : "Centang"}</th>
-                        <th className="py-3 px-4">{isEn ? "Task Title" : "Judul Tugas"}</th>
-                        <th className="py-3 px-4 hidden md:table-cell">{isEn ? "Course" : "Mata Kuliah"}</th>
-                        <th className="py-3 px-4">{isEn ? "Status" : "Status"}</th>
-                        <th className="py-3 px-4">{isEn ? "Due Date" : "Batas Waktu"}</th>
-                        <th className="py-3 px-4 hidden sm:table-cell">{isEn ? "AI Ready" : "AI Ready"}</th>
-                        <th className="py-3 px-4 text-right">{isEn ? "Actions" : "Aksi"}</th>
+                        <th className="py-3 px-4 w-12 text-center shrink-0">{isEn ? "Check" : "Centang"}</th>
+                        <th className="py-3 px-4 min-w-[280px] max-w-xl">{isEn ? "Task Title" : "Judul Tugas"}</th>
+                        <th className="py-3 px-4 min-w-[180px] max-w-xs">{isEn ? "Course" : "Mata Kuliah"}</th>
+                        <th className="py-3 px-4 min-w-[140px] whitespace-nowrap">{isEn ? "Status" : "Status"}</th>
+                        <th className="py-3 px-4 min-w-[160px] whitespace-nowrap">{isEn ? "Due Date" : "Batas Waktu"}</th>
+                        <th className="py-3 px-4 min-w-[100px] whitespace-nowrap">{isEn ? "AI Ready" : "AI Ready"}</th>
+                        <th className="py-3 px-4 text-right min-w-[160px] whitespace-nowrap">{isEn ? "Actions" : "Aksi"}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-[#222]">
@@ -1026,7 +1026,7 @@ export default function TasksPage() {
                                 type="button"
                                 onClick={() => handleToggleComplete(task.id)}
                                 className="min-w-[40px] min-h-[40px] -m-2 flex items-center justify-center cursor-pointer mx-auto focus-visible:outline-none"
-                                title={task.isCompleted ? "Tandai Belum Selesai" : "Tandai Selesai"}
+                                title={task.isCompleted ? (isEn ? "Mark Incomplete" : "Tandai Belum Selesai") : (isEn ? "Mark Complete" : "Tandai Selesai")}
                                 aria-label={task.isCompleted ? `Tandai "${task.title}" belum selesai` : `Tandai "${task.title}" selesai`}
                               >
                                 <span
@@ -1040,13 +1040,18 @@ export default function TasksPage() {
                                 </span>
                               </button>
                             </td>
-                            <td className="py-2.5 px-4 font-semibold text-slate-900 dark:text-[#f3f3f3] max-w-xs truncate">
-                              <span className={task.isCompleted ? "line-through text-slate-400 dark:text-[#777]" : ""}>
+                            <td className="py-2.5 px-4 font-semibold text-slate-900 dark:text-[#f3f3f3] min-w-[280px] max-w-xl">
+                              <span
+                                className={`block truncate ${task.isCompleted ? "line-through text-slate-400 dark:text-[#777]" : ""}`}
+                                title={task.title}
+                              >
                                 {task.title}
                               </span>
                             </td>
-                            <td className="py-2.5 px-4 text-slate-600 dark:text-[#aaa] hidden md:table-cell truncate max-w-[160px]">
-                              {task.courseName || "Kuliah"}
+                            <td className="py-2.5 px-4 text-slate-600 dark:text-[#aaa] min-w-[180px] max-w-xs">
+                              <span className="block truncate" title={task.courseName || "Kuliah"}>
+                                {task.courseName || (isEn ? "Course" : "Kuliah")}
+                              </span>
                             </td>
                             <td className="py-2.5 px-4 whitespace-nowrap">
                               <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-semibold border ${sInfo.badgeClass}`}>
@@ -1055,7 +1060,7 @@ export default function TasksPage() {
                               </span>
                             </td>
                             <td className="py-2.5 px-4 whitespace-nowrap">{renderDueBadge(task)}</td>
-                            <td className="py-2.5 px-4 hidden sm:table-cell">
+                            <td className="py-2.5 px-4 whitespace-nowrap">
                               {task.aiAnalysis ? (
                                 <span className="inline-flex items-center gap-1 text-xs text-indigo-600 dark:text-indigo-400 font-semibold">
                                   <Sparkles className="w-3 h-3" />
@@ -1067,19 +1072,19 @@ export default function TasksPage() {
                                     e.stopPropagation();
                                     handleAnalyzeWithAI(task.id);
                                   }}
-                                  className="text-xs text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-medium"
+                                  className="text-xs text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-medium cursor-pointer"
                                 >
                                   {isEn ? "+ Analyze" : "+ Analisis"}
                                 </button>
                               )}
                             </td>
-                            <td className="py-2.5 px-4 text-right" onClick={(e) => e.stopPropagation()}>
-                              <div className="flex items-center justify-end gap-1">
+                            <td className="py-2.5 px-4 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex items-center justify-end gap-1.5">
                                 <Button
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => router.push(`/chat?taskId=${task.id}`)}
-                                  className="h-6.5 px-2 text-xs text-indigo-600 dark:text-indigo-400 font-semibold"
+                                  className="h-7 px-2.5 text-xs text-indigo-600 dark:text-indigo-400 font-semibold cursor-pointer hover:bg-indigo-50 dark:hover:bg-indigo-950/40"
                                 >
                                   {isEn ? "Ask AI" : "Tanya AI"}
                                 </Button>
@@ -1087,7 +1092,7 @@ export default function TasksPage() {
                                   variant="outline"
                                   size="sm"
                                   onClick={() => setActiveDetailTaskId(task.id)}
-                                  className="h-6.5 px-2.5 text-xs rounded-lg border-slate-200 dark:border-[#2b2b2b]"
+                                  className="h-7 px-3 text-xs rounded-lg border-slate-200 dark:border-[#2b2b2b] cursor-pointer"
                                 >
                                   {isEn ? "Details" : "Detail"}
                                 </Button>
