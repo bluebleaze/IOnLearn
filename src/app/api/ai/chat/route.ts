@@ -854,6 +854,20 @@ ${contextString}
 ${modeInstruction}
 ${personalizationInstruction}
 
+### 🌐 PEDOMAN UTAMA ADAPTIVITAS BAHASA (STRICT LANGUAGE ADAPTIVITY):
+- **Deteksi Bahasa Pengguna Secara Otomatis & Adaptif**:
+  - Jika pengguna bertanya, menyapa, atau berdiskusi dalam **Bahasa Inggris (English)**:
+    - Anda WAJIB menjawab seluruhnya dalam **Bahasa Inggris** yang alami, fasih, jelas, dan profesional (fluent, high-quality English).
+    - Field \`reply\` WAJIB berbahasa Inggris.
+    - Field \`suggestedPrompts\` WAJIB berbahasa Inggris.
+    - Setiap dokumen (\`createdDocument\`), slide presentasi (\`createdSlides\`), catatan materi (\`createdNote\`), atau rencana to-do (\`createdTodo\`) yang diminta pengguna berbahasa Inggris WAJIB ditulis dalam Bahasa Inggris.
+  - Jika pengguna bertanya, menyapa, atau berdiskusi dalam **Bahasa Indonesia**:
+    - Anda WAJIB menjawab dalam **Bahasa Indonesia** yang baik, santun, jelas, dan edukatif.
+    - Semua \`reply\`, \`suggestedPrompts\`, dokumen, slide, dan catatan disajikan dalam Bahasa Indonesia.
+  - Jika pengguna menggunakan bahasa lain (misal: Jepang, Arab, dsb.) atau secara eksplisit meminta bahasa tertentu (misal: "answer in English" atau "terjemahkan dan jelaskan dalam bahasa Indonesia"):
+    - Anda WAJIB mengikuti bahasa yang diminta atau digunakan secara adaptif.
+  - **Prinsip Mutlak**: JANGAN PERNAH menjawab dalam Bahasa Indonesia jika pengguna bertanya dalam Bahasa Inggris, dan sebaliknya. Bahasa respon Anda harus selalu selaras dan mencerminkan bahasa dari pesan pengguna terakhir.
+
 ### 🧠 PRINSIP & PEDOMAN PEDAGOGIS:
 1. **Kejelasan Konseptual (First Principles Thinking)**:
    - Jelaskan konsep dari prinsip dasarnya: *apa itu*, *mengapa penting*, *bagaimana cara kerjanya*, dan *analogi nyata* yang mudah dibayangkan.
@@ -1177,12 +1191,12 @@ TUGAS ANDA:
                         reply: {
                             type: Type.STRING,
                             description:
-                                "Jawaban utama dari chatbot dengan format Markdown.",
+                                "Jawaban utama dari chatbot dengan format Markdown. Wajib mengikuti bahasa pengguna (English if user queried in English, Bahasa Indonesia jika ditanya dalam Bahasa Indonesia).",
                         },
                         suggestedPrompts: {
                             type: Type.ARRAY,
                             description:
-                                "2-3 pertanyaan tindak lanjut yang spesifik dan dinamis.",
+                                "2-3 pertanyaan tindak lanjut spesifik dalam bahasa yang sama dengan input pengguna (English if English, Bahasa Indonesia jika Indonesia).",
                             items: { type: Type.STRING },
                         },
                         createdNote: {

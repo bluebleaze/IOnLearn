@@ -42,6 +42,7 @@ import {
   HelpCircle,
   Globe,
   X,
+  Compass,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toggleThemeWithCircularAnimation } from "@/lib/theme";
@@ -88,7 +89,7 @@ export default function SettingsPage() {
   const [isDark, setIsDark] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
   const [isCustomModel, setIsCustomModel] = useState(false);
-  const { isEn, t, setLanguage: setGlobalLanguage } = useLanguage();
+  const { isEn, t, setLanguage: setGlobalLanguage, languageMode, setLanguageMode, detectedLanguage } = useLanguage();
 
   const [initialPrefs, setInitialPrefs] = useState<UserPreferences>({
     learningStyle: "Netral",
@@ -251,6 +252,12 @@ export default function SettingsPage() {
   const handleLanguageChange = (lang: "id" | "en") => {
     setPrefs((prev) => ({ ...prev, language: lang }));
     setGlobalLanguage(lang);
+    setLanguageMode(lang);
+  };
+
+  const handleLanguageModeAuto = () => {
+    setLanguageMode("auto");
+    setPrefs((prev) => ({ ...prev, language: detectedLanguage }));
   };
 
   const handleProviderChange = (
@@ -506,71 +513,111 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-            {/* Bahasa Indonesia */}
+
+          <div className="space-y-2.5 pt-1">
+            {/* Otomatis / Auto-detect */}
             <button
               type="button"
-              onClick={() => handleLanguageChange("id")}
-              className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-3 ${
-                (prefs.language || "id") === "id"
+              onClick={handleLanguageModeAuto}
+              className={`w-full p-3.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                languageMode === "auto"
                   ? "border-indigo-600 bg-indigo-50/60 dark:bg-indigo-950/30 text-indigo-950 dark:text-indigo-200 ring-1 ring-indigo-500/20 shadow-2xs"
                   : "border-slate-200/80 dark:border-white/[0.08] hover:bg-slate-50 dark:hover:bg-[#161616] text-slate-700 dark:text-[#a3a3a3]"
               }`}
             >
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-[#202020] text-lg flex items-center justify-center shrink-0 shadow-2xs">
-                  🇮🇩
+                  🌐
                 </div>
                 <div>
                   <div className="text-xs font-semibold text-slate-900 dark:text-[#f5f5f5] flex items-center gap-1.5">
-                    <span>Bahasa Indonesia</span>
-                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 font-medium">
-                      Bawaan
+                    <span>{prefs.language === "en" ? "Automatic (Detect)" : "Otomatis (Deteksi)"}</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 font-medium">
+                      {prefs.language === "en" ? "Recommended" : "Rekomendasi"}
                     </span>
                   </div>
                   <div className="text-xs text-slate-500 dark:text-[#a3a3a3]">
-                    Bahasa standar dengan istilah akademik lokal
+                    {prefs.language === "en"
+                      ? `Detected: ${detectedLanguage === "id" ? "Bahasa Indonesia 🇮🇩" : "English 🇬🇧"} · via timezone & browser locale`
+                      : `Terdeteksi: ${detectedLanguage === "id" ? "Bahasa Indonesia 🇮🇩" : "English 🇬🇧"} · dari timezone & locale browser`}
                   </div>
                 </div>
               </div>
-              {(prefs.language || "id") === "id" && (
+              {languageMode === "auto" && (
                 <div className="w-4 h-4 rounded-full bg-indigo-600 text-white flex items-center justify-center shrink-0">
                   <Check className="w-2.5 h-2.5 stroke-[3]" />
                 </div>
               )}
             </button>
 
-            {/* English */}
-            <button
-              type="button"
-              onClick={() => handleLanguageChange("en")}
-              className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-3 ${
-                prefs.language === "en"
-                  ? "border-indigo-600 bg-indigo-50/60 dark:bg-indigo-950/30 text-indigo-950 dark:text-indigo-200 ring-1 ring-indigo-500/20 shadow-2xs"
-                  : "border-slate-200/80 dark:border-white/[0.08] hover:bg-slate-50 dark:hover:bg-[#161616] text-slate-700 dark:text-[#a3a3a3]"
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-[#202020] text-lg flex items-center justify-center shrink-0 shadow-2xs">
-                  🇬🇧
-                </div>
-                <div>
-                  <div className="text-xs font-semibold text-slate-900 dark:text-[#f5f5f5]">
-                    English
+            {/* Manual: 2-col grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {/* Bahasa Indonesia */}
+              <button
+                type="button"
+                onClick={() => handleLanguageChange("id")}
+                className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                  languageMode !== "auto" && (prefs.language || "id") === "id"
+                    ? "border-indigo-600 bg-indigo-50/60 dark:bg-indigo-950/30 text-indigo-950 dark:text-indigo-200 ring-1 ring-indigo-500/20 shadow-2xs"
+                    : "border-slate-200/80 dark:border-white/[0.08] hover:bg-slate-50 dark:hover:bg-[#161616] text-slate-700 dark:text-[#a3a3a3]"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-[#202020] text-lg flex items-center justify-center shrink-0 shadow-2xs">
+                    🇮🇩
                   </div>
-                  <div className="text-xs text-slate-500 dark:text-[#a3a3a3]">
-                    Standard English interface for dashboard & controls
+                  <div>
+                    <div className="text-xs font-semibold text-slate-900 dark:text-[#f5f5f5] flex items-center gap-1.5">
+                      <span>Bahasa Indonesia</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 font-medium">
+                        Bawaan
+                      </span>
+                    </div>
+                    <div className="text-xs text-slate-500 dark:text-[#a3a3a3]">
+                      Bahasa standar dengan istilah akademik lokal
+                    </div>
                   </div>
                 </div>
-              </div>
-              {prefs.language === "en" && (
-                <div className="w-4 h-4 rounded-full bg-indigo-600 text-white flex items-center justify-center shrink-0">
-                  <Check className="w-2.5 h-2.5 stroke-[3]" />
+                {languageMode !== "auto" && (prefs.language || "id") === "id" && (
+                  <div className="w-4 h-4 rounded-full bg-indigo-600 text-white flex items-center justify-center shrink-0">
+                    <Check className="w-2.5 h-2.5 stroke-[3]" />
+                  </div>
+                )}
+              </button>
+
+              {/* English */}
+              <button
+                type="button"
+                onClick={() => handleLanguageChange("en")}
+                className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                  languageMode !== "auto" && prefs.language === "en"
+                    ? "border-indigo-600 bg-indigo-50/60 dark:bg-indigo-950/30 text-indigo-950 dark:text-indigo-200 ring-1 ring-indigo-500/20 shadow-2xs"
+                    : "border-slate-200/80 dark:border-white/[0.08] hover:bg-slate-50 dark:hover:bg-[#161616] text-slate-700 dark:text-[#a3a3a3]"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-[#202020] text-lg flex items-center justify-center shrink-0 shadow-2xs">
+                    🇬🇧
+                  </div>
+                  <div>
+                    <div className="text-xs font-semibold text-slate-900 dark:text-[#f5f5f5]">
+                      English
+                    </div>
+                    <div className="text-xs text-slate-500 dark:text-[#a3a3a3]">
+                      Standard English interface for dashboard & controls
+                    </div>
+                  </div>
                 </div>
-              )}
-            </button>
+                {languageMode !== "auto" && prefs.language === "en" && (
+                  <div className="w-4 h-4 rounded-full bg-indigo-600 text-white flex items-center justify-center shrink-0">
+                    <Check className="w-2.5 h-2.5 stroke-[3]" />
+                  </div>
+                )}
+              </button>
+            </div>
           </div>
         </section>
+
 
         <hr className="border-slate-200/60 dark:border-white/[0.06]" />
 
@@ -1357,6 +1404,40 @@ export default function SettingsPage() {
               </div>
             </div>
           )}
+        </section>
+
+        <hr className="border-slate-200/60 dark:border-white/[0.06]" />
+
+        {/* SECTION: Panduan & Tur Fitur */}
+        <section className="space-y-3.5">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 rounded-xl border border-slate-200/80 dark:border-white/[0.08] bg-slate-50/50 dark:bg-[#141414]/50">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 shrink-0">
+                <Compass className="w-4 h-4" />
+              </div>
+              <div>
+                <h2 className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-[#f5f5f5]">
+                  {isEn ? "Feature Tour & Learning Guide" : "Panduan & Tur Fitur IOnLearn"}
+                </h2>
+                <p className="text-[11px] sm:text-xs text-slate-500 dark:text-[#a3a3a3]">
+                  {isEn
+                    ? "Revisit the visual onboarding tour and study workflow overview anytime."
+                    : "Buka kembali tur interaktif yang menjelaskan fungsi setiap fitur dan alur kerja di IOnLearn."}
+                </p>
+              </div>
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => window.dispatchEvent(new CustomEvent("start-feature-tour"))}
+              className="text-xs h-8.5 px-3.5 rounded-[10px] border-indigo-200 dark:border-indigo-900/60 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 gap-1.5 cursor-pointer shrink-0 self-start sm:self-auto"
+            >
+              <Compass className="w-3.5 h-3.5" />
+              <span>{isEn ? "Launch Tour" : "Mulai Tur"}</span>
+            </Button>
+          </div>
         </section>
 
         {/* STICKY BOTTOM ACTION BAR (Centered at bottom when there are unsaved changes) */}

@@ -18,6 +18,7 @@ export const NOTES_STORAGE_KEY = "classroom_ai_study_notes_v1";
 export const PREFS_STORAGE_KEY = "classroom_ai_user_prefs_v1";
 export const AI_CONFIG_STORAGE_KEY = "classroom_ai_config_v1";
 export const ONBOARDING_DONE_KEY = "classroom_ai_onboarding_done_v1";
+export const FEATURE_TOUR_DONE_KEY = "ionlearn_feature_tour_done_v1";
 
 export const DEMO_EMAIL = "pelajar@contoh.com";
 

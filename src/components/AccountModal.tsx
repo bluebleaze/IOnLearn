@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { CheckCircle2, Settings, RefreshCw, LogOut, Mail } from "lucide-react";
+import { CheckCircle2, Settings, RefreshCw, LogOut, Mail, Compass } from "lucide-react";
 import { UserProfile } from "@/services/classroomService";
 import { useLanguage } from "@/context/LanguageContext";
 
@@ -99,6 +99,18 @@ export const AccountModal: React.FC<AccountModalProps> = ({
           >
             <Settings className="w-4 h-4 text-slate-500 dark:text-[#888]" />
             <span>{isEn ? "Open Study & AI Settings" : "Buka Pengaturan Belajar & AI"}</span>
+          </Button>
+
+          <Button
+            variant="ghost"
+            onClick={() => {
+              onClose();
+              window.dispatchEvent(new CustomEvent("start-feature-tour"));
+            }}
+            className="w-full justify-start text-xs font-medium h-10 px-3 rounded-xl text-slate-700 dark:text-[#ccc] hover:bg-slate-100 dark:hover:bg-[#202020] gap-2.5 cursor-pointer"
+          >
+            <Compass className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
+            <span>{isEn ? "Feature Tour & Workflow Guide" : "Panduan & Tur Fitur IOnLearn"}</span>
           </Button>
 
           {onSyncClassroom && (

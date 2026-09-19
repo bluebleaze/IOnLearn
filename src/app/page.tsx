@@ -431,7 +431,7 @@ function HomeContent() {
             <div className="flex items-center justify-between">
               <div className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center transition-transform group-hover:scale-110">
                 <img
-                  src="/logos/IOnLearn_mascot.svg"
+                  src="/logos/ionlearn_mascot.svg"
                   alt="AI Tutor Mascot"
                   className="w-full h-full object-contain"
                 />

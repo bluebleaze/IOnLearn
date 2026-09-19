@@ -3931,7 +3931,7 @@ export const AIChat: React.FC<AIChatProps> = ({
             {/* Logo / Brand Mark */}
             <div className="w-24 h-24 sm:w-28 sm:h-28 flex items-center justify-center mb-3 select-none">
               <img
-                src="/logos/IOnLearn_mascot.svg"
+                src="/logos/ionlearn_mascot.svg"
                 alt="IOnLearn Mascot"
                 className="w-full h-full object-contain drop-shadow-sm transition-transform duration-300 hover:scale-105"
               />
@@ -3996,7 +3996,7 @@ export const AIChat: React.FC<AIChatProps> = ({
                   {!isUser && (
                     <div className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center shrink-0 mt-0.5 select-none">
                       <img
-                        src="/logos/IOnLearn_mascot.svg"
+                        src="/logos/ionlearn_mascot.svg"
                         alt="AI Mascot"
                         className={`w-full h-full object-contain transition-transform duration-200 ${
                           m.isStreaming ? "animate-mascot-generating" : ""
@@ -4898,7 +4898,7 @@ export const AIChat: React.FC<AIChatProps> = ({
               <div className="flex gap-3 items-center justify-start">
                 <div className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center shrink-0 select-none">
                   <img
-                    src="/logos/IOnLearn_mascot.svg"
+                    src="/logos/ionlearn_mascot.svg"
                     alt="AI Mascot"
                     className="w-full h-full object-contain animate-mascot-generating"
                   />

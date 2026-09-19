@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { AppSidebar } from "./app-sidebar";
 import { LandingPage } from "./LandingPage";
 import { OnboardingModal } from "./OnboardingModal";
+import { FeatureTour } from "./FeatureTour";
 import { toast } from "@/components/ui/sonner";
 import { ClassroomService, UserProfile } from "../services/classroomService";
 import { DBService } from "../services/dbService";
@@ -13,6 +14,7 @@ import { SyncManager, useSyncManager } from "../services/syncManager";
 import {
   TASKS_STORAGE_KEY,
   ONBOARDING_DONE_KEY,
+  FEATURE_TOUR_DONE_KEY,
   loadTasks,
   persist,
   loadPreferences,
@@ -73,6 +75,7 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showFeatureTour, setShowFeatureTour] = useState(false);
   const [isDark, setIsDark] = useState(false);
   const { isEn, t } = useLanguage();
 
@@ -101,6 +104,16 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
     });
 
     return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const handleTriggerTour = () => {
+      setShowFeatureTour(true);
+    };
+    window.addEventListener("start-feature-tour", handleTriggerTour);
+    return () => {
+      window.removeEventListener("start-feature-tour", handleTriggerTour);
+    };
   }, []);
 
   // Listen to global session expiration events (e.g. 401 Unauthorized or expiry) and auto-redirect to Landing Page
@@ -174,12 +187,15 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
   }, [hydrated, token, router]);
 
   useEffect(() => {
-    if (
-      token &&
-      typeof window !== "undefined" &&
-      localStorage.getItem(ONBOARDING_DONE_KEY) !== "true"
-    ) {
-      setShowOnboarding(true);
+    if (token && typeof window !== "undefined") {
+      const isFeatureTourDone = localStorage.getItem(FEATURE_TOUR_DONE_KEY) === "true";
+      const isOnboardingDone = localStorage.getItem(ONBOARDING_DONE_KEY) === "true";
+
+      if (!isFeatureTourDone) {
+        setShowFeatureTour(true);
+      } else if (!isOnboardingDone) {
+        setShowOnboarding(true);
+      }
     }
   }, [token]);
 
@@ -319,6 +335,25 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
     setShowOnboarding(false);
   };
 
+  const handleFeatureTourComplete = () => {
+    localStorage.setItem(FEATURE_TOUR_DONE_KEY, "true");
+    setShowFeatureTour(false);
+    if (typeof window !== "undefined" && localStorage.getItem(ONBOARDING_DONE_KEY) !== "true") {
+      setShowOnboarding(true);
+    }
+    toast.success(
+      isEn ? "Tour completed! Happy studying!" : "Tur selesai! Selamat belajar di IOnLearn!"
+    );
+  };
+
+  const handleFeatureTourSkip = () => {
+    localStorage.setItem(FEATURE_TOUR_DONE_KEY, "true");
+    setShowFeatureTour(false);
+    if (typeof window !== "undefined" && localStorage.getItem(ONBOARDING_DONE_KEY) !== "true") {
+      setShowOnboarding(true);
+    }
+  };
+
   if (!hydrated) return null;
 
   if (!token) {
@@ -328,6 +363,15 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
         onDemoMode={handleDemoMode}
         loginError={loginError}
         isAuthenticating={isAuthenticating}
+      />
+    );
+  }
+
+  if (showFeatureTour) {
+    return (
+      <FeatureTour
+        onComplete={handleFeatureTourComplete}
+        onSkip={handleFeatureTourSkip}
       />
     );
   }
