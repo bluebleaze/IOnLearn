@@ -93,17 +93,20 @@ export default function PrivacyPolicyPage() {
 
               <div className="p-4 rounded-xl bg-slate-50 dark:bg-[#161616] border border-slate-200/60 dark:border-[#262626]">
                 <h3 className="font-semibold text-slate-900 dark:text-white mb-1">
-                  B. Data Google Classroom (Cakupan Izin Read-Only)
+                  B. Data Google Classroom & Google Drive (Cakupan Izin Read-Only)
                 </h3>
                 <p className="text-xs sm:text-sm text-slate-600 dark:text-[#a0a0a0]">
-                  Dengan persetujuan eksplisit Anda, kami meminta izin baca (*read-only scopes*) API Google Classroom:
+                  Dengan persetujuan eksplisit Anda saat otentikasi Google, kami meminta izin baca (*read-only scopes*) API berikut dengan prinsip hak akses minimal (*least privilege*):
                 </p>
                 <ul className="list-disc pl-5 mt-2 space-y-1 text-xs sm:text-sm text-slate-600 dark:text-[#a0a0a0] font-mono">
                   <li>https://www.googleapis.com/auth/classroom.courses.readonly</li>
                   <li>https://www.googleapis.com/auth/classroom.coursework.me.readonly</li>
+                  <li>https://www.googleapis.com/auth/classroom.courseworkmaterials.readonly</li>
+                  <li>https://www.googleapis.com/auth/classroom.student-submissions.me.readonly</li>
+                  <li>https://www.googleapis.com/auth/drive.readonly</li>
                 </ul>
                 <p className="text-xs sm:text-sm text-slate-600 dark:text-[#a0a0a0] mt-2">
-                  Data yang disinkronkan meliputi: daftar nama kelas, judul tugas (*courseWork*), deskripsi/instruksi tugas, batas waktu pengumpulan (*due date & time*), tautan materi tugas, dan status pengerjaan.
+                  Data yang disinkronkan meliputi: daftar kelas yang Anda ikuti, judul dan deskripsi tugas (*courseWork*), batas waktu (*due dates*), status pengumpulan, serta dokumen materi/lampiran tugas yang relevan untuk dibaca di dalam aplikasi atau dianalisis bersama asisten belajar AI.
                 </p>
               </div>
 
@@ -124,19 +127,33 @@ export default function PrivacyPolicyPage() {
               <Shield className="w-6 h-6 text-indigo-600 dark:text-indigo-400 shrink-0" />
               <h2>Kepatuhan Kebijakan Data Pengguna Google API (Limited Use Policy)</h2>
             </div>
-            <div className="p-4 rounded-xl bg-white dark:bg-[#141414] border border-indigo-200/80 dark:border-indigo-800/80 text-xs sm:text-sm text-slate-800 dark:text-slate-200 font-medium leading-relaxed">
-              &ldquo;Penggunaan dan transfer informasi yang diterima dari Google API oleh IOnLearn ke aplikasi lain akan mematuhi{" "}
-              <a
-                href="https://developers.google.com/terms/api-services-user-data-policy"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-indigo-600 dark:text-indigo-400 underline font-semibold inline-flex items-center gap-0.5"
-              >
-                Google API Services User Data Policy
-                <ExternalLink className="w-3 h-3 inline" />
-              </a>
-              , termasuk persyaratan Penggunaan Terbatas (*Limited Use requirements*).&rdquo;
+
+            {/* Official English Affirmative Statement for Google OAuth Reviewers */}
+            <div className="p-4 rounded-xl bg-white dark:bg-[#141414] border border-indigo-200/80 dark:border-indigo-800/80 text-xs sm:text-sm text-slate-800 dark:text-slate-200 font-medium leading-relaxed space-y-2">
+              <p className="font-semibold text-indigo-700 dark:text-indigo-300">
+                Official Limited Use Compliance Statement (English):
+              </p>
+              <blockquote className="border-l-2 border-indigo-500 pl-3 italic text-slate-700 dark:text-[#d0d0d0]">
+                &ldquo;IOnLearn&apos;s use and transfer of information received from Google APIs to any other app will adhere to the{" "}
+                <a
+                  href="https://developers.google.com/terms/api-services-user-data-policy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-indigo-600 dark:text-indigo-400 underline font-semibold inline-flex items-center gap-0.5"
+                >
+                  Google API Services User Data Policy
+                  <ExternalLink className="w-3 h-3 inline" />
+                </a>
+                , including the Limited Use requirements. The use of raw or derived user data received from Workspace APIs will adhere to the Google User Data Policy, including the Limited Use requirements. User data is never used to develop, improve, or train generalized AI and/or ML models.&rdquo;
+              </blockquote>
             </div>
+
+            <div className="p-4 rounded-xl bg-white dark:bg-[#141414] border border-slate-200/70 dark:border-[#222222] text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+              <p>
+                <strong>Terjemahan Bahasa Indonesia:</strong> &ldquo;Penggunaan dan transfer informasi yang diterima dari Google API oleh IOnLearn ke aplikasi lain akan mematuhi Kebijakan Data Pengguna Layanan Google API, termasuk persyaratan Penggunaan Terbatas (*Limited Use requirements*). Penggunaan data pengguna mentah atau turunan yang diterima dari Workspace API akan mematuhi Kebijakan Data Pengguna Google. Data pengguna tidak pernah digunakan untuk mengembangkan, meningkatkan, atau melatih model kecerdasan buatan (AI) atau pembelajaran mesin (ML) umum.&rdquo;
+              </p>
+            </div>
+
             <p className="text-xs sm:text-sm text-slate-700 dark:text-[#c0c0c0]">
               Secara tegas dan tanpa pengecualian, kami menerapkan prinsip-prinsip berikut terhadap data pengguna yang diperoleh melalui Google API:
             </p>
@@ -144,31 +161,31 @@ export default function PrivacyPolicyPage() {
               <li className="flex items-start gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
                 <span>
-                  <strong>Hanya untuk Fungsi Layanan Langsung:</strong> Data tugas Google Classroom hanya digunakan untuk menampilkan jadwal tugas, memfasilitasi manajemen waktu belajar Anda, dan menyediakan referensi materi belajar melalui Asisten AI.
+                  <strong>Hanya untuk Fungsi Layanan Langsung:</strong> Data tugas Google Classroom dan dokumen lampiran Google Drive hanya digunakan untuk menampilkan jadwal tugas, memfasilitasi manajemen waktu belajar Anda, dan menyediakan referensi materi belajar melalui Asisten AI secara personal untuk sesi pengguna tersebut.
                 </span>
               </li>
               <li className="flex items-start gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
                 <span>
-                  <strong>TIDAK PERNAH Menjual Data:</strong> Kami tidak pernah menjual, menyewakan, atau memperdagangkan data pengguna Google kepada pihak ketiga mana pun untuk tujuan apa pun.
+                  <strong>TIDAK PERNAH Menjual Data:</strong> Kami tidak pernah menjual, menyewakan, mentransfer, atau memperdagangkan data pengguna Google kepada pihak ketiga, pengiklan, atau pialang data (*data brokers*).
                 </span>
               </li>
               <li className="flex items-start gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
                 <span>
-                  <strong>TIDAK untuk Iklan:</strong> Data Google pengguna tidak pernah digunakan untuk menayangkan iklan bertarget (*targeted advertising*), profiling pemasaran, atau keperluan pialang data (*data broker*).
+                  <strong>TIDAK untuk Iklan:</strong> Data Google pengguna tidak pernah digunakan untuk menayangkan iklan bertarget (*targeted advertising*), promosi berbayar, atau profiling pemasaran.
                 </span>
               </li>
               <li className="flex items-start gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
                 <span>
-                  <strong>TIDAK untuk Melatih Model AI Umum (*No General AI Training*):</strong> Data teks dari tugas Google Classroom Anda tidak digunakan untuk melatih atau menyempurnakan model dasar kecerdasan buatan umum (*General Foundation LLM models*).
+                  <strong>TIDAK untuk Melatih Model AI Umum (*Strictly No AI/ML Training*):</strong> Data mentah maupun turunan dari Workspace API tidak pernah ditransfer atau digunakan untuk mengembangkan, meningkatkan, atau melatih model AI/ML pihak ketiga maupun model dasar kecerdasan buatan umum (*generalized foundation models*).
                 </span>
               </li>
               <li className="flex items-start gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
                 <span>
-                  <strong>Tidak Ada Pembacaan Manusia (*No Human Reading*):</strong> Tidak ada personel atau karyawan IOnLearn yang membaca konten tugas Google Classroom Anda, kecuali jika Anda secara tertulis meminta dukungan teknis atas masalah tertentu atau diwajibkan oleh proses hukum resmi.
+                  <strong>Tidak Ada Pembacaan Manusia (*No Human Reading*):</strong> Tidak ada personel atau karyawan yang membaca konten tugas Google Classroom atau dokumen Drive Anda, kecuali jika Anda secara eksplisit meminta dukungan teknis atas persetujuan Anda atau diwajibkan oleh proses hukum resmi.
                 </span>
               </li>
             </ul>
