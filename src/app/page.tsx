@@ -85,7 +85,6 @@ export default function RootHomePage() {
               cloudData.preferences.aiTone
             ) {
               setOnboardingCompleted(true, email);
-              setSpotlightTourCompleted(true, email);
             }
           }
           if (cloudData?.todos && cloudData.todos.length > 0) {

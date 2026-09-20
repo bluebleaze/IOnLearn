@@ -3,7 +3,7 @@
 import * as React from "react";
 import { format, parseISO, isValid, addDays } from "date-fns";
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X } from "lucide-react";
-import { cn } from "cn";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   Popover,

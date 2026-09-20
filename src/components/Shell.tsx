@@ -284,7 +284,6 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
               JSON.stringify(cloudData.preferences)
             );
             setOnboardingCompleted(true, email);
-            setSpotlightTourCompleted(true, email); // Returning user who completed onboarding earlier
             isDone = true;
             window.dispatchEvent(new Event("taskStoreChange"));
           }
@@ -307,10 +306,13 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
           (pathname === "/dashboard" || pathname === "/") &&
           !isSpotlightTourCompleted(email)
         ) {
-          if (isSpotlightPending(email)) {
-            setSpotlightPending(false, email);
-            setShowSpotlightTour(true);
-          }
+          // Reliable delay ensuring dashboard layout and data-tour target elements are mounted
+          setTimeout(() => {
+            if (isMounted && !isSpotlightTourCompleted(email)) {
+              setSpotlightPending(false, email);
+              setShowSpotlightTour(true);
+            }
+          }, 500);
         }
       }
     };
@@ -385,7 +387,6 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
               cloudData.preferences.aiTone
             ) {
               setOnboardingCompleted(true, email);
-              setSpotlightTourCompleted(true, email);
             }
           }
           if (cloudData?.todos && cloudData.todos.length > 0) {

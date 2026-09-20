@@ -115,12 +115,13 @@ export function isSpotlightTourCompleted(userEmail?: string): boolean {
   const profile = ClassroomService.getUserProfile();
   const rawEmail = userEmail || profile?.email;
   const email = rawEmail ? rawEmail.toLowerCase().trim() : undefined;
-  if (email && localStorage.getItem(`${SPOTLIGHT_TOUR_DONE_KEY}_${email}`) === "true") {
-    return true;
+  if (email) {
+    return localStorage.getItem(`${SPOTLIGHT_TOUR_DONE_KEY}_${email}`) === "true";
   }
-  if (rawEmail && localStorage.getItem(`${SPOTLIGHT_TOUR_DONE_KEY}_${rawEmail}`) === "true") {
-    return true;
+  if (rawEmail) {
+    return localStorage.getItem(`${SPOTLIGHT_TOUR_DONE_KEY}_${rawEmail}`) === "true";
   }
+  // Only fall back to global key if there is no logged in account (e.g. pure visitor)
   return localStorage.getItem(SPOTLIGHT_TOUR_DONE_KEY) === "true";
 }
 
@@ -137,7 +138,10 @@ export function setSpotlightTourCompleted(completed: boolean = true, userEmail?:
   if (rawEmail && rawEmail !== email) {
     localStorage.setItem(`${SPOTLIGHT_TOUR_DONE_KEY}_${rawEmail}`, val);
   }
-  localStorage.setItem(SPOTLIGHT_TOUR_DONE_KEY, val);
+  // Only set global key if there is no specific user email
+  if (!email && !rawEmail) {
+    localStorage.setItem(SPOTLIGHT_TOUR_DONE_KEY, val);
+  }
 }
 
 export function isSpotlightPending(userEmail?: string): boolean {

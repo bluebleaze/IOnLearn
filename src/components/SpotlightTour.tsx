@@ -298,8 +298,8 @@ export function SpotlightTour({ isOpen, onClose, userEmail }: SpotlightTourProps
             {/* Black cutout creates transparent hole */}
             {targetRect && (
               <rect
-                x={targetRect.x - 8}
-                y={targetRect.y - 8}
+                x={(targetRect.left ?? targetRect.x) - 8}
+                y={(targetRect.top ?? targetRect.y) - 8}
                 width={targetRect.width + 16}
                 height={targetRect.height + 16}
                 rx="18"
@@ -321,8 +321,8 @@ export function SpotlightTour({ isOpen, onClose, userEmail }: SpotlightTourProps
         <div
           className="fixed pointer-events-none z-[9995] rounded-2xl ring-4 ring-indigo-500/80 shadow-[0_0_35px_rgba(99,102,241,0.7)] transition-all duration-300 ease-out animate-pulse"
           style={{
-            top: targetRect.top - 8,
-            left: targetRect.left - 8,
+            top: (targetRect.top ?? targetRect.y) - 8,
+            left: (targetRect.left ?? targetRect.x) - 8,
             width: targetRect.width + 16,
             height: targetRect.height + 16,
           }}
