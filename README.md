@@ -56,7 +56,7 @@ IOnLearn was purposefully engineered to embody this theme by bridging cutting-ed
           (Pendidikan Berkualitas)                    & Infrastructure (Inovasi)
 ```
 
-### 🎯 Alignment with United Nations Sustainable Development Goals (UN SDGs)
+### Alignment with United Nations Sustainable Development Goals (UN SDGs)
 
 | UN SDG Pillar | Official UN Target & Sub-Mandate | IOnLearn Implementation & Impact |
 | :--- | :--- | :--- |
@@ -65,7 +65,7 @@ IOnLearn was purposefully engineered to embody this theme by bridging cutting-ed
 
 ---
 
-## 🚀 Live Demo & Juror Testing Access
+## Live Demo & Juror Testing Access
 
 - **Public Production Deployment**: [https://ionlearn.my.id](https://ionlearn.my.id)
 - **Dedicated Juror Evaluation Account (Live Google Classroom)**:
@@ -129,27 +129,174 @@ IOnLearn includes a built-in document authoring studio that compiles native Micr
 
 ## System Architecture
 
+```mermaid
+flowchart TD
+
+subgraph group_experience["Student Experience"]
+  node_landing["Landing Experience<br/>[LandingPage.tsx]"]
+  node_dashboard["Academic Dashboard<br/>[page.tsx]"]
+  node_task_views["Task Views<br/>[TaskCard.tsx]"]
+end
+
+subgraph group_academic["Academic Workspace"]
+  node_classroom_service["Classroom Service"]
+  node_sync_manager["Sync Manager<br/>[syncManager.ts]"]
+  node_task_store["Tasks Notes Todos<br/>[taskStore.ts]"]
+  node_db_service["Cloud Data Service<br/>[dbService.ts]"]
+  node_browser_storage[("Browser Storage")]
+end
+
+subgraph group_ai["AI Learning"]
+  node_ai_chat_route["AI Chat Route<br/>[route.ts]"]
+  node_task_analysis["Task Analysis<br/>[route.ts]"]
+  node_ai_tools["Study Tools<br/>[route.ts]"]
+  node_file_parser["File Parser<br/>[route.ts]"]
+  node_drive_reader["Drive Reader<br/>[route.ts]"]
+end
+
+subgraph group_integrations["External Integrations"]
+  node_google_classroom["Google Classroom"]
+  node_google_drive["Google Drive"]
+  node_youtube["YouTube"]
+  node_gemini["Gemini API"]
+  node_openai_local["OpenAI or Local LLM"]
+  node_firebase[("Firebase Firestore")]
+end
+
+node_student(("Student"))
+
+node_student -->|"opens app"| node_landing
+node_student -->|"signs in"| node_classroom_service
+node_classroom_service -->|"fetches coursework"| node_google_classroom
+node_sync_manager -->|"runs sync"| node_classroom_service
+node_sync_manager -->|"loads cloud data"| node_db_service
+node_sync_manager -->|"persists tasks"| node_task_store
+node_task_store -->|"reads writes"| node_browser_storage
+node_db_service -->|"stores user data"| node_firebase
+node_student -->|"reviews learning"| node_dashboard
+node_dashboard -->|"subscribes state"| node_sync_manager
+node_dashboard -->|"renders tasks"| node_task_views
+node_task_views -->|"updates progress"| node_task_store
+node_task_analysis -->|"generates analysis"| node_gemini
+node_task_analysis -.->|"optionally routes"| node_openai_local
+node_ai_tools -->|"generates study tools"| node_gemini
+node_ai_tools -.->|"optionally routes"| node_openai_local
+node_ai_chat_route -->|"generates tutoring"| node_gemini
+node_ai_chat_route -.->|"optionally routes"| node_openai_local
+node_file_parser -->|"provides file text"| node_ai_chat_route
+node_drive_reader -->|"reads materials"| node_google_drive
+node_ai_chat_route -->|"requests grounding"| node_drive_reader
+node_ai_chat_route -->|"uses video context"| node_youtube
+
+click node_landing "https://github.com/bluebleaze/ionlearn/blob/main/src/components/LandingPage.tsx"
+click node_dashboard "https://github.com/bluebleaze/ionlearn/blob/main/src/app/dashboard/page.tsx"
+click node_task_views "https://github.com/bluebleaze/ionlearn/blob/main/src/components/TaskCard.tsx"
+click node_classroom_service "https://github.com/bluebleaze/ionlearn/blob/main/src/services/classroomService.ts"
+click node_sync_manager "https://github.com/bluebleaze/ionlearn/blob/main/src/services/syncManager.ts"
+click node_task_store "https://github.com/bluebleaze/ionlearn/blob/main/src/lib/taskStore.ts"
+click node_db_service "https://github.com/bluebleaze/ionlearn/blob/main/src/services/dbService.ts"
+click node_ai_chat_route "https://github.com/bluebleaze/ionlearn/blob/main/src/app/api/ai/chat/route.ts"
+click node_task_analysis "https://github.com/bluebleaze/ionlearn/blob/main/src/app/api/ai/analyze-task/route.ts"
+click node_ai_tools "https://github.com/bluebleaze/ionlearn/blob/main/src/app/api/ai/tools/route.ts"
+click node_file_parser "https://github.com/bluebleaze/ionlearn/blob/main/src/app/api/ai/parse-file/route.ts"
+click node_drive_reader "https://github.com/bluebleaze/ionlearn/blob/main/src/app/api/drive/read/route.ts"
+
+classDef toneNeutral fill:#f8fafc,stroke:#334155,stroke-width:1.5px,color:#0f172a
+classDef toneBlue fill:#dbeafe,stroke:#2563eb,stroke-width:1.5px,color:#172554
+classDef toneAmber fill:#fef3c7,stroke:#d97706,stroke-width:1.5px,color:#78350f
+classDef toneMint fill:#dcfce7,stroke:#16a34a,stroke-width:1.5px,color:#14532d
+classDef toneRose fill:#ffe4e6,stroke:#e11d48,stroke-width:1.5px,color:#881337
+classDef toneIndigo fill:#e0e7ff,stroke:#4f46e5,stroke-width:1.5px,color:#312e81
+classDef toneTeal fill:#ccfbf1,stroke:#0f766e,stroke-width:1.5px,color:#134e4a
+class node_landing,node_dashboard,node_task_views toneBlue
+class node_classroom_service,node_sync_manager,node_task_store,node_db_service,node_browser_storage toneAmber
+class node_ai_chat_route,node_task_analysis,node_ai_tools,node_file_parser,node_drive_reader toneMint
+class node_google_classroom,node_google_drive,node_youtube,node_gemini,node_openai_local,node_firebase toneRose
+class node_student toneIndigo
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                              CLIENT LAYER (PWA)                             │
-│  Next.js 16 (App Router) · React 19 · Tailwind CSS · Fullscreen Tour · PWA │
-└──────────────┬───────────────────────────────┬──────────────────────────────┘
-               │                               │
-               ▼                               ▼
-┌──────────────────────────────┐ ┌────────────────────────────────────────────┐
-│   AUTH & PERSISTENCE LAYER   │ │               BACKEND ENGINE               │
-│  • Firebase Auth (Google ID) │ │  • Next.js API Handlers (Edge & Node.js)   │
-│  • Cloud Firestore Sync      │ │  • Read-only Classroom & Drive Proxies     │
-│  • Local-first TaskStore     │ │  • Multimodal Document & Syllabus Parser   │
-└──────────────────────────────┘ └──────────────────────┬─────────────────────┘
-                                                        │
-                                                        ▼
-                                 ┌────────────────────────────────────────────┐
-                                 │          AI INFERENCE CONTROLLER           │
-                                 │  • Socratic Reasoning & Prompt Engineering │
-                                 │  • Cloud: Google Gemini API (3.6 / 3.1)    │
-                                 │  • Edge/Local: Ollama / LM Studio / Routers│
-                                 └────────────────────────────────────────────┘
+
+---
+
+## User Flow
+
+```mermaid
+flowchart TD
+
+  node_start(["<b>Mulai</b><br/>Siswa Membuka Web<br/><i>ionlearn.my.id</i>"])
+  node_landing["<b>Halaman Utama (Landing Page)</b><br/>Eksplorasi Fitur & Pemilihan Akses"]
+
+  node_start --> node_landing
+
+  node_landing -->|"Akun Classroom"| node_auth_google["<b>Masuk dengan Akun Google</b><br/>Otorisasi Izin Strictly Read-Only<br/>Google Classroom & Drive"]
+  node_landing -->|"Mode Simulasi"| node_auth_demo["<b>Coba Mode Simulasi (Guest)</b><br/>Akses Evaluasi Cepat 1-Klik<br/>dengan Data Akademik Bawaan"]
+
+  node_sync["<b>Sesi Sinkronisasi Tugas dari Classroom</b>"]
+  node_auth_google --> node_sync
+  node_auth_demo --> node_sync
+
+  node_decision_first{"<b>Pertama kali login?</b>"}
+  node_sync --> node_decision_first
+
+  node_onboarding["<b>Kuesioner Onboarding Pedagogi</b><br/>19 Pertanyaan Menyesuaikan Jenjang,<br/>Gaya Belajar, & Persona AI Tutor"]
+  node_spotlight["<b>Spotlight Interactive Tour</b><br/>Panduan Visual Sorotan Elemen UX<br/>untuk Navigasi Pertama Kali"]
+
+  node_decision_first -->|"Iya (user baru)"| node_onboarding
+  node_onboarding --> node_spotlight
+  node_spotlight --> node_dashboard
+
+  node_decision_first -->|"Tidak (user lama)"| node_dashboard
+
+  node_dashboard["<b>Dasbor Akademik Terpadu (Academic Dashboard)</b><br/>Pusat Kendali Penugasan, Notifikasi Tenggat Waktu, & Status Pembelajaran"]
+
+  subgraph group_features["Ruang Kerja & Fitur Pembelajaran Siswa"]
+    feat_tasks["<b>1. Manajemen Tugas</b><br/>• Prioritas Urgensi Waktu<br/>• To-Do, Upcoming, Late, Done<br/>• Filter Berdasarkan Kelas/Mapel<br/>• Analisis Beban Belajar Harian"]
+    feat_ai["<b>2. Socratic AI Companion</b><br/>• Ekstraksi Otomatis Modul/PDF<br/>• Bimbingan Penalaran Dialogis<br/>• Anti-Cognitive Atrophy (No Copas)<br/>• Kurasi Video Edukasi YouTube"]
+    feat_notes["<b>3. Study Notes & Doc Studio</b><br/>• Catatan Kuliah/Sekolah (Markdown)<br/>• Rangkuman Otomatis Hasil Diskusi<br/>• Kustomisasi Draf GUI Interaktif<br/>• Ekspor Dokumen .docx, .pptx, .xlsx"]
+    feat_todo["<b>4. To-Do List Personal & AI</b><br/>• Bebas Menambahkan Tugas Mandiri<br/>• Auto-Generated AI Task Checklist<br/>• Tingkat Prioritas & Kebutuhan<br/>• Fleksibilitas Manajemen Belajar"]
+  end
+
+  node_dashboard --> feat_tasks
+  node_dashboard --> feat_ai
+  node_dashboard --> feat_notes
+  node_dashboard --> feat_todo
+
+  node_outcome["<b>Penyelesaian Tugas Mandiri & Penguasaan Konsep</b><br/>Siswa Memahami Esensi Materi tanpa Tergantung Salin-Tempel AI<br>& Tugas Siap Diunggah Langsung ke Google Classroom"]
+
+  feat_tasks --> node_outcome
+  feat_ai --> node_outcome
+  feat_notes --> node_outcome
+  feat_todo --> node_outcome
+
+  node_end(["<b>Selesai</b><br/>Tugas Tuntas & Belajar Berkelanjutan"])
+  node_outcome --> node_end
+
+  click node_landing "https://github.com/bluebleaze/ionlearn/blob/main/src/components/LandingPage.tsx"
+  click node_sync "https://github.com/bluebleaze/ionlearn/blob/main/src/services/classroomService.ts"
+  click node_onboarding "https://github.com/bluebleaze/ionlearn/blob/main/src/components/OnboardingFlow.tsx"
+  click node_spotlight "https://github.com/bluebleaze/ionlearn/blob/main/src/components/SpotlightTour.tsx"
+  click node_dashboard "https://github.com/bluebleaze/ionlearn/blob/main/src/app/dashboard/page.tsx"
+  click feat_tasks "https://github.com/bluebleaze/ionlearn/blob/main/src/components/TaskCard.tsx"
+  click feat_ai "https://github.com/bluebleaze/ionlearn/blob/main/src/app/api/ai/chat/route.ts"
+  click feat_notes "https://github.com/bluebleaze/ionlearn/blob/main/src/components/ai/DocumentCustomizerModal.tsx"
+  click feat_todo "https://github.com/bluebleaze/ionlearn/blob/main/src/app/todo/page.tsx"
+
+  classDef toneNeutral fill:#f8fafc,stroke:#334155,stroke-width:1.5px,color:#0f172a
+  classDef toneBlue fill:#dbeafe,stroke:#2563eb,stroke-width:1.5px,color:#172554
+  classDef toneAmber fill:#fef3c7,stroke:#d97706,stroke-width:1.5px,color:#78350f
+  classDef toneMint fill:#dcfce7,stroke:#16a34a,stroke-width:1.5px,color:#14532d
+  classDef toneRose fill:#ffe4e6,stroke:#e11d48,stroke-width:1.5px,color:#881337
+  classDef toneIndigo fill:#e0e7ff,stroke:#4f46e5,stroke-width:1.5px,color:#312e81
+  classDef tonePurple fill:#f3e8ff,stroke:#9333ea,stroke-width:1.5px,color:#581c87
+
+  class node_start,node_end toneIndigo
+  class node_landing,node_auth_google,node_auth_demo toneBlue
+  class node_sync toneNeutral
+  class node_decision_first toneAmber
+  class node_onboarding,node_spotlight tonePurple
+  class node_dashboard toneBlue
+  class feat_tasks,feat_notes,feat_todo toneNeutral
+  class feat_ai toneMint
+  class node_outcome toneRose
 ```
 
 ---
