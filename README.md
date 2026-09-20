@@ -35,13 +35,13 @@ IOnLearn is completely open-source under the **GNU General Public License v3 (GP
 
 ---
 
-## Alignment with Competition Theme and SDGs (Infinitera 2.0)
+## 🎯 Alignment with Competition Theme and SDGs (Infinitera 2.0)
 
 > **Event**: INFINITERA 2.0 — Web Development Competition  
 > **Host**: Himpunan Mahasiswa Teknik Informatika (HM TIF), Universitas Islam Sultan Agung (UNISSULA)  
 > **Grand Theme**: *“Bridging Innovation and Sustainability to Create Meaningful Impact for Future Generations”*
 
-IOnLearn was purposefully designed to embody this theme by bridging cutting-edge technological innovation (Socratic conversational AI, edge intelligence, model-agnostic architecture) with sustainable societal impact for current and future generations.
+IOnLearn was purposefully engineered to embody this theme by bridging cutting-edge technological innovation (Socratic conversational AI, edge intelligence, model-agnostic architecture) with sustainable societal impact for current and future generations.
 
 ```
                   ┌────────────────────────────────────────────────────────┐
@@ -56,26 +56,24 @@ IOnLearn was purposefully designed to embody this theme by bridging cutting-edge
           (Pendidikan Berkualitas)                    & Infrastructure (Inovasi)
 ```
 
-### 1. 🎓 [SDG 4 — Quality Education](https://sdgs.un.org/goals/goal4) (Pendidikan Berkualitas)
-*Mandat Subtema: "Menyediakan pendidikan yang inklusif, merata, dan berkualitas." — [UN SDG 4 Details](https://sdgs.un.org/goals/goal4)*
-- **Democratizing 1-on-1 Academic Tutoring**: High-quality private tutoring is often prohibitively expensive. IOnLearn is 100% free and open-source (GPLv3), providing every student—regardless of socioeconomic background—with an equitable, 24/7 personal academic study companion.
-- **Socratic Pedagogy (Anti-Cognitive Atrophy)**: Unlike generic LLMs that spoon-feed direct answers and bypass critical thinking, IOnLearn guides students step-by-step using Socratic questioning, building genuine conceptual mastery and independent problem-solving capabilities.
-- **Inclusive & Adaptive Learning**: Features auto-detecting bilingual support (Indonesian and English), customizable learning styles (Visual, Step-by-Step, In-Depth), and full accessibility support (screen-reader friendly, responsive keyboard navigation, dark/light modes).
+### 🎯 Alignment with United Nations Sustainable Development Goals (UN SDGs)
 
-### 2. 💡 [SDG 9 — Industry, Innovation, and Infrastructure](https://sdgs.un.org/goals/goal9) (Industri, Inovasi, dan Infrastruktur)
-*Mandat Subtema: "Membangun infrastruktur yang tangguh dan mendorong inovasi." — [UN SDG 9 Details](https://sdgs.un.org/goals/goal9)*
-- **Model-Agnostic & Decentralized Edge AI**: IOnLearn breaks proprietary vendor lock-in by supporting local, offline LLMs ([Ollama](https://github.com/ollama/ollama), [LM Studio](https://lmstudio.ai/), [vLLM](https://github.com/vllm-project/vllm)) on consumer hardware, allowing students in remote areas with unstable internet to access AI tutoring without relying on cloud data centers.
-- **Resilient Multi-Tier Infrastructure**: Powered by Cloudflare Anycast Edge CDN and Vercel Serverless Platform, delivering zero-downtime, DDoS-protected, and low-latency access for learners nationwide.
-- **In-Browser Document Compilation (.docx, .pptx, .xlsx)**: Innovates client-side document synthesis and visual GUI customization in-memory without reliance on external proprietary conversion servers or third-party paid software.
-- **Open-Source Innovation (GPLv3)**: Open code guarantees transparency, security auditing, and continuous community development without reliance on closed commercial infrastructure.
+| UN SDG Pillar | Official UN Target & Sub-Mandate | IOnLearn Implementation & Impact |
+| :--- | :--- | :--- |
+| **[SDG 4: Quality Education](https://sdgs.un.org/goals/goal4)** | **Target 4.4:** Substantially increase the number of youth and adults who have relevant skills for employment, decent jobs, and entrepreneurship.<br><br>**Target 4.c:** Expand equitable learning opportunities and qualified study support for all learners. | • **Democratizing 1-on-1 Academic Tutoring**: High-quality private tutoring is made 100% free and open-source (GPLv3), granting every student a 24/7 personal academic study companion regardless of socioeconomic background.<br>• **Socratic Pedagogy (Anti-Cognitive Atrophy)**: Instead of spoon-feeding direct answers like generic commercial LLMs, IOnLearn guides students step-by-step using Socratic inquiry grounded in official course materials, fostering genuine critical thinking and conceptual mastery.<br>• **Inclusive & Adaptive Learning**: Offers automatic bilingual detection (Indonesian & English), customizable learning styles (Visual, Step-by-Step, In-Depth), and full accessibility compliance (screen-reader friendly, responsive keyboard navigation, dark/light modes). |
+| **[SDG 9: Industry, Innovation, & Infrastructure](https://sdgs.un.org/goals/goal9)** | **Target 9.5:** Enhance scientific research, upgrade technological capabilities, and encourage innovation.<br><br>**Target 9.c:** Significantly increase access to information and communications technology (ICT) and provide universal, affordable access. | • **Model-Agnostic & Decentralized Edge AI**: Breaks proprietary vendor lock-in by supporting local, offline LLMs ([Ollama](https://github.com/ollama/ollama), [LM Studio](https://lmstudio.ai/), [vLLM](https://github.com/vllm-project/vllm)) on consumer hardware, enabling students in low-connectivity areas to access AI assistance without relying on costly cloud APIs.<br>• **Client-Side Document Synthesis & Green Computing**: Innovates in-browser compilation of Microsoft Office documents (.docx, .pptx, .xlsx) without external conversion servers, conserving energy and guaranteeing total data sovereignty.<br>• **Resilient Multi-Tier Cloud Infrastructure**: Deployed across Cloudflare Anycast Edge CDN and Vercel Serverless Platform, ensuring high availability, DDoS protection, and low latency.<br>• **Open-Source Innovation (GNU GPLv3)**: Guarantees full code transparency, community auditability, and continuous development without reliance on closed commercial infrastructure. |
 
 ---
 
-## Live Demo & Juror Testing Access
+## 🚀 Live Demo & Juror Testing Access
 
 - **Public Production Deployment**: [https://ionlearn.my.id](https://ionlearn.my.id)
-- **Instant Demo Mode (Recommended for Evaluators)**:
-  - To evaluate the platform without signing into an active school Google Classroom account, simply click **"Coba Mode Demo" (Try Demo Mode)** on the landing page.
+- **Dedicated Juror Evaluation Account (Live Google Classroom)**:
+  - **Email**: `violettaionlearn@gmail.com`
+  - **Password**: `violetta123#`
+  - *Evaluators can log in using this account to inspect full live Google Classroom synchronization, course attachments, coursework deadlines, and active Socratic AI tutoring.*
+- **Instant Demo Mode (Guest Evaluation)**:
+  - To evaluate the platform instantly without signing into a Google account, simply click **"Coba Mode Demo" (Try Demo Mode)** on the landing page.
   - This immediately initializes a simulated student profile pre-loaded with realistic courses, upcoming deadline tasks, syllabus attachments, and study notes ready for testing with the AI Tutor.
 
 ---
