@@ -181,6 +181,9 @@ class SyncManagerClass {
           );
 
         persist(updatedTasks);
+        // Automatically pre-extract task attachments in background so AI is instantly ready
+        ClassroomService.autoExtractTaskMaterials(updatedTasks, token, email).catch(() => {});
+
         const now = new Date();
         if (typeof window !== "undefined") {
           localStorage.setItem("last_classroom_sync", now.toISOString());

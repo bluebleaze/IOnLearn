@@ -8,6 +8,7 @@ import {
   CalendarDays,
   Check,
   BookOpen,
+  Sparkles,
   ExternalLink,
   Eye,
   EyeOff,
@@ -16,7 +17,6 @@ import {
   Moon,
   Bell,
 } from 'lucide-react';
-import { IonLearnAIIcon } from './IonLearnAIIcon';
 import {
   Dialog,
   DialogHeader,
@@ -459,7 +459,7 @@ export function SettingsModal({ isOpen, onClose, userPreferences, aiConfig, onSa
             {/* 3 Provider Options */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {[
-                { id: 'gemini', label: 'Gemini Bawaan', desc: 'Gratis & Siap Pakai', icon: IonLearnAIIcon },
+                { id: 'gemini', label: 'Gemini Bawaan', desc: 'Gratis & Siap Pakai', icon: Sparkles },
                 { id: 'gemini_custom', label: 'Gemini', desc: 'Gunakan API Key Pribadi & Pilih Model', icon: Key },
                 { id: 'openai', label: 'OpenAI / OpenRouter', desc: 'GPT-4o / DeepSeek / Custom URL', icon: Server }
               ].map((opt) => (
@@ -492,7 +492,7 @@ export function SettingsModal({ isOpen, onClose, userPreferences, aiConfig, onSa
             {config.provider === 'gemini' && (
               <div className="p-4 bg-indigo-50/60 dark:bg-indigo-950/30 rounded-2xl border border-indigo-100/80 dark:border-indigo-900/50 space-y-1.5 text-xs text-indigo-950 dark:text-indigo-200">
                 <div className="font-bold flex items-center gap-1.5 text-indigo-900 dark:text-indigo-300">
-                  <IonLearnAIIcon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                  <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                   <span>AI Tutor Cerdas Aktif & Siap Pakai</span>
                 </div>
                 <p className="text-slate-600 dark:text-slate-400 leading-relaxed">

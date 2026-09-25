@@ -107,6 +107,7 @@ export interface TodoTask {
   syncSource: 'classroom' | 'manual';
   classroomLink?: string;
   materials?: ClassroomMaterial[];
+  extractedMaterialsText?: string;
   aiAnalysis?: AIAnalysisResult;
   aiLoading?: boolean;
   aiError?: string;

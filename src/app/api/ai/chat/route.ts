@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import fs from "fs";
+import path from "path";
 import { GoogleGenAI, Type } from "@google/genai";
 import { AIConfig } from "@/types";
 import { cleanLatexMath } from "@/lib/mathUtils";
@@ -77,22 +79,27 @@ function cleanAndNormalizeTags(rawTags: (string | undefined | null)[]): string[]
 
 const AI_METADATA_FIELD_PATTERN = /,?\s*"(?:suggestedPrompts|createdTodo|createdTodos|createdNote|createdDocument|createdSlides|thoughtProcess)"\s*:/;
 const EMOJI_PATTERN = /[\uD83C-\uDBFF][\uDC00-\uDFFF]|[\u2600-\u27BF]|\uFE0F|\u200D/g;
-const EMOJI_RUN_PATTERN = /(?:[\uD83C-\uDBFF][\uDC00-\uDFFF]|[\u2600-\u27BF]|\uFE0F|\u200D|\s){6,}/g;
-const EMOJI_SHORT_RUN_PATTERN = /(?:[\uD83C-\uDBFF][\uDC00-\uDFFF]|[\u2600-\u27BF]|\uFE0F|\u200D|\s){4,}/g;
+const EMOJI_BURST_PATTERN = /(?:(?:[\uD83C-\uDBFF][\uDC00-\uDFFF]|[\u2600-\u27BF]|\uFE0F|\u200D)[ \t]*){4,}/g;
 
 export function cleanRepetitiveLoops(text: string): string {
     if (!text || typeof text !== "string") return "";
     let cleaned = text;
-    // Strip long runs of emojis (more than 3 consecutive emojis or repeating emoji clusters)
-    cleaned = cleaned.replace(EMOJI_RUN_PATTERN, (match) => {
+    // Strip runs of 4 or more consecutive emojis (e.g. 🔁🔁🔁🔁🔁)
+    cleaned = cleaned.replace(EMOJI_BURST_PATTERN, (match) => {
         const emojis = match.match(EMOJI_PATTERN) || [];
         return emojis.length > 0 ? " " + emojis.slice(0, 2).join("") + " " : " ";
     });
-    // Collapse repeating character runs (e.g. aaaaaa -> aa)
-    cleaned = cleaned.replace(/(.)\1{4,}/g, "$1$1");
-    // Collapse repeating words/phrases repeated 3 or more times (e.g. "selamanya selamanya selamanya")
-    cleaned = cleaned.replace(/(\b[\w\s-]{2,40}?\b)(?:\s+\1){2,}/gi, "$1");
-    return cleaned.replace(/\s+/g, " ").trim();
+    // Collapse repeating alphanumeric characters repeated 5+ times (e.g. aaaaaaa -> aa, 111111 -> 11)
+    // NEVER collapse markdown delimiters (-, =, *, _, #) or whitespace
+    cleaned = cleaned.replace(/([a-zA-Z0-9\u00C0-\u024F\u1E00-\u1EFF])\1{4,}/g, "$1$1");
+    // Collapse repeating words/phrases repeated 3 or more times on the same line
+    cleaned = cleaned.replace(/(\b[a-zA-Z0-9_\u00C0-\u024F\u1E00-\u1EFF-]{2,30}\b)(?:[ \t]+\1){2,}/gi, "$1");
+    // Normalize newlines (convert \r\n to \n, limit excessive blank lines to 2)
+    cleaned = cleaned.replace(/\r\n/g, "\n");
+    cleaned = cleaned.replace(/\n{3,}/g, "\n\n");
+    // Strip trailing horizontal whitespace on lines
+    cleaned = cleaned.replace(/[ \t]+$/gm, "");
+    return cleaned.trim();
 }
 
 /** Keep generated To-Do labels usable even when a provider ignores the schema. */
@@ -103,11 +110,11 @@ function sanitizeTodoText(value: unknown, maxLength: number): string {
         // A malformed structured response can leak its next JSON field into a title.
         .split(AI_METADATA_FIELD_PATTERN)[0]
         // Clean repetitive emoji and word loops
-        .replace(EMOJI_SHORT_RUN_PATTERN, " ")
+        .replace(EMOJI_BURST_PATTERN, " ")
         // Emoji are excluded from To-Do titles & subtasks: they make compact task cards noisy.
         .replace(EMOJI_PATTERN, "")
-        .replace(/(.)\1{3,}/g, "$1$1")
-        .replace(/(\b[\w\s-]{2,40}?\b)(?:\s+\1){2,}/gi, "$1")
+        .replace(/([a-zA-Z0-9\u00C0-\u024F\u1E00-\u1EFF])\1{3,}/g, "$1$1")
+        .replace(/(\b[a-zA-Z0-9_\u00C0-\u024F\u1E00-\u1EFF-]{2,30}\b)(?:[ \t]+\1){2,}/gi, "$1")
         .replace(/\s+/g, " ")
         .trim()
         .slice(0, maxLength)
@@ -885,7 +892,17 @@ function processAiChatResponse(
     const rawReplyText =
         resultData.reply ||
         (typeof responseText === "string" && !responseText.startsWith("{") ? responseText : "Tugas berhasil diproses.");
-    const cleanReply = cleanLatexMath(cleanRepetitiveLoops(rawReplyText));
+    let cleanReply = cleanLatexMath(cleanRepetitiveLoops(rawReplyText));
+
+    // CRITICAL: If the AI generated substantive answers, draft reports, or content in rawDocument.content,
+    // ensure the user never gets an empty teaser message (e.g. "Sipp! Ini draf laporan...") without the actual answers.
+    if (rawDocument?.content && typeof rawDocument.content === "string" && rawDocument.content.trim().length > 40) {
+        const docText = cleanLatexMath(rawDocument.content.trim());
+        const isTeaserOnly = cleanReply.length < 350 || /^(?:sipp?!|halo!|baik|tentu|berikut ini|ini draf|ini laporan|ini adalah)/i.test(cleanReply.trim());
+        if (isTeaserOnly || !finalDocument) {
+            cleanReply = `${cleanReply}\n\n${docText}`;
+        }
+    }
 
     if (!finalDocument && fileReq.wantsXlsx && cleanReply.includes("|")) {
         const tableLines = cleanReply.split("\n").filter(l => l.trim().startsWith("|"));
@@ -940,6 +957,34 @@ export async function POST(req: Request) {
 
         let contextString = "";
         if (taskContext) {
+            // Server-side guarantee: If client did not send the full extracted attachment text,
+            // automatically enrich it from user cache so the AI ALWAYS receives the authentic document questions.
+            if (!taskContext.description || !taskContext.description.includes("--- LAMPIRAN DOKUMEN & SPREADSHEET ---")) {
+                try {
+                    const cacheFile = process.env.VERCEL || process.env.NODE_ENV === "production"
+                        ? path.join("/tmp", ".user_cache.json")
+                        : path.join(process.cwd(), ".user_cache.json");
+                    if (fs.existsSync(cacheFile)) {
+                        const cache = JSON.parse(fs.readFileSync(cacheFile, "utf-8"));
+                        for (const email of Object.keys(cache)) {
+                            const cachedTask = cache[email]?.tasks?.find(
+                                (t: any) =>
+                                    (taskContext.id && t.id === taskContext.id) ||
+                                    (taskContext.title && t.title && t.title.trim().toLowerCase() === taskContext.title.trim().toLowerCase())
+                            );
+                            if (cachedTask?.extractedMaterialsText) {
+                                taskContext.description =
+                                    (taskContext.description || "") +
+                                    `\n\n--- LAMPIRAN DOKUMEN & SPREADSHEET ---\n${cachedTask.extractedMaterialsText}`;
+                                break;
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.warn("Could not check user cache for task materials:", e);
+                }
+            }
+
             contextString = `\n--- KONTEKS MATERI / TUGAS AKTIF (DARI GOOGLE CLASSROOM / DAFTAR TUGAS SISWA) ---
 Judul Tugas: ${taskContext.title || "-"}
 Mata Pelajaran / Kelas / Topik: ${taskContext.courseName || "-"}
@@ -947,11 +992,17 @@ Deskripsi / Detail Tugas: ${taskContext.description || "Materi kurikulum sesuai 
 ${taskContext.dueDateStr ? `Deadline Pengumpulan: ${taskContext.dueDateStr}` : ""}
 ${taskContext.customNotes ? `Catatan Tambahan Siswa: ${taskContext.customNotes}` : ""}
 
-[ATURAN MUTLAK PENGERJAAN TUGAS AKTIF]:
+[ATURAN MUTLAK PENGERJAAN TUGAS AKTIF & DOKUMEN / MATERI]:
 1. Pengguna telah memilih tugas ini sebagai konteks belajar. Anda SEBAGAI ASISTEN & TUTOR AHLI SUDAH MENGETAHUI DENGAN JELAS materi, kurikulum, dan kompetensi dasar yang diujikan dari Judul Tugas ("${taskContext.title || "-"}") dan Mata Pelajaran ("${taskContext.courseName || "-"}").
-2. KETIKA PENGGUNA MEMINTA: "Kerjakan", "Bantu kerjakan", "Selesaikan", "Bikin jadi dokumen", "Buatkan dokumennya", "Jawab tugas ini", atau instruksi serupa:
-   - DILARANG KERAS MEMINTA PENGGUNA MEMBERIKAN MATERI ATAU SOAL LAGI! (JANGAN PERNAH MENJAWAB: "Silakan berikan materi atau soal...", "Tolong kirimkan soalnya...", atau respons pasif serupa). Pengguna sudah memilih tugasnya, jadi tugas Anda adalah langsung mengerjakannya!
-   - JIKA DESKRIPSI TUGAS SUDAH MEMUAT BUTIR SOAL ATAU MATERI LENGKAP: Kerjakan dan jawab setiap nomor/butir soal tersebut secara mendalam, tepat, dan tuntas!
+2. KETIKA PENGGUNA MEMINTA: "Kerjakan", "Bantu kerjakan", "Selesaikan", "Bikin jadi dokumen", "Buatkan dokumennya", "Jawab tugas ini", "Kerjakan pertanyaan di dokumen", "jawab yang pertanyaan analisis di situ", atau pertanyaan/instruksi yang merujuk pada materi atau dokumen tugas:
+   - DILARANG KERAS MEMINTA PENGGUNA MEMBERIKAN MATERI ATAU SOAL LAGI! Pengguna sudah memilih tugasnya, jadi tugas Anda adalah langsung mengerjakannya!
+   - PERIKSA DENGAN TELITI SELURUH ISI DOKUMEN / LAMPIRAN TUGAS YANG TERTERA DI KONTEKS!
+   - JIKA DI DALAM DOKUMEN / LAMPIRAN TERDAPAT BAGIAN SEPERTI "Pertanyaan Analisis", "Soal", "Latihan", "Lembar Tugas Peserta Didik", ATAU DAFTAR PERTANYAAN BERNOMOR (seperti Nomor 1, 2, 3, dst.):
+     ANDA WAJIB MENJAWAB DAN MENYELESAIKAN SETIAP BUTIR PERTANYAAN TERSEBUT SATU PER SATU SECARA EKSPLISIT DAN SISTEMATIS DENGAN FORMAT NOMOR LENGKAP (misal: "1. Bentuk interaksi sosial yang paling sering ditemukan...", "2. Letak kontak sosial dan komunikasi...", dst.), BUKAN HANYA MEMBUAT TEORI ATAU PEMBAHASAN UMUM SENDIRI YANG MENGABAIKAN NOMOR PERTANYAAN DOKUMEN ASLINYA!
+   - SEMUA JAWABAN, PEMBAHASAN, SOLUSI SOAL, ATAU NASKAH LAPORAN OBSERVASI / TUGAS WAJIB DITULISKAN SECARA LENGKAP, SISTEMATIS, DAN TUNTAS LANGSUNG DI DALAM TEKS 'reply'!
+   - DILARANG KERAS HANYA MENULISKAN PENGANTAR 1-2 KALIMAT SEPERTI "Sipp! Ini draf laporan..." TANPA MENAMPILKAN ISI JAWABAN / LAPORANNYA DI 'reply'! Pengguna membaca isi jawaban utama langsung di dalam chat.
+   - JIKA DESKRIPSI TUGAS / LAMPIRAN SUDAH MEMUAT BUTIR SOAL ATAU MATERI LENGKAP: Kerjakan dan jawab setiap nomor/butir soal tersebut secara mendalam, tepat, dan tuntas!
+   - JIKA TUGAS MERUPAKAN LAPORAN OBSERVASI / PRAKTIKUM: Tuliskan draf laporan observasi lengkap secara terstruktur: Judul, Latar Belakang Masalah, Lokasi & Waktu Pengamatan, Hasil Temuan Observasi Nyata (dengan data/poin konkret), Analisis Teori Sosiologis / Akademik yang Relevan, dan Kesimpulan & Saran Aksi.
    - JIKA DESKRIPSI TUGAS SINGKAT / HANYA BERUPA JUDUL / BELUM ADA RINCIAN NOMOR SOAL: Anda WAJIB SECARA PROAKTIF MENYUSUN DAN MENYELESAIKAN PENILAIAN / MATERI TUGAS TERSEBUT SECARA PARIPURNA SESUAI TINGKAT KELAS / JURUSAN:
      • Konsep Esensial, Rumus & Kaidah Dasar Materi Lengkap.
      • Contoh Kalimat / Kasus Kontekstual (relevan dengan jurusan siswa, misal RPL/Teknologi).

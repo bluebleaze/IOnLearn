@@ -57,6 +57,9 @@ import {
   Play,
   Pause,
   Lightbulb,
+  Upload,
+  FileUp,
+  Edit3,
 } from "lucide-react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -75,7 +78,13 @@ import {
   PersonalTodo,
   YouTubeVideoInfo,
 } from "../types";
-import { sendChatMessageToAI, sendChatMessageToAIStream } from "../services/aiService";
+import {
+  sendChatMessageToAI,
+  sendChatMessageToAIStream,
+  extractMaterialsText,
+  uploadAndParseDocument,
+} from "../services/aiService";
+import { ClassroomService } from "@/services/classroomService";
 import {
   downloadCreatedDocument,
   downloadCreatedSlides,
@@ -103,6 +112,7 @@ import {
   loadNotes,
   loadPreferences,
   loadTasks,
+  updateTask,
 } from "@/lib/taskStore";
 import { APP_NAME } from "@/lib/brand";
 import { toast } from "@/components/ui/sonner";
@@ -566,6 +576,8 @@ export const AIChat: React.FC<AIChatProps> = ({
       if (p?.chatLayout) {
         setLayoutMode(p.chatLayout);
       }
+      setTasks(loadTasks());
+      setNotes(loadNotes());
     };
     window.addEventListener("chat-layout-changed", handleLayoutChange);
     window.addEventListener("taskStoreChange", handleLayoutChange);
@@ -574,6 +586,32 @@ export const AIChat: React.FC<AIChatProps> = ({
       window.removeEventListener("taskStoreChange", handleLayoutChange);
     };
   }, []);
+
+  // Show direct activation toast if Google Drive API is not enabled in Google Cloud Console
+  useEffect(() => {
+    const handleDriveDisabled = (e: any) => {
+      const activationUrl =
+        e.detail?.activationUrl ||
+        "https://console.developers.google.com/apis/api/drive.googleapis.com/overview?project=758029660631";
+      toast.error(
+        isEn
+          ? "Google Drive API is disabled in your Google Cloud project."
+          : "Google Drive API belum diaktifkan di Google Cloud Console proyek Anda.",
+        {
+          description: isEn
+            ? "Click the button below to enable it in 1 click so attachments are read automatically."
+            : "Klik tombol di samping untuk mengaktifkannya di Google Cloud Console (1x klik) agar AI bisa membaca lampiran otomatis.",
+          action: {
+            label: isEn ? "Enable API" : "Aktifkan API",
+            onClick: () => window.open(activationUrl, "_blank"),
+          },
+          duration: 15000,
+        }
+      );
+    };
+    window.addEventListener("google-drive-api-disabled", handleDriveDisabled);
+    return () => window.removeEventListener("google-drive-api-disabled", handleDriveDisabled);
+  }, [isEn]);
 
   // Speech-to-Text (STT) and Text-to-Speech (TTS)
   const [isListening, setIsListening] = useState(false);
@@ -615,6 +653,16 @@ export const AIChat: React.FC<AIChatProps> = ({
     fallbackText?: string;
   } | null>(null);
   const [customizingSlides, setCustomizingSlides] = useState<CreatedSlides | null>(null);
+  // Classroom Task Details & Attachments Modal state
+  const [isTaskInfoModalOpen, setIsTaskInfoModalOpen] = useState(false);
+  const [selectedTaskForModal, setSelectedTaskForModal] = useState<TodoTask | null>(null);
+  const [isExtractingMaterials, setIsExtractingMaterials] = useState(false);
+  const [isExtractedTextExpanded, setIsExtractedTextExpanded] = useState(false);
+  const [copiedExtractedText, setCopiedExtractedText] = useState(false);
+  const [isUploadingMaterial, setIsUploadingMaterial] = useState(false);
+  const [manualTextDraft, setManualTextDraft] = useState("");
+  const [isEditingManualText, setIsEditingManualText] = useState(false);
+  const taskFileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Stop speech recognition and synthesis on unmount
   useEffect(() => {
@@ -955,6 +1003,20 @@ export const AIChat: React.FC<AIChatProps> = ({
     }
   }, [messages, isLoading, currentId]);
 
+  // Automatically pre-extract and link attachments whenever a task context is active in Chat
+  useEffect(() => {
+    if (
+      activeTask &&
+      activeTask.materials &&
+      activeTask.materials.length > 0 &&
+      (!activeTask.extractedMaterialsText || !activeTask.extractedMaterialsText.trim()) &&
+      !isExtractingMaterials &&
+      !ClassroomService.isTokenExpired()
+    ) {
+      handleExtractMaterialsForTask(activeTask, true);
+    }
+  }, [activeTask?.id, activeTask?.extractedMaterialsText]);
+
   const handleNewChat = (taskId?: string, noteId?: string) => {
     const preferredMode = userPreferences?.defaultStudyMode || currentMode || "socratic";
     const newSession = createSession(taskId, noteId, preferredMode);
@@ -1044,6 +1106,174 @@ export const AIChat: React.FC<AIChatProps> = ({
       }
     }
     setIsContextOpen(false);
+  };
+
+  const handleOpenTaskInfo = (task?: TodoTask) => {
+    const target = task || activeTask;
+    if (target) {
+      setSelectedTaskForModal(target);
+      setIsTaskInfoModalOpen(true);
+    }
+  };
+
+  const handleExtractMaterialsForTask = async (task: TodoTask, silent = false) => {
+    setIsExtractingMaterials(true);
+    try {
+      if (ClassroomService.isTokenExpired()) {
+        if (!silent) {
+          toast.error(
+            isEn
+              ? "Google Classroom session has expired (valid 1 hour). Please reconnect."
+              : "Sesi Google Classroom telah berakhir (berlaku 1 jam). Klik tombol di samping untuk login ulang Google.",
+            {
+              action: {
+                label: isEn ? "Reconnect Google" : "Login Ulang Google",
+                onClick: async () => {
+                  try {
+                    const res = await ClassroomService.requestToken();
+                    if (res?.token) {
+                      toast.success("Sesi Google berhasil diperbarui! Sedang membaca ulang berkas...");
+                      handleExtractMaterialsForTask(task);
+                    }
+                  } catch (authErr: any) {
+                    toast.error(authErr?.message || "Gagal memperbarui sesi Google.");
+                  }
+                },
+              },
+              duration: 9000,
+            }
+          );
+        }
+        setIsExtractingMaterials(false);
+        return;
+      }
+
+      const text = await extractMaterialsText(task.materials, task, true);
+      if (text && text.trim()) {
+        updateTask(task.id, { extractedMaterialsText: text });
+        const allTasks = loadTasks();
+        setTasks(allTasks);
+        setSelectedTaskForModal((prev) => (prev?.id === task.id ? { ...prev, extractedMaterialsText: text } : prev));
+        toast.success(
+          isEn
+            ? "Task materials automatically linked to AI!"
+            : "Teks lampiran Classroom otomatis terhubung ke AI!"
+        );
+      } else if (!silent) {
+        const hasToken = Boolean(ClassroomService.getStoredToken() && !ClassroomService.isTokenExpired());
+        if (hasToken) {
+          toast.error(
+            isEn
+              ? "Google Drive API restricted access to the teacher's file. You can upload the file directly."
+              : "Google Drive API membatasi akses ke berkas milik guru/sekolah. Silakan unggah berkasnya langsung di modal tugas.",
+            {
+              action: {
+                label: isEn ? "Upload File" : "Unggah Berkas",
+                onClick: () => {
+                  setSelectedTaskForModal(task);
+                  setIsTaskInfoModalOpen(true);
+                  setTimeout(() => taskFileInputRef.current?.click(), 300);
+                },
+              },
+              duration: 10000,
+            }
+          );
+        } else {
+          toast.error(
+            isEn
+              ? "Google session has expired. Please reconnect."
+              : "Sesi Google Classroom kedaluwarsa. Silakan login ulang.",
+            {
+              action: {
+                label: isEn ? "Reconnect Google" : "Login Ulang Google",
+                onClick: async () => {
+                  try {
+                    const res = await ClassroomService.requestToken();
+                    if (res?.token) {
+                      toast.success("Sesi Google berhasil diperbarui! Sedang membaca ulang berkas...");
+                      handleExtractMaterialsForTask(task);
+                    }
+                  } catch (authErr: any) {
+                    toast.error(authErr?.message || "Gagal menghubungkan Google.");
+                  }
+                },
+              },
+              duration: 9000,
+            }
+          );
+        }
+      }
+    } catch (e) {
+      if (!silent) {
+        console.error(e);
+        toast.error(isEn ? "Error reading materials" : "Terjadi kesalahan saat membaca berkas lampiran.");
+      }
+    } finally {
+      setIsExtractingMaterials(false);
+    }
+  };
+
+  const handleUploadMaterialFile = async (e: React.ChangeEvent<HTMLInputElement>, task: TodoTask) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingMaterial(true);
+    try {
+      const userProfile = ClassroomService.getUserProfile();
+      const res = await uploadAndParseDocument(file, task.id, userProfile?.email);
+      if (res?.content && res.content.trim()) {
+        const enrichedText = (task.extractedMaterialsText ? task.extractedMaterialsText + "\n\n" : "") +
+          `[Isi Berkas Diunggah: "${res.name}"]:\n` + res.content;
+        updateTask(task.id, { extractedMaterialsText: enrichedText });
+        setTasks(loadTasks());
+        setSelectedTaskForModal((prev) => (prev?.id === task.id ? { ...prev, extractedMaterialsText: enrichedText } : prev));
+        toast.success(isEn ? `File ${res.name} extracted successfully!` : `Berkas ${res.name} berhasil diekstrak dan terhubung ke AI!`);
+      }
+    } catch (err: any) {
+      toast.error(err?.message || (isEn ? "Failed to parse uploaded file" : "Gagal mengekstrak berkas yang diunggah."));
+    } finally {
+      setIsUploadingMaterial(false);
+      if (taskFileInputRef.current) taskFileInputRef.current.value = "";
+    }
+  };
+
+  const handleSaveManualText = (task: TodoTask) => {
+    if (!manualTextDraft.trim()) {
+      toast.info(isEn ? "Text cannot be empty" : "Teks materi tidak boleh kosong");
+      return;
+    }
+    const enrichedText = (task.extractedMaterialsText ? task.extractedMaterialsText + "\n\n" : "") +
+      `[Catatan/Teks Tambahan Pengguna]:\n` + manualTextDraft.trim();
+    updateTask(task.id, { extractedMaterialsText: enrichedText });
+    setTasks(loadTasks());
+    setSelectedTaskForModal((prev) => (prev?.id === task.id ? { ...prev, extractedMaterialsText: enrichedText } : prev));
+    setIsEditingManualText(false);
+    setManualTextDraft("");
+    toast.success(isEn ? "Material text saved successfully!" : "Teks materi berhasil disimpan ke tugas!");
+  };
+
+  const handleClearExtractedText = (task: TodoTask) => {
+    updateTask(task.id, { extractedMaterialsText: "" });
+    setTasks(loadTasks());
+    setSelectedTaskForModal((prev) => (prev?.id === task.id ? { ...prev, extractedMaterialsText: "" } : prev));
+    toast.info(isEn ? "Extracted text reset" : "Teks lampiran tugas telah direset.");
+  };
+
+  const handleCopyExtractedText = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedExtractedText(true);
+    toast.success(isEn ? "Extracted text copied" : "Teks materi berhasil disalin");
+    setTimeout(() => setCopiedExtractedText(false), 2000);
+  };
+
+  const handleApplyTaskPrompt = (promptText: string, taskId?: string) => {
+    if (taskId && current?.taskId !== taskId) {
+      handleSelectTaskContext(taskId);
+    }
+    setInputPrompt(promptText);
+    setIsTaskInfoModalOpen(false);
+    setTimeout(() => {
+      textareaRef.current?.focus();
+    }, 150);
   };
 
   const handleDeleteSession = (sessionId: string, e: React.MouseEvent) => {
@@ -2731,15 +2961,31 @@ export const AIChat: React.FC<AIChatProps> = ({
           <div className="flex items-center gap-1.5 flex-wrap">
             {activeTask ? (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/40">
-                <BookOpen className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                <span className="max-w-[180px] sm:max-w-[240px] truncate">
-                  {activeTask.title}
-                </span>
+                <button
+                  type="button"
+                  onClick={() => handleOpenTaskInfo(activeTask)}
+                  className="flex items-center gap-1.5 hover:text-indigo-900 dark:hover:text-white transition cursor-pointer text-left"
+                  title={isEn ? "View task description & attachments" : "Lihat deskripsi tugas & lampiran"}
+                >
+                  <BookOpen className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                  <span className="max-w-[130px] sm:max-w-[200px] truncate">
+                    {activeTask.title}
+                  </span>
+                  {activeTask.materials && activeTask.materials.length > 0 && (
+                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full text-[10px] bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 font-bold shrink-0">
+                      <Paperclip className="w-2.5 h-2.5" />
+                      <span>{activeTask.materials.length}</span>
+                    </span>
+                  )}
+                  <span className="text-[10px] font-medium text-indigo-500 dark:text-indigo-400 underline underline-offset-2 ml-0.5">
+                    {isEn ? "View" : "Lihat"}
+                  </span>
+                </button>
                 <button
                   type="button"
                   onClick={() => handleSelectTaskContext(undefined)}
-                  className="hover:text-rose-500 ml-0.5 cursor-pointer"
-                  title="Lepas konteks tugas"
+                  className="hover:text-rose-500 ml-1 text-slate-400 dark:text-slate-500 cursor-pointer p-0.5"
+                  title={isEn ? "Remove task context" : "Lepas konteks tugas"}
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -3361,20 +3607,36 @@ export const AIChat: React.FC<AIChatProps> = ({
                           </p>
                         ) : (
                           tasks.map((t) => (
-                            <button
+                            <div
                               key={t.id}
-                              type="button"
-                              onClick={() => handleSelectTaskContext(t.id)}
-                              className={`w-full text-left px-2.5 py-2 rounded-xl transition truncate cursor-pointer ${activeTask?.id === t.id
+                              className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl transition group ${activeTask?.id === t.id
                                 ? "bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 font-semibold"
                                 : "hover:bg-slate-100 dark:hover:bg-[#222] text-slate-700 dark:text-[#ccc]"
                                 }`}
                             >
-                              <div className="font-semibold truncate">{t.title}</div>
-                              <div className="text-xs text-slate-400 truncate">
-                                {t.courseName || "Classroom"}
-                              </div>
-                            </button>
+                              <button
+                                type="button"
+                                onClick={() => handleSelectTaskContext(t.id)}
+                                className="flex-1 text-left truncate cursor-pointer pr-1"
+                              >
+                                <div className="font-semibold truncate text-xs">{t.title}</div>
+                                <div className="text-[11px] text-slate-400 truncate">
+                                  {t.courseName || "Classroom"}
+                                  {t.materials && t.materials.length > 0 && ` • ${t.materials.length} Lampiran`}
+                                </div>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenTaskInfo(t);
+                                }}
+                                className="p-1 rounded-lg text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-200/60 dark:hover:bg-[#303030] transition cursor-pointer shrink-0"
+                                title={isEn ? "View task details & attachments" : "Lihat detail tugas & lampiran"}
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           ))
                         )
                       ) : notes.length === 0 ? (
@@ -3631,9 +3893,20 @@ export const AIChat: React.FC<AIChatProps> = ({
                       </span>
                     )}
                   </div>
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-[#f0f0f0]">
-                    {activeTask.title}
-                  </h3>
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-[#f0f0f0] leading-snug">
+                      {activeTask.title}
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenTaskInfo(activeTask)}
+                      className="px-2 py-1 rounded-lg text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 transition cursor-pointer shrink-0 flex items-center gap-1"
+                      title="Buka tampilan modal lengkap"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Detail</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Quick Prompts to discuss this task with AI */}
@@ -3682,28 +3955,65 @@ export const AIChat: React.FC<AIChatProps> = ({
                 {/* Task Materials / Attachments */}
                 {activeTask.materials && activeTask.materials.length > 0 && (
                   <div className="p-4 rounded-2xl bg-white dark:bg-[#161616] border border-slate-200/80 dark:border-[#262626] space-y-2">
-                    <h4 className="text-xs font-bold text-slate-700 dark:text-[#ddd]">
-                      Lampiran & Materi Tugas
-                    </h4>
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-bold text-slate-700 dark:text-[#ddd]">
+                        Lampiran & Materi Tugas
+                      </h4>
+                      {activeTask.extractedMaterialsText ? (
+                        <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
+                          <Check className="w-3 h-3" /> Terbaca oleh AI
+                        </span>
+                      ) : null}
+                    </div>
                     <div className="space-y-1.5">
                       {activeTask.materials.map((m, idx) => {
                         const fileLink = m.driveFile?.driveFile?.alternateLink || m.link?.url || m.youtubeVideo?.alternateLink || activeTask.classroomLink || "#";
                         const fileTitle = m.driveFile?.driveFile?.title || m.link?.title || m.youtubeVideo?.title || "Lampiran Materi";
                         return (
-                          <a
+                          <div
                             key={idx}
-                            href={fileLink}
-                            target="_blank"
-                            rel="noreferrer"
                             className="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-[#1f1f1f] hover:bg-indigo-50 dark:hover:bg-indigo-950/40 border border-slate-200/60 dark:border-[#2a2a2a] text-xs text-slate-700 dark:text-[#ccc] transition"
                           >
-                            <span className="truncate pr-2 font-medium">
-                              {fileTitle}
-                            </span>
-                            <ExternalLink className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          </a>
+                            <a
+                              href={fileLink}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="truncate pr-2 font-medium hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center gap-1.5 min-w-0"
+                            >
+                              <span className="truncate">{fileTitle}</span>
+                              <ExternalLink className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                            </a>
+                            {activeTask.extractedMaterialsText ? (
+                              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 shrink-0 font-medium">
+                                Siap dianalisis
+                              </span>
+                            ) : null}
+                          </div>
                         );
                       })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Extracted Material Text Preview in Split Workspace */}
+                {activeTask.extractedMaterialsText && (
+                  <div className="p-4 rounded-2xl bg-white dark:bg-[#161616] border border-slate-200/80 dark:border-[#262626] space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-bold text-slate-700 dark:text-[#ddd] flex items-center gap-1.5">
+                        <IonLearnAIIcon className="w-3.5 h-3.5 text-indigo-500" />
+                        <span>Teks Lampiran Terbaca AI</span>
+                      </h4>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyExtractedText(activeTask.extractedMaterialsText!)}
+                        className="text-[11px] text-slate-500 hover:text-indigo-600 dark:text-slate-400 flex items-center gap-1 cursor-pointer"
+                      >
+                        <Copy className="w-3 h-3" />
+                        <span>Salin</span>
+                      </button>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-[#111] text-[11px] font-mono text-slate-700 dark:text-[#bbb] max-h-48 overflow-y-auto whitespace-pre-wrap select-text leading-relaxed border border-slate-200/70 dark:border-[#222]">
+                      {activeTask.extractedMaterialsText}
                     </div>
                   </div>
                 )}
@@ -3864,6 +4174,30 @@ export const AIChat: React.FC<AIChatProps> = ({
               )}
             </div>
 
+            {/* Center: Floating Active Task Capsule */}
+            {activeTask && (
+              <div className="pointer-events-auto flex items-center gap-1.5">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  type="button"
+                  onClick={() => handleOpenTaskInfo(activeTask)}
+                  className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-white/90 dark:bg-[#181818]/90 hover:bg-white dark:hover:bg-[#222] border border-indigo-200/80 dark:border-indigo-900/50 shadow-xs backdrop-blur-md text-indigo-700 dark:text-indigo-300 hover:text-indigo-900 dark:hover:text-white transition cursor-pointer text-xs font-semibold"
+                  title={isEn ? "View Classroom Task Details & Attachments" : "Lihat Deskripsi & Lampiran Tugas Classroom"}
+                >
+                  <BookOpen className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                  <span className="max-w-[120px] sm:max-w-[220px] truncate">{activeTask.title}</span>
+                  {activeTask.materials && activeTask.materials.length > 0 && (
+                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] bg-indigo-50 dark:bg-indigo-950/70 border border-indigo-200/80 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 font-bold shrink-0">
+                      <Paperclip className="w-2.5 h-2.5" />
+                      {activeTask.materials.length}
+                    </span>
+                  )}
+                  <Eye className="w-3 h-3 text-indigo-500 opacity-80 shrink-0 hidden sm:inline" />
+                </motion.button>
+              </div>
+            )}
+
             {/* Right: Floating Riwayat button (for 'minimal' & 'split' modes, or on mobile in 'sidebar' mode) */}
             <div className="pointer-events-auto flex items-center gap-1.5">
               {layoutMode !== "sidebar" ? (
@@ -3953,6 +4287,47 @@ export const AIChat: React.FC<AIChatProps> = ({
                   ? (isEn ? `AI is ready to review material, summarize key points, and quiz your understanding.` : `AI siap mengulas materi, merangkum poin penting, dan menguji pemahaman catatan ini.`)
                   : (isEn ? `Ask about formulas, tough concepts, request summaries, or attach course files.` : `Tanyakan rumus, konsep sulit, minta rangkuman, atau lampirkan dokumen materi.`)}
             </p>
+
+            {/* Active Task Preview Banner in Hero Empty State */}
+            {activeTask && (
+              <div className="w-full mb-5 p-3.5 sm:p-4 rounded-2xl bg-indigo-50/70 dark:bg-[#161616] border border-indigo-200/80 dark:border-indigo-900/40 shadow-xs text-left animate-in fade-in duration-200">
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                    <span className="px-2 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 text-[11px] font-bold truncate">
+                      {activeTask.courseName || "Classroom"}
+                    </span>
+                    {activeTask.materials && activeTask.materials.length > 0 && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white dark:bg-[#202020] border border-indigo-200/70 dark:border-[#303030] text-[11px] font-medium text-slate-700 dark:text-[#ccc]">
+                        <Paperclip className="w-3 h-3 text-indigo-500" />
+                        <span>{activeTask.materials.length} Lampiran</span>
+                      </span>
+                    )}
+                    {activeTask.extractedMaterialsText && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/40 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                        <Check className="w-3 h-3" /> Terbaca oleh AI
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenTaskInfo(activeTask)}
+                    className="inline-flex items-center gap-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 shrink-0 cursor-pointer"
+                  >
+                    <span>{isEn ? "View Details" : "Lihat Deskripsi & Lampiran"}</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                {activeTask.description ? (
+                  <p className="text-xs text-slate-600 dark:text-[#a0a0a0] line-clamp-2 leading-relaxed">
+                    {activeTask.description}
+                  </p>
+                ) : (
+                  <p className="text-xs text-slate-400 italic">
+                    Materi dan pertanyaan terlampir pada berkas dokumen tugas ini.
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* CENTERED INPUT BAR */}
             <div className="w-full mb-6 text-left">
@@ -5388,6 +5763,453 @@ export const AIChat: React.FC<AIChatProps> = ({
           toast.success(msg);
         }}
       />
+
+      {/* ── 8. Classroom Task Details & Attachments Modal ── */}
+      {isTaskInfoModalOpen && (() => {
+        const modalTask = selectedTaskForModal || activeTask;
+        if (!modalTask) return null;
+
+        const hasMaterials = modalTask.materials && modalTask.materials.length > 0;
+        const hasExtractedText = Boolean(modalTask.extractedMaterialsText && modalTask.extractedMaterialsText.trim());
+        const formattedDate = (modalTask.dueTimestamp || modalTask.dueDateStr)
+          ? new Date(modalTask.dueTimestamp || modalTask.dueDateStr || "").toLocaleDateString("id-ID", {
+              weekday: "long",
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+          : null;
+
+        return (
+          <div
+            className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200"
+            onClick={() => setIsTaskInfoModalOpen(false)}
+          >
+            <div
+              className="w-full max-w-2xl my-auto rounded-3xl overflow-hidden shadow-2xl bg-white dark:bg-[#151515] border border-slate-200/80 dark:border-[#2a2a2a] flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-start justify-between p-5 sm:p-6 border-b border-slate-100 dark:border-[#242424] bg-slate-50/60 dark:bg-[#191919]">
+                <div className="space-y-2 min-w-0 pr-3">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/40">
+                      {modalTask.courseName || "Google Classroom"}
+                    </span>
+                    {formattedDate && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs text-slate-500 dark:text-[#999] bg-white dark:bg-[#202020] border border-slate-200/60 dark:border-[#2c2c2c]">
+                        <Clock className="w-3 h-3 text-slate-400" />
+                        <span>{formattedDate}</span>
+                      </span>
+                    )}
+                    {modalTask.points !== undefined && (
+                      <span className="px-2 py-0.5 rounded-lg text-xs font-semibold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/40">
+                        {modalTask.points} Poin
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white leading-snug">
+                    {modalTask.title}
+                  </h3>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  {modalTask.classroomLink && (
+                    <a
+                      href={modalTask.classroomLink}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white dark:bg-[#222] hover:bg-slate-100 dark:hover:bg-[#2a2a2a] text-slate-700 dark:text-[#ccc] border border-slate-200/70 dark:border-[#303030] transition cursor-pointer"
+                    >
+                      <Globe className="w-3.5 h-3.5 text-indigo-500" />
+                      <span>Classroom</span>
+                      <ExternalLink className="w-3 h-3 text-slate-400" />
+                    </a>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setIsTaskInfoModalOpen(false)}
+                    className="w-8 h-8 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-[#eee] hover:bg-slate-200/60 dark:hover:bg-[#252525] flex items-center justify-center transition cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Scrollable Body */}
+              <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5 select-text">
+                {/* 1. Deskripsi & Instruksi Tugas */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    <FileText className="w-4 h-4 text-indigo-500" />
+                    <span>Deskripsi & Instruksi Tugas</span>
+                  </div>
+                  {modalTask.description && modalTask.description.trim() ? (
+                    <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#191919] border border-slate-200/70 dark:border-[#262626] text-xs sm:text-sm text-slate-700 dark:text-[#ccc] leading-relaxed whitespace-pre-wrap select-text">
+                      {modalTask.description}
+                    </div>
+                  ) : (
+                    <div className="p-4 rounded-2xl bg-slate-50/50 dark:bg-[#181818] border border-dashed border-slate-200 dark:border-[#282828] text-xs text-slate-400 dark:text-slate-500 italic">
+                      Guru tidak memberikan instruksi teks tambahan pada deskripsi tugas ini. Seluruh materi dan pertanyaan berada pada berkas lampiran di bawah.
+                    </div>
+                  )}
+                </div>
+
+                {/* 2. Lampiran & Materi Classroom */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    <div className="flex items-center gap-2">
+                      <Paperclip className="w-4 h-4 text-indigo-500" />
+                      <span>Lampiran & Berkas Classroom</span>
+                    </div>
+                    {hasMaterials && (
+                      <span className="text-[11px] font-semibold text-slate-400 lowercase">
+                        {modalTask.materials!.length} berkas
+                      </span>
+                    )}
+                  </div>
+
+                  {hasMaterials ? (
+                    <div className="space-y-2">
+                      {modalTask.materials!.map((m, idx) => {
+                        const fileLink = m.driveFile?.driveFile?.alternateLink || m.link?.url || m.youtubeVideo?.alternateLink || modalTask.classroomLink || "#";
+                        const fileTitle = m.driveFile?.driveFile?.title || m.link?.title || m.youtubeVideo?.title || "Lampiran Materi";
+                        const badge = getFileFormatBadge(fileTitle, m.youtubeVideo ? "youtube" : undefined);
+
+                        return (
+                          <div
+                            key={idx}
+                            className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-[#1a1a1a] hover:bg-slate-100/80 dark:hover:bg-[#202020] border border-slate-200/70 dark:border-[#2a2a2a] transition gap-2"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                              <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold shrink-0 ${badge.badgeClass}`}>
+                                {badge.label}
+                              </span>
+                              <span className="text-xs font-semibold text-slate-800 dark:text-[#ddd] truncate">
+                                {fileTitle}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+                              {hasExtractedText ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800">
+                                  <Check className="w-3 h-3" /> Terbaca oleh AI
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => handleExtractMaterialsForTask(modalTask)}
+                                  disabled={isExtractingMaterials}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 border border-indigo-200 dark:border-indigo-800 transition cursor-pointer"
+                                >
+                                  {isExtractingMaterials ? (
+                                    <>
+                                      <Loader2 className="w-3 h-3 animate-spin" />
+                                      <span>Membaca...</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <IonLearnAIIcon className="w-3 h-3" />
+                                      <span>Baca Teks dengan AI</span>
+                                    </>
+                                  )}
+                                </button>
+                              )}
+
+                              <a
+                                href={fileLink}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium text-slate-600 dark:text-[#aaa] hover:text-indigo-600 dark:hover:text-indigo-400 bg-white dark:bg-[#252525] border border-slate-200 dark:border-[#333] transition"
+                              >
+                                <span>Buka File</span>
+                                <ExternalLink className="w-3 h-3 text-slate-400" />
+                              </a>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="p-4 rounded-2xl bg-slate-50/50 dark:bg-[#181818] border border-dashed border-slate-200 dark:border-[#282828] text-xs text-slate-400 dark:text-slate-500 italic">
+                      Tidak ada dokumen lampiran pada tugas ini.
+                    </div>
+                  )}
+
+                  {/* Hidden file input for direct document upload */}
+                  <input
+                    ref={taskFileInputRef}
+                    type="file"
+                    accept=".pdf,.docx,.doc,.pptx,.ppt,.xlsx,.xls,.csv,.txt"
+                    className="hidden"
+                    onChange={(e) => handleUploadMaterialFile(e, modalTask)}
+                  />
+
+                  {/* Direct Upload & Manual Paste Option Box */}
+                  <div className="p-3.5 rounded-2xl bg-slate-50/80 dark:bg-[#191919] border border-dashed border-slate-300 dark:border-[#333] space-y-2.5">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                      <div className="space-y-0.5">
+                        <div className="text-xs font-bold text-slate-800 dark:text-[#eee] flex items-center gap-1.5">
+                          <Upload className="w-3.5 h-3.5 text-indigo-500" />
+                          <span>Unggah Berkas / Tempel Soal Manual</span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 dark:text-[#888] leading-tight">
+                          Gunakan opsi ini jika Google Drive membatasi akses ke berkas guru atau jika berkas ada di komputermu.
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => taskFileInputRef.current?.click()}
+                          disabled={isUploadingMaterial}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xs transition cursor-pointer disabled:opacity-50"
+                        >
+                          {isUploadingMaterial ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              <span>Mengekstrak...</span>
+                            </>
+                          ) : (
+                            <>
+                              <FileUp className="w-3.5 h-3.5" />
+                              <span>Unggah Berkas</span>
+                            </>
+                          )}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setIsEditingManualText(!isEditingManualText)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-white dark:bg-[#252525] border border-slate-200 dark:border-[#333] text-slate-700 dark:text-[#ccc] hover:bg-slate-100 dark:hover:bg-[#2c2c2c] transition cursor-pointer"
+                        >
+                          <Edit3 className="w-3 h-3 text-slate-400" />
+                          <span>{isEditingManualText ? "Tutup" : "Tempel Teks"}</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {isEditingManualText && (
+                      <div className="space-y-2 pt-1 animate-in fade-in duration-150">
+                        <textarea
+                          value={manualTextDraft}
+                          onChange={(e) => setManualTextDraft(e.target.value)}
+                          placeholder="Tempel soal, pertanyaan, instruksi, atau ringkasan dokumen dari Classroom di sini agar AI dapat menjawabnya..."
+                          className="w-full h-24 p-3 rounded-xl bg-white dark:bg-[#141414] border border-slate-200 dark:border-[#333] text-xs text-slate-800 dark:text-slate-200 focus:outline-hidden focus:ring-1 focus:ring-indigo-500 resize-none leading-relaxed placeholder:text-slate-400"
+                        />
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsEditingManualText(false);
+                              setManualTextDraft("");
+                            }}
+                            className="px-3 py-1 text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition cursor-pointer"
+                          >
+                            Batal
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleSaveManualText(modalTask)}
+                            disabled={!manualTextDraft.trim()}
+                            className="px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white transition cursor-pointer disabled:opacity-40"
+                          >
+                            Simpan ke AI
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 3. Pratinjau Teks Dokumen yang Diekstrak AI */}
+                {hasExtractedText ? (
+                  <div className="p-4 rounded-2xl bg-indigo-50/40 dark:bg-[#181818] border border-indigo-100 dark:border-[#282828] space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <IonLearnAIIcon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                        <h4 className="text-xs font-bold text-slate-800 dark:text-[#eee]">
+                          Teks Lampiran Terhubung ke AI ({modalTask.extractedMaterialsText!.length.toLocaleString("id-ID")} Karakter)
+                        </h4>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleCopyExtractedText(modalTask.extractedMaterialsText!)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium text-slate-600 dark:text-[#aaa] hover:text-slate-900 dark:hover:text-white bg-white dark:bg-[#222] border border-slate-200 dark:border-[#333] transition cursor-pointer"
+                        >
+                          {copiedExtractedText ? (
+                            <>
+                              <Check className="w-3 h-3 text-emerald-500" />
+                              <span>Tersalin</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3 h-3" />
+                              <span>Salin Teks</span>
+                            </>
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setIsExtractedTextExpanded(!isExtractedTextExpanded)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium text-indigo-600 dark:text-indigo-400 bg-white dark:bg-[#222] border border-indigo-200/70 dark:border-[#333] transition cursor-pointer"
+                        >
+                          <span>{isExtractedTextExpanded ? "Sembunyikan" : "Buka Teks"}</span>
+                          <ChevronDown className={`w-3 h-3 transition-transform ${isExtractedTextExpanded ? "rotate-180" : ""}`} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleClearExtractedText(modalTask)}
+                          title="Hapus / Reset teks lampiran"
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <p className="text-[11px] text-slate-500 dark:text-[#888] leading-relaxed">
+                      AI dapat membaca seluruh pertanyaan, instruksi, dan isi dokumen ini secara langsung saat menjawab pertanyaanmu.
+                    </p>
+
+                    {isExtractedTextExpanded && (
+                      <div className="p-3.5 rounded-xl bg-slate-900 text-slate-200 font-mono text-xs max-h-72 overflow-y-auto whitespace-pre-wrap select-text leading-relaxed border border-slate-800 dark:border-[#222]">
+                        {modalTask.extractedMaterialsText}
+                      </div>
+                    )}
+                  </div>
+                ) : hasMaterials ? (
+                  <div className="p-4 rounded-2xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40 flex items-center justify-between gap-3">
+                    <div className="space-y-0.5">
+                      <div className="text-xs font-bold text-amber-800 dark:text-amber-300">
+                        Teks lampiran belum diekstrak
+                      </div>
+                      <div className="text-[11px] text-amber-700/80 dark:text-amber-400/80">
+                        Ekstrak teks otomatis atau unggah berkas agar AI dapat membaca soal dan materi langsung.
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleExtractMaterialsForTask(modalTask)}
+                        disabled={isExtractingMaterials}
+                        className="px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-2xs transition cursor-pointer flex items-center gap-1.5"
+                      >
+                        {isExtractingMaterials ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <IonLearnAIIcon className="w-3.5 h-3.5" />}
+                        <span>Baca Otomatis</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => taskFileInputRef.current?.click()}
+                        disabled={isUploadingMaterial}
+                        className="px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xs transition cursor-pointer flex items-center gap-1.5"
+                      >
+                        <FileUp className="w-3.5 h-3.5" />
+                        <span>Unggah Berkas</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+
+                {/* 4. Aksi Cepat Bimbingan AI */}
+                <div className="space-y-2 pt-1">
+                  <div className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    Aksi Bimbingan AI untuk Tugas Ini
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleApplyTaskPrompt(
+                          `Jawab dan analisis seluruh pertanyaan yang ada pada lampiran tugas "${modalTask.title}" secara lengkap dan bertahap.`,
+                          modalTask.id
+                        )
+                      }
+                      className="p-3 rounded-2xl bg-slate-50 dark:bg-[#1a1a1a] hover:bg-indigo-50/70 dark:hover:bg-indigo-950/40 border border-slate-200/70 dark:border-[#2a2a2a] hover:border-indigo-500/60 text-left transition cursor-pointer space-y-1 group"
+                    >
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-[#eee] group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
+                        <FileText className="w-3.5 h-3.5 text-indigo-500" />
+                        <span>Jawab Pertanyaan</span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-[#888] line-clamp-2 leading-relaxed">
+                        Jawab pertanyaan analisis dari lampiran dokumen
+                      </p>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleApplyTaskPrompt(
+                          `Jelaskan konsep utama dan langkah-langkah untuk mengerjakan tugas "${modalTask.title}".`,
+                          modalTask.id
+                        )
+                      }
+                      className="p-3 rounded-2xl bg-slate-50 dark:bg-[#1a1a1a] hover:bg-indigo-50/70 dark:hover:bg-indigo-950/40 border border-slate-200/70 dark:border-[#2a2a2a] hover:border-indigo-500/60 text-left transition cursor-pointer space-y-1 group"
+                    >
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-[#eee] group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
+                        <IonLearnAIIcon className="w-3.5 h-3.5 text-indigo-500" />
+                        <span>Bimbing Langkah</span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-[#888] line-clamp-2 leading-relaxed">
+                        Bimbingan bertahap pengerjaan tugas oleh AI
+                      </p>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleApplyTaskPrompt(
+                          `Buatkan rangkuman intisari materi dan poin penting dari tugas "${modalTask.title}".`,
+                          modalTask.id
+                        )
+                      }
+                      className="p-3 rounded-2xl bg-slate-50 dark:bg-[#1a1a1a] hover:bg-indigo-50/70 dark:hover:bg-indigo-950/40 border border-slate-200/70 dark:border-[#2a2a2a] hover:border-indigo-500/60 text-left transition cursor-pointer space-y-1 group"
+                    >
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-[#eee] group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
+                        <Brain className="w-3.5 h-3.5 text-indigo-500" />
+                        <span>Rangkum Materi</span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-[#888] line-clamp-2 leading-relaxed">
+                        Poin kunci & intisari untuk belajar
+                      </p>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="flex items-center justify-between p-4 sm:p-5 bg-slate-50/80 dark:bg-[#181818] border-t border-slate-100 dark:border-[#242424]">
+                <div>
+                  {activeTask?.id !== modalTask.id && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleSelectTaskContext(modalTask.id);
+                        toast.success(`Konteks tugas diatur ke: "${modalTask.title}"`);
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 transition cursor-pointer"
+                    >
+                      <BookOpen className="w-3.5 h-3.5" />
+                      <span>Jadikan Konteks Aktif di Chat</span>
+                    </button>
+                  )}
+                </div>
+
+                <Button
+                  onClick={() => setIsTaskInfoModalOpen(false)}
+                  variant="outline"
+                  className="rounded-xl text-xs font-semibold px-4 h-9 cursor-pointer"
+                >
+                  Tutup
+                </Button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };

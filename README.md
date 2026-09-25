@@ -83,7 +83,7 @@ IOnLearn was purposefully engineered to embody this theme by bridging cutting-ed
 - **Google Classroom Integration**: One-click synchronization for enrolled courses, assignments (`courseWork`), instructions, due dates, classroom materials, and submission statuses (`turned in`, `assigned`, `late`).
 - **Socratic AI Study Companion**:
   - **Step-by-Step Guided Reasoning**: Helps students dissect complex problems, understand core principles, and arrive at answers independently.
-  - **Attachment & Document Ingestion**: Reads PDFs, slide decks, and documents attached to Classroom assignments so tutoring is grounded directly in official course materials.
+  - **Automated Multi-Format Attachment Ingestion**: Automatically extracts and links attached coursework materials (PDFs via workerless `unpdf`, Word `.docx`, PowerPoint `.pptx`, Excel `.xlsx`, and Google Workspace files) directly from Google Classroom so tutoring is grounded in official syllabus documents.
   - **Adaptive Study Modes**: Automatically generates topic summaries, review flashcards, practice quizzes, and simplified conceptual breakdowns.
 - **Comprehensive Academic Personalization Onboarding**: Interactive 19-step pedagogical questionnaire for first-time learners that calibrates education level, field of study, learning style, note preferences, and Socratic AI tutor persona.
 - **Adaptive Language & Geolocation Engine**: Automatically detects user timezone and browser locale to default to Indonesian or English, with instant manual toggle in Settings.
@@ -335,6 +335,7 @@ OPENAI_MODEL="qwen2.5:7b"                       # Model tag available in your lo
 - **Framework**: Next.js 16+ (App Router), React 19, TypeScript
 - **Styling & UI**: Tailwind CSS, Lucide React, Radix UI, Sonner (Toasts)
 - **Backend & APIs**: Next.js Server Route Handlers, `@google/genai`, standard Fetch API
+- **Document & Material Parsing**: `unpdf` (workerless server/edge PDF parser), `jszip` (`.docx` & `.pptx`), `xlsx` (spreadsheets), `docx`, `pptxgenjs`
 - **Authentication & Database**: Firebase Authentication (Google OAuth 2.0) and Cloud Firestore
 - **External APIs**: Google Classroom API (v1), Google Drive API (v3)
 
@@ -344,7 +345,7 @@ OPENAI_MODEL="qwen2.5:7b"                       # Model tag available in your lo
 
 ### Prerequisites
 - Node.js 18.18+ or 20+
-- A Google Cloud project with Google Classroom API and Firebase enabled
+- A Google Cloud project with Google Classroom API, Google Drive API, and Firebase enabled
 - A Google AI Studio API key (for Gemini) or a running local LLM instance (Ollama, LM Studio)
 
 ### 1. Clone the Repository
@@ -397,15 +398,20 @@ NEXT_PUBLIC_FIREBASE_OAUTH_CLIENT_ID="xxxx.apps.googleusercontent.com"
 1. **Firebase Authentication**:
    - In Firebase Console, go to **Authentication** -> **Sign-in method**.
    - Enable the **Google** provider.
-2. **Google Cloud Console**:
-   - Under **APIs & Services** -> **Library**, enable **Google Classroom API** and **Google Drive API**.
-   - Under **OAuth consent screen**, configure the following read-only scopes:
-     - `.../auth/classroom.courses.readonly`
-     - `.../auth/classroom.student-submissions.me.readonly`
-     - `.../auth/classroom.courseworkmaterials.readonly`
-     - `.../auth/drive.readonly`
-     - `.../auth/userinfo.email`
-     - `.../auth/userinfo.profile`
+2. **Google Cloud Console (Enabling Required APIs)**:
+   - Go to [Google Cloud Console](https://console.cloud.google.com/) and select your project.
+   - Under **APIs & Services** -> **Library**, search and **ENABLE** the following two APIs:
+     1. **Google Classroom API**: Required to synchronize courses, coursework, assignments, and due dates.
+     2. **Google Drive API** *(Mandatory)*: Required for the AI to automatically read and parse course attachments (PDF, Word `.docx`, PowerPoint `.pptx`, Excel `.xlsx`, and Google Docs/Sheets) in the background without forcing students to manually download and upload files.
+        > 💡 **Quick Activation Link**: `https://console.developers.google.com/apis/api/drive.googleapis.com/overview?project=YOUR_PROJECT_NUMBER`
+   - Under **OAuth consent screen** -> **Scopes**, ensure the following read-only scopes are added:
+     - `https://www.googleapis.com/auth/classroom.courses.readonly`
+     - `https://www.googleapis.com/auth/classroom.coursework.me.readonly`
+     - `https://www.googleapis.com/auth/classroom.student-submissions.me.readonly`
+     - `https://www.googleapis.com/auth/classroom.courseworkmaterials.readonly`
+     - `https://www.googleapis.com/auth/drive.readonly` (required to read coursework file attachments)
+     - `https://www.googleapis.com/auth/userinfo.email`
+     - `https://www.googleapis.com/auth/userinfo.profile`
 3. **Cloud Firestore Security Rules**:
    Apply these rules to restrict database access to authenticated resource owners:
    ```javascript

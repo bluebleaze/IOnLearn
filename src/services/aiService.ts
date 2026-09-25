@@ -11,17 +11,19 @@ import {
 import { ClassroomService } from "./classroomService";
 import { parseGoogleWorkspaceUrl } from "../lib/workspaceUtils";
 import { extractYouTubeUrls, isYouTubeUrl, parseYouTubeUrl } from "../lib/youtubeUtils";
+import { updateTask } from "../lib/taskStore";
 
 export async function readDriveFileContent(
     token: string | null,
     fileId?: string | null,
-    url?: string | null
+    url?: string | null,
+    fileName?: string | null
 ): Promise<string | null> {
     try {
         const res = await fetch("/api/drive/read", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ token, fileId, url }),
+            body: JSON.stringify({ token, fileId, url, fileName }),
         });
         if (res.ok) {
             const data = await res.json();
@@ -31,6 +33,34 @@ export async function readDriveFileContent(
     } catch (e) {
         console.error("Failed to read drive/URL file via backend", e);
         return null;
+    }
+}
+
+export async function uploadAndParseDocument(
+    file: File,
+    taskId?: string,
+    userEmail?: string
+): Promise<{ content: string; name: string } | null> {
+    try {
+        const formData = new FormData();
+        formData.append("file", file);
+        if (taskId) formData.append("taskId", taskId);
+        if (userEmail) formData.append("userEmail", userEmail);
+
+        const res = await fetch("/api/drive/upload-parse", {
+            method: "POST",
+            body: formData,
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            return { content: data.content, name: data.name };
+        }
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Gagal mengekstrak berkas.");
+    } catch (err: any) {
+        console.error("Upload & parse error:", err);
+        throw err;
     }
 }
 
@@ -46,30 +76,54 @@ export function extractDriveFileId(urlStr?: string): string | null {
     }
 }
 
-async function extractMaterialsText(materials?: any[]): Promise<string> {
+export async function extractMaterialsText(
+    materials?: any[],
+    taskContext?: Partial<TodoTask>,
+    forceRefresh = false
+): Promise<string> {
+    if (!forceRefresh && taskContext?.extractedMaterialsText && taskContext.extractedMaterialsText.trim()) {
+        return taskContext.extractedMaterialsText;
+    }
     if (!materials || !Array.isArray(materials)) return "";
     const token = ClassroomService.getStoredToken();
 
     let extracted = "";
     let processed = 0;
     for (const m of materials) {
-        if (processed >= 3) break;
-        let fileId: string | null = m.driveFile?.driveFile?.id || null;
-        let url: string | null = m.link?.url || null;
-        let title: string = m.driveFile?.driveFile?.title || m.link?.title || "Dokumen Lampiran";
+        if (processed >= 4) break;
+        let fileId: string | null = m.driveFile?.driveFile?.id || m.driveFile?.id || null;
+        let url: string | null =
+            m.driveFile?.driveFile?.alternateLink ||
+            m.driveFile?.alternateLink ||
+            m.link?.url ||
+            m.form?.formUrl ||
+            null;
+        let title: string =
+            m.driveFile?.driveFile?.title ||
+            m.driveFile?.title ||
+            m.link?.title ||
+            m.form?.title ||
+            "Dokumen Lampiran";
 
         if (!fileId && url) {
             fileId = extractDriveFileId(url);
         }
 
-        if (fileId || url) {
-            const text = await readDriveFileContent(token, fileId, url);
-            if (text) {
-                extracted += `\n\n[Isi Lampiran: "${title}"]:\n` + text.substring(0, 6000);
+        if (fileId || url || title) {
+            const text = await readDriveFileContent(token, fileId, url, title);
+            if (text && text.trim()) {
+                extracted += `\n\n[Isi Dokumen Lampiran Tugas: "${title}"]:\n` + text.substring(0, 16000);
                 processed++;
             }
         }
     }
+
+    if (extracted && taskContext?.id) {
+        try {
+            updateTask(taskContext.id, { extractedMaterialsText: extracted });
+        } catch { }
+    }
+
     return extracted;
 }
 
@@ -82,7 +136,7 @@ export async function analyzeTaskWithAI(
     userPreferences?: UserPreferences | null,
     aiConfig?: AIConfig | null,
 ): Promise<AIAnalysisResult> {
-    const extractedMaterialText = await extractMaterialsText(task.materials);
+    const extractedMaterialText = await extractMaterialsText(task.materials, task);
     const enrichedDescription = (task.description || "") + (extractedMaterialText ? `\n\n--- LAMPIRAN DOKUMEN & SPREADSHEET ---\n${extractedMaterialText}` : "");
 
     const response = await fetch("/api/ai/analyze-task", {
@@ -167,7 +221,7 @@ export async function sendChatMessageToAIStream(
     groundingSources?: { title: string; url: string }[];
     groundingQueries?: string[];
 }> {
-    const extractedMaterialText = await extractMaterialsText(taskContext?.materials);
+    const extractedMaterialText = await extractMaterialsText(taskContext?.materials, taskContext);
 
     // Check if user's chat message contains URLs (e.g. Google Docs, Sheets, Slides, Drive, or Web links)
     const lastUserMessage = [...messages].reverse().find((m) => m.role === "user");
@@ -226,6 +280,7 @@ export async function sendChatMessageToAIStream(
             enableGrounding,
             taskContext: taskContext
                 ? {
+                      id: taskContext.id,
                       title: taskContext.title,
                       courseName: taskContext.courseName,
                       description:

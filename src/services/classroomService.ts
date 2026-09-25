@@ -91,14 +91,10 @@ export class ClassroomService {
     return Date.now() >= expiry;
   }
 
-  // Check if current stored token is valid
+  // Check if current stored token is available
   public static getStoredToken(): string | null {
     const token = safeGetItem(TOKEN_KEY);
     if (!token) return null;
-    if (this.isTokenExpired()) {
-      this.handleSessionExpired('Sesi Google Classroom Anda telah berakhir.');
-      return null;
-    }
     return token;
   }
 
@@ -421,6 +417,33 @@ export class ClassroomService {
     });
 
     return { updatedTasks, newCount };
+  }
+
+  // Automatically pre-extract task materials in the background during or after sync
+  public static async autoExtractTaskMaterials(
+    tasks: TodoTask[],
+    token: string,
+    userEmail?: string
+  ): Promise<void> {
+    if (!token || token === 'DEMO_TOKEN') return;
+    const email = userEmail || this.getUserProfile()?.email;
+    const tasksWithMaterials = tasks
+      .filter((t) => t.materials && t.materials.length > 0 && (!t.extractedMaterialsText || !t.extractedMaterialsText.trim()))
+      .slice(0, 6);
+
+    for (const task of tasksWithMaterials) {
+      try {
+        const { extractMaterialsText } = await import('@/services/aiService');
+        const text = await extractMaterialsText(task.materials, task);
+        if (text && text.trim()) {
+          task.extractedMaterialsText = text;
+          const { updateTask } = await import('@/lib/taskStore');
+          updateTask(task.id, { extractedMaterialsText: text });
+        }
+      } catch (err) {
+        console.warn(`[AutoExtract] Skipped material extraction for "${task.title}":`, err);
+      }
+    }
   }
 
   // Realistic starter seed tasks for instant testing and showcase

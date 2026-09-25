@@ -17,3 +17,5 @@ tsconfig.tsbuildinfo
 .opencode/
 skills-lock.json
 .vercel
+CLAUDE.md
+AGENTS.md
