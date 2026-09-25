@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import {
   NotebookPen,
   Plus,
-  Sparkles,
   Search,
   BookOpen,
   Trash2,
@@ -46,6 +45,7 @@ import {
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Shell } from "@/components/Shell";
+import { IonLearnAIIcon } from "@/components/IonLearnAIIcon";
 import { StudyNote, StudyNoteQuizItem } from "@/types";
 import {
   loadNotes,
@@ -1081,7 +1081,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                             )}
                             {note.summary && (
                               <span className="px-1 py-0.5 rounded text-[10px] font-medium bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 border border-transparent dark:border-purple-900/50 flex items-center gap-0.5">
-                                <Sparkles className="w-2.5 h-2.5" />
+                                <IonLearnAIIcon className="w-2.5 h-2.5" />
                                 <span>AI</span>
                               </span>
                             )}
@@ -1269,7 +1269,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                 {/* AI Interactive Toolbar */}
                 <div className="flex flex-wrap items-center gap-2 bg-slate-100/90 dark:bg-[#181818] border border-slate-200/80 dark:border-[#262626] p-3 rounded-xl">
                   <span className="text-xs font-bold text-slate-800 dark:text-[#e5e5e5] flex items-center gap-1.5 mr-1">
-                    <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+                    <IonLearnAIIcon className="w-3.5 h-3.5 text-indigo-500" />
                     AI Assistant:
                   </span>
 
@@ -1611,7 +1611,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                 {/* AI Interactive Toolbar */}
                 <div className="flex flex-wrap items-center gap-1.5 bg-slate-100/90 dark:bg-[#181818] border border-slate-200/80 dark:border-[#262626] p-2.5 rounded-xl">
                   <span className="text-[11px] font-bold text-slate-800 dark:text-[#e5e5e5] flex items-center gap-1 mr-1">
-                    <Sparkles className="w-3 h-3 text-indigo-500" />
+                    <IonLearnAIIcon className="w-3 h-3 text-indigo-500" />
                     AI:
                   </span>
                   <Button
@@ -1921,7 +1921,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                           }`}
                         title={isEn ? "Live visual WYSIWYG mode" : "Mode visual langsung berbentuk"}
                       >
-                        <Sparkles className="w-3 h-3 text-indigo-500" />
+                        <IonLearnAIIcon className="w-3 h-3 text-indigo-500" />
                         <span>{t.notes.tabVisual}</span>
                       </button>
                       <button

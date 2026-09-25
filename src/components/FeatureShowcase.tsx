@@ -5,7 +5,6 @@ import {
   MessageSquare,
   MessageSquareText,
   MessageSquarePlus,
-  Sparkles,
   Bot,
   CheckCircle2,
   Circle,
@@ -24,6 +23,7 @@ import {
   ChevronRight,
   X,
 } from "lucide-react";
+import { IonLearnAIIcon } from "./IonLearnAIIcon";
 
 type FeatureTab = "Demo" | "AI Chatbot" | "Tasks Menu" | "To-Do" | "Auto-Notes";
 
@@ -266,7 +266,7 @@ export function FeatureShowcase({ language = "ENG" }: FeatureShowcaseProps) {
               {activeTab === "Demo" && (
                 <div className="w-full max-w-lg flex flex-col items-center text-center space-y-3 z-10 animate-in fade-in duration-300">
                   <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-[#4b43c6] dark:text-indigo-300 text-xs font-montserrat font-semibold">
-                    <Sparkles className="w-3 h-3 text-[#4b43c6] dark:text-indigo-400 animate-spin" style={{ animationDuration: "5s" }} />
+                    <IonLearnAIIcon className="w-3 h-3 text-[#4b43c6] dark:text-indigo-400 animate-spin" style={{ animationDuration: "5s" }} />
                     <span>IOnLearn Academic Dashboard</span>
                   </div>
 

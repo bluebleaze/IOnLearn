@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Sparkles,
   BookOpen,
   ListTodo,
   NotebookPen,
@@ -20,6 +19,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { Shell, useShell } from "@/components/Shell";
+import { IonLearnAIIcon } from "@/components/IonLearnAIIcon";
 import { ActivityChart } from "@/components/ActivityChart";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
@@ -418,7 +418,7 @@ function DashboardContent() {
               </div>
             </div>
             <div className="mt-2.5 text-xs text-slate-500 dark:text-[#888] flex items-center gap-1">
-              <Sparkles className="w-3 h-3 text-purple-500" />
+              <IonLearnAIIcon className="w-3 h-3 text-purple-500" />
               <span>{t.cardNotesAI(stats.notesWithAICount)}</span>
             </div>
           </div>
@@ -521,7 +521,7 @@ function DashboardContent() {
 
                       {tItem.aiAnalysis && (
                         <span className="shrink-0 text-xs font-medium px-2 py-0.5 rounded-md bg-slate-100 dark:bg-[#222] text-slate-600 dark:text-[#aaa] flex items-center gap-1 border border-slate-200/60 dark:border-[#2c2c2c]">
-                          <Sparkles className="w-2.5 h-2.5 text-indigo-500" />
+                          <IonLearnAIIcon className="w-2.5 h-2.5 text-indigo-500" />
                           <span>{t.aiReadyBadge}</span>
                         </span>
                       )}
@@ -664,7 +664,7 @@ function DashboardContent() {
             {/* AI Prompts Launcher (Quiet, Calm) */}
             <div className="bg-white dark:bg-[#161616] rounded-2xl p-4.5 border border-slate-200/80 dark:border-[#262626] shadow-2xs space-y-2.5">
               <div className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-[#d0d0d0]">
-                <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+                <IonLearnAIIcon className="w-3.5 h-3.5 text-indigo-500" />
                 <span>{t.quickAITitle}</span>
               </div>
               <div className="space-y-1.5">

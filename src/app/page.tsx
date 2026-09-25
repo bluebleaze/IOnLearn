@@ -68,24 +68,36 @@ export default function RootHomePage() {
           } catch {}
         }
 
-        // Fast, non-blocking cloud preferences & data hydrate (maximum 500ms race)
+        // Reliable cloud user data & preferences hydrate for seamless returning user experience
         try {
-          const cloudDataPromise = DBService.loadUserData(email);
-          const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 500));
-          const cloudData = await Promise.race([cloudDataPromise, timeoutPromise]);
+          const cloudData = await DBService.loadUserData(email);
+
+          const isReturningUser =
+            Boolean(
+              cloudData &&
+                (cloudData.onboardingCompleted ||
+                  cloudData.spotlightCompleted ||
+                  cloudData.hasLoggedInBefore ||
+                  cloudData.preferences ||
+                  (cloudData.tasks && cloudData.tasks.length > 0) ||
+                  (cloudData.todos && cloudData.todos.length > 0) ||
+                  (cloudData.notes && cloudData.notes.length > 0))
+            ) || isOnboardingCompleted(email);
+
+          if (isReturningUser) {
+            setOnboardingCompleted(true, email);
+            setSpotlightTourCompleted(true, email);
+            setSpotlightPending(false, email);
+          } else {
+            // Truly first-time user: flag spotlight as pending once they finish onboarding
+            setSpotlightPending(true, email);
+          }
 
           if (cloudData?.preferences) {
             localStorage.setItem(
               `${PREFS_STORAGE_KEY}_${email}`,
               JSON.stringify(cloudData.preferences)
             );
-            if (
-              cloudData.preferences.educationLevel &&
-              cloudData.preferences.learningStyle &&
-              cloudData.preferences.aiTone
-            ) {
-              setOnboardingCompleted(true, email);
-            }
           }
           if (cloudData?.todos && cloudData.todos.length > 0) {
             localStorage.setItem(
@@ -131,7 +143,7 @@ export default function RootHomePage() {
             }
           }
         } catch (cloudErr) {
-          console.warn("Non-blocking cloud load skipped on login:", cloudErr);
+          console.warn("Cloud load skipped on login:", cloudErr);
         }
 
         try {

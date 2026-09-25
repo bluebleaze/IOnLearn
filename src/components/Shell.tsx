@@ -268,22 +268,32 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
       const email = userProfile?.email || storedProfile?.email;
       let isDone = isOnboardingCompleted(email);
 
-      // If not done locally in this browser, check if cloud already has the completed onboarding profile
+      // If not done locally in this browser, check if cloud already has the completed onboarding profile or existing data
       if (!isDone && email) {
         try {
-          const cloudDataPromise = DBService.loadUserData(email);
-          const timeoutPromise = new Promise<null>((r) => setTimeout(() => r(null), 600));
-          const cloudData = await Promise.race([cloudDataPromise, timeoutPromise]);
-          if (
-            cloudData?.preferences?.educationLevel &&
-            cloudData?.preferences?.learningStyle &&
-            cloudData?.preferences?.aiTone
-          ) {
-            localStorage.setItem(
-              `${PREFS_STORAGE_KEY}_${email}`,
-              JSON.stringify(cloudData.preferences)
+          const cloudData = await DBService.loadUserData(email);
+          const isReturning =
+            Boolean(
+              cloudData &&
+                (cloudData.onboardingCompleted ||
+                  cloudData.spotlightCompleted ||
+                  cloudData.hasLoggedInBefore ||
+                  cloudData.preferences ||
+                  (cloudData.tasks && cloudData.tasks.length > 0) ||
+                  (cloudData.todos && cloudData.todos.length > 0) ||
+                  (cloudData.notes && cloudData.notes.length > 0))
             );
+
+          if (isReturning) {
+            if (cloudData?.preferences) {
+              localStorage.setItem(
+                `${PREFS_STORAGE_KEY}_${email}`,
+                JSON.stringify(cloudData.preferences)
+              );
+            }
             setOnboardingCompleted(true, email);
+            setSpotlightTourCompleted(true, email);
+            setSpotlightPending(false, email);
             isDone = true;
             window.dispatchEvent(new Event("taskStoreChange"));
           }
@@ -304,11 +314,12 @@ export const Shell: React.FC<ShellProps> = ({ children, fullBleed = false }) => 
           }
         } else if (
           (pathname === "/dashboard" || pathname === "/") &&
-          !isSpotlightTourCompleted(email)
+          !isSpotlightTourCompleted(email) &&
+          isSpotlightPending(email)
         ) {
           // Reliable delay ensuring dashboard layout and data-tour target elements are mounted
           setTimeout(() => {
-            if (isMounted && !isSpotlightTourCompleted(email)) {
+            if (isMounted && !isSpotlightTourCompleted(email) && isSpotlightPending(email)) {
               setSpotlightPending(false, email);
               setShowSpotlightTour(true);
             }

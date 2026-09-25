@@ -4,7 +4,6 @@ import React, { useState } from "react";
 import {
   Check,
   Clock,
-  Sparkles,
   ChevronRight,
   Paperclip,
   AlertCircle,

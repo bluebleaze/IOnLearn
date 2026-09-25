@@ -7,7 +7,6 @@ import {
   Search,
   CheckCircle2,
   Clock,
-  Sparkles,
   ArrowUpDown,
   ListTodo,
   Loader2,
@@ -28,6 +27,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { Shell } from "@/components/Shell";
+import { IonLearnAIIcon } from "@/components/IonLearnAIIcon";
 import { TaskCard } from "@/components/TaskCard";
 import { TaskDetailModal } from "@/components/TaskDetailModal";
 import { TaskCompleteConfirmModal } from "@/components/TaskCompleteConfirmModal";
@@ -830,7 +830,7 @@ export default function TasksPage() {
                                   className="min-h-[36px] sm:min-h-0 text-indigo-600 dark:text-[#818cf8] hover:underline flex items-center gap-1 font-medium"
                                   aria-label={`Analisis AI untuk "${task.title}"`}
                                 >
-                                  <Sparkles className="w-3.5 h-3.5" />
+                                  <IonLearnAIIcon className="w-3.5 h-3.5" />
                                   <span>{isEn ? "AI Analysis" : "Analisis AI"}</span>
                                 </button>
                               </div>
@@ -861,7 +861,7 @@ export default function TasksPage() {
                       <div className="space-y-2.5 min-h-[180px]">
                         {readyTasks.length === 0 ? (
                           <div className="border border-dashed border-slate-200 dark:border-[#262626] rounded-xl p-5 text-center text-slate-400 text-xs">
-                            <Sparkles className="w-4 h-4 mx-auto text-slate-300 dark:text-[#444] mb-1" />
+                            <IonLearnAIIcon className="w-4 h-4 mx-auto text-slate-300 dark:text-[#444] mb-1" />
                             <p>{isEn ? "No AI analysis yet" : "Belum ada analisis AI"}</p>
                           </div>
                         ) : (
@@ -1064,7 +1064,7 @@ export default function TasksPage() {
                             <td className="py-2.5 px-4 whitespace-nowrap">
                               {task.aiAnalysis ? (
                                 <span className="inline-flex items-center gap-1 text-xs text-indigo-600 dark:text-indigo-400 font-semibold">
-                                  <Sparkles className="w-3 h-3" />
+                                  <IonLearnAIIcon className="w-3 h-3" />
                                   {isEn ? "Ready" : "Siap"}
                                 </span>
                               ) : (

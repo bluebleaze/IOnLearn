@@ -6,7 +6,6 @@ import {
   Download,
   Loader2,
   Sliders,
-  Sparkles,
   Check,
   User,
   Building,
@@ -34,6 +33,7 @@ import {
   MessageSquare,
   Table,
 } from "lucide-react";
+import { IonLearnAIIcon } from "./IonLearnAIIcon";
 import {
   DocumentStyleOptions,
   CreatedDocument,
@@ -480,7 +480,7 @@ export const DocumentCustomizerModal: React.FC<DocumentCustomizerModalProps> = (
                     : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
                 }`}
               >
-                <Sparkles className="w-3.5 h-3.5" />
+                <IonLearnAIIcon className="w-3.5 h-3.5" />
                 Informasi Berkas
               </button>
             </>
@@ -546,7 +546,7 @@ export const DocumentCustomizerModal: React.FC<DocumentCustomizerModalProps> = (
                     : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
                 }`}
               >
-                <Sparkles className="w-3.5 h-3.5" />
+                <IonLearnAIIcon className="w-3.5 h-3.5" />
                 Watermark & Hak Cipta
               </button>
             </>
@@ -1961,7 +1961,7 @@ export const DocumentCustomizerModal: React.FC<DocumentCustomizerModalProps> = (
             <div className="p-3.5 rounded-xl border border-dashed border-indigo-200 dark:border-indigo-800/60 bg-indigo-50/20 dark:bg-indigo-950/10">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5" />
+                  <IonLearnAIIcon className="w-3.5 h-3.5" />
                   {isSlide
                     ? "Ringkasan Presentasi Slide (.pptx)"
                     : isExcel

@@ -7,7 +7,6 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
-  Sparkles,
   BookOpen,
   GraduationCap,
   Briefcase,
@@ -38,6 +37,7 @@ import {
   X,
   Loader2,
 } from "lucide-react";
+import { IonLearnAIIcon } from "./IonLearnAIIcon";
 import confetti from "canvas-confetti";
 import { UserPreferences } from "@/types";
 import {
@@ -285,7 +285,7 @@ export function OnboardingFlow({
             labelEn: "Inspiring & Energetic",
             descId: "Antusias, memotivasi, dan selalu mendorong aksi nyata",
             descEn: "Enthusiastic, motivating, and action-oriented",
-            icon: <Sparkles className="w-5 h-5 text-amber-500 dark:text-amber-400" />,
+            icon: <IonLearnAIIcon className="w-5 h-5 text-amber-500 dark:text-amber-400" />,
           },
         ],
       },
@@ -308,7 +308,7 @@ export function OnboardingFlow({
           "Task terminology dynamically tuned to your level",
           "AI Tutor greets and guides in your chosen persona",
         ],
-        icon: <Sparkles className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />,
+        icon: <IonLearnAIIcon className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />,
         nextSectionId: "Metode & Mode Belajar",
         nextSectionEn: "Method & Study Mode",
       },
@@ -471,7 +471,7 @@ export function OnboardingFlow({
             labelEn: "Minimalist Focused (Standard)",
             descId: "Ruang chat bersih maksimal, riwayat percakapan dalam menu geser",
             descEn: "Cleanest workspace with conversation history in slide-over menu",
-            icon: <Sparkles className="w-5 h-5 text-cyan-500 dark:text-cyan-400" />,
+            icon: <IonLearnAIIcon className="w-5 h-5 text-cyan-500 dark:text-cyan-400" />,
           },
           {
             id: "sidebar",
@@ -736,7 +736,10 @@ export function OnboardingFlow({
           loadAIConfig(),
           profile?.email,
           loadTodos(),
-          loadNotes()
+          loadNotes(),
+          true,
+          false,
+          true
         ),
         new Promise((resolve) => setTimeout(resolve, 800)),
       ]);
@@ -758,6 +761,19 @@ export function OnboardingFlow({
     const profile = ClassroomService.getUserProfile();
     setOnboardingCompleted(true, profile?.email);
     setSpotlightPending(true, profile?.email);
+    if (profile?.email) {
+      DBService.saveUserData(
+        loadTasks(),
+        loadPreferences(),
+        loadAIConfig(),
+        profile.email,
+        loadTodos(),
+        loadNotes(),
+        true,
+        false,
+        true
+      ).catch(() => {});
+    }
     if (onSkip) {
       onSkip();
     } else {
@@ -1053,7 +1069,7 @@ export function OnboardingFlow({
               <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 blur-2xl rounded-full pointer-events-none" />
 
               <div className="w-16 h-16 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/60 dark:border-indigo-800/40 flex items-center justify-center text-3xl mx-auto mb-4 text-indigo-600 dark:text-indigo-400">
-                {currentStep.icon || <Sparkles className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />}
+                {currentStep.icon || <IonLearnAIIcon className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />}
               </div>
 
               <h2 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white mb-2 font-heading">
@@ -1145,7 +1161,7 @@ export function OnboardingFlow({
           {isSavingCloud ? (
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
           ) : currentStepIndex === allSteps.length - 1 ? (
-            <Sparkles className="w-3.5 h-3.5" />
+            <IonLearnAIIcon className="w-3.5 h-3.5" />
           ) : (
             <ArrowRight className="w-3.5 h-3.5" />
           )}

@@ -7,7 +7,6 @@ import {
   Plus,
   CheckCircle2,
   Circle,
-  Sparkles,
   Calendar,
   Tag,
   Trash2,
@@ -26,6 +25,7 @@ import {
   Pencil,
 } from "lucide-react";
 import { Shell } from "@/components/Shell";
+import { IonLearnAIIcon } from "@/components/IonLearnAIIcon";
 import { PersonalTodo, TodoSubtask, TodoTask } from "@/types";
 import {
   loadTodos,
@@ -243,9 +243,12 @@ export default function TodoPage() {
 
     const newSubtasksList = [...(target.subtasks || []), newSubtask];
 
+    // If parent was completed, adding a new subtask should mark it as incomplete
+    const newIsCompleted = target.isCompleted ? false : target.isCompleted;
+
     updateTodo(todoId, {
       subtasks: newSubtasksList,
-      isCompleted: false,
+      isCompleted: newIsCompleted,
     });
 
     setTodos(loadTodos());
@@ -299,9 +302,13 @@ export default function TodoPage() {
 
     const allCompleted = newSubtasks.every((st) => st.isCompleted);
 
+    // If there are subtasks, parent completion depends on all subtasks being done
+    // If no subtasks, keep original state
+    const newIsCompleted = newSubtasks.length > 0 ? allCompleted : target.isCompleted;
+
     updateTodo(todoId, {
       subtasks: newSubtasks,
-      isCompleted: allCompleted ? true : target.isCompleted,
+      isCompleted: newIsCompleted,
     });
     setTodos(loadTodos());
   };
@@ -419,7 +426,7 @@ export default function TodoPage() {
               onClick={() => setShowClassroomModal(true)}
               className="gap-2 rounded-xl text-xs font-medium border-slate-200 dark:border-[#2b2b2b] bg-white dark:bg-[#181818] hover:bg-slate-100 dark:hover:bg-[#222] text-slate-800 dark:text-[#f3f3f3] shadow-2xs"
             >
-              <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+              <IonLearnAIIcon className="w-3.5 h-3.5 text-indigo-500" />
               <span>{t.todo.importClassroomBtn}</span>
             </Button>
             <Button
@@ -498,6 +505,7 @@ export default function TodoPage() {
                   placeholder={isEn ? "What do you want to achieve? (e.g. Finish calculus chapter 3)" : "Apa yang ingin kamu selesaikan? (Contoh: Selesaikan bab 3 kalkulus)"}
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
+                  maxLength={80}
                   className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-slate-50 dark:bg-[#1f1f1f] border border-slate-200/80 dark:border-[#2b2b2b] text-slate-900 dark:text-[#f3f3f3] placeholder:text-slate-400 dark:placeholder:text-[#666] focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
                   autoFocus
                 />
@@ -689,6 +697,7 @@ export default function TodoPage() {
                   type="text"
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
+                  maxLength={80}
                   className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-slate-50 dark:bg-[#1f1f1f] border border-slate-200/80 dark:border-[#2b2b2b] text-slate-900 dark:text-[#f3f3f3] placeholder:text-slate-400 dark:placeholder:text-[#666] focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
                   required
                 />
@@ -1304,7 +1313,7 @@ export default function TodoPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
-                  <Sparkles className="w-4 h-4" />
+                  <IonLearnAIIcon className="w-4 h-4" />
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-slate-900 dark:text-[#f3f3f3]">
@@ -1383,7 +1392,7 @@ export default function TodoPage() {
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-3.5 h-3.5" />
+                    <IonLearnAIIcon className="w-3.5 h-3.5" />
                     <span>{t.todo.modalClassroomBreakdownBtn}</span>
                   </>
                 )}

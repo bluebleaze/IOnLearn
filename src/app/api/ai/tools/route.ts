@@ -118,7 +118,10 @@ Hanya berikan JSON murni.`;
       const apiKey = aiConfig?.apiKey || process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
       if (!apiKey) {
         return NextResponse.json(
-          { error: "API Key Gemini belum tersedia di environment atau pengaturan." },
+          { 
+            error: "API Key diperlukan untuk fitur AI. Silakan atur API Key di Pengaturan > Penyedia AI, atau hubungi admin untuk mengatur GEMINI_API_KEY di environment.",
+            code: "MISSING_API_KEY"
+          },
           { status: 400 }
         );
       }

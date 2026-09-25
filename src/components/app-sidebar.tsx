@@ -8,7 +8,6 @@ import {
   MessageSquareText,
   ListTodo,
   NotebookPen,
-  Sparkles,
   CheckCircle2,
   RefreshCw,
 } from "lucide-react";

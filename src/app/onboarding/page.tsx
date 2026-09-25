@@ -4,7 +4,11 @@ import React, { useEffect, useState } from "react";
 import { OnboardingFlow } from "@/components/OnboardingFlow";
 import { useRouter } from "next/navigation";
 import { ClassroomService } from "@/services/classroomService";
-import { setOnboardingCompleted, setSpotlightPending } from "@/lib/taskStore";
+import {
+  isOnboardingCompleted,
+  setOnboardingCompleted,
+  setSpotlightPending,
+} from "@/lib/taskStore";
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -15,6 +19,11 @@ export default function OnboardingPage() {
     if (!token) {
       router.replace("/");
     } else {
+      const profile = ClassroomService.getUserProfile();
+      if (isOnboardingCompleted(profile?.email)) {
+        router.replace("/dashboard");
+        return;
+      }
       setIsAuthenticated(true);
     }
   }, [router]);

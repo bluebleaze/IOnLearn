@@ -45,7 +45,17 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, tasks, preferences, aiConfig, todos, notes } = body;
+    const {
+      email,
+      tasks,
+      preferences,
+      aiConfig,
+      todos,
+      notes,
+      onboardingCompleted,
+      spotlightCompleted,
+      hasLoggedInBefore,
+    } = body;
 
     if (!email) {
       return NextResponse.json({ error: 'Email required' }, { status: 400 });
@@ -53,17 +63,45 @@ export async function POST(request: NextRequest) {
 
     const normalized = email.toLowerCase().trim();
     const cache = readCache();
+    const existing = cache[normalized] || {};
+
+    const hasData =
+      (tasks && tasks.length > 0) ||
+      (todos && todos.length > 0) ||
+      (notes && notes.length > 0) ||
+      Boolean(preferences);
+
+    const isDoneOnboarding =
+      onboardingCompleted === true ||
+      existing.onboardingCompleted === true ||
+      hasData;
+
+    const isDoneSpotlight =
+      spotlightCompleted === true ||
+      existing.spotlightCompleted === true ||
+      (existing.onboardingCompleted === true && existing.spotlightCompleted !== false);
+
     cache[normalized] = {
-      tasks: tasks || [],
-      preferences: preferences || null,
-      aiConfig: aiConfig || null,
-      todos: todos || [],
-      notes: notes || [],
+      ...existing,
+      tasks: tasks !== undefined ? tasks : (existing.tasks || []),
+      preferences: preferences !== undefined ? preferences : (existing.preferences || null),
+      aiConfig: aiConfig !== undefined ? aiConfig : (existing.aiConfig || null),
+      todos: todos !== undefined ? todos : (existing.todos || []),
+      notes: notes !== undefined ? notes : (existing.notes || []),
+      onboardingCompleted: isDoneOnboarding,
+      spotlightCompleted: isDoneSpotlight,
+      hasLoggedInBefore: true,
+      firstLoginAt: existing.firstLoginAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
     writeCache(cache);
 
-    return NextResponse.json({ success: true, updatedAt: cache[normalized].updatedAt });
+    return NextResponse.json({
+      success: true,
+      updatedAt: cache[normalized].updatedAt,
+      onboardingCompleted: cache[normalized].onboardingCompleted,
+      spotlightCompleted: cache[normalized].spotlightCompleted,
+    });
   } catch (e: any) {
     return NextResponse.json({ error: e.message || 'Failed to save cache' }, { status: 500 });
   }

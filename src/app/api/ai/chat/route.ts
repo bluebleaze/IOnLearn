@@ -75,6 +75,96 @@ function cleanAndNormalizeTags(rawTags: (string | undefined | null)[]): string[]
     return result.slice(0, 3);
 }
 
+const AI_METADATA_FIELD_PATTERN = /,?\s*"(?:suggestedPrompts|createdTodo|createdTodos|createdNote|createdDocument|createdSlides|thoughtProcess)"\s*:/;
+const EMOJI_PATTERN = /[\uD83C-\uDBFF][\uDC00-\uDFFF]|[\u2600-\u27BF]|\uFE0F|\u200D/g;
+const EMOJI_RUN_PATTERN = /(?:[\uD83C-\uDBFF][\uDC00-\uDFFF]|[\u2600-\u27BF]|\uFE0F|\u200D|\s){6,}/g;
+const EMOJI_SHORT_RUN_PATTERN = /(?:[\uD83C-\uDBFF][\uDC00-\uDFFF]|[\u2600-\u27BF]|\uFE0F|\u200D|\s){4,}/g;
+
+export function cleanRepetitiveLoops(text: string): string {
+    if (!text || typeof text !== "string") return "";
+    let cleaned = text;
+    // Strip long runs of emojis (more than 3 consecutive emojis or repeating emoji clusters)
+    cleaned = cleaned.replace(EMOJI_RUN_PATTERN, (match) => {
+        const emojis = match.match(EMOJI_PATTERN) || [];
+        return emojis.length > 0 ? " " + emojis.slice(0, 2).join("") + " " : " ";
+    });
+    // Collapse repeating character runs (e.g. aaaaaa -> aa)
+    cleaned = cleaned.replace(/(.)\1{4,}/g, "$1$1");
+    // Collapse repeating words/phrases repeated 3 or more times (e.g. "selamanya selamanya selamanya")
+    cleaned = cleaned.replace(/(\b[\w\s-]{2,40}?\b)(?:\s+\1){2,}/gi, "$1");
+    return cleaned.replace(/\s+/g, " ").trim();
+}
+
+/** Keep generated To-Do labels usable even when a provider ignores the schema. */
+function sanitizeTodoText(value: unknown, maxLength: number): string {
+    if (typeof value !== "string") return "";
+
+    return value
+        // A malformed structured response can leak its next JSON field into a title.
+        .split(AI_METADATA_FIELD_PATTERN)[0]
+        // Clean repetitive emoji and word loops
+        .replace(EMOJI_SHORT_RUN_PATTERN, " ")
+        // Emoji are excluded from To-Do titles & subtasks: they make compact task cards noisy.
+        .replace(EMOJI_PATTERN, "")
+        .replace(/(.)\1{3,}/g, "$1$1")
+        .replace(/(\b[\w\s-]{2,40}?\b)(?:\s+\1){2,}/gi, "$1")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, maxLength)
+        .trim();
+}
+
+/** Recover a valid object when a provider prefixes otherwise-valid JSON fields with prose. */
+function extractEmbeddedJsonObject(text: string, fieldName: string): any | undefined {
+    const fieldMatch = new RegExp(`"${fieldName}"\\s*:`).exec(text);
+    if (!fieldMatch || fieldMatch.index === undefined) return undefined;
+
+    const start = text.indexOf("{", fieldMatch.index + fieldMatch[0].length);
+    if (start < 0) return undefined;
+
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+    for (let index = start; index < text.length; index++) {
+        const char = text[index];
+        if (inString) {
+            if (escaped) escaped = false;
+            else if (char === "\\") escaped = true;
+            else if (char === '"') inString = false;
+            continue;
+        }
+        if (char === '"') inString = true;
+        else if (char === "{") depth++;
+        else if (char === "}" && --depth === 0) {
+            try { return JSON.parse(text.slice(start, index + 1)); } catch { return undefined; }
+        }
+    }
+    return undefined;
+}
+
+function sanitizeTodoOutput(rawTodo: any): any | undefined {
+    if (!rawTodo || typeof rawTodo !== "object") return undefined;
+
+    const title = sanitizeTodoText(rawTodo.title, 80);
+    if (title.length < 3) return undefined;
+
+    const subtasks = Array.isArray(rawTodo.subtasks)
+        ? rawTodo.subtasks
+            .slice(0, 7)
+            .map((subtask: any) => ({ title: sanitizeTodoText(subtask?.title, 60) }))
+            .filter((subtask: { title: string }) => subtask.title.length >= 3)
+        : undefined;
+
+    return {
+        ...rawTodo,
+        title,
+        description: sanitizeTodoText(rawTodo.description, 200) || undefined,
+        category: sanitizeTodoText(rawTodo.category, 50) || undefined,
+        priority: ["high", "medium", "low"].includes(rawTodo.priority) ? rawTodo.priority : "medium",
+        subtasks: subtasks && subtasks.length > 0 ? subtasks : undefined,
+    };
+}
+
 function sanitizeNoteOutput(
     rawNote: any,
     replyText?: string,
@@ -212,6 +302,77 @@ export function isConversationalFiller(text?: string): boolean {
     return false;
 }
 
+function isExplicitFileRequest(text: string): {
+    wantsDocx: boolean;
+    wantsPdf: boolean;
+    wantsXlsx: boolean;
+    wantsSlides: boolean;
+    hasAny: boolean;
+} {
+    if (!text) return { wantsDocx: false, wantsPdf: false, wantsXlsx: false, wantsSlides: false, hasAny: false };
+    const lower = text.toLowerCase().trim();
+
+    // Verbs or phrases explicitly requesting file/document creation or export
+    const hasCreateVerb =
+        lower.includes("buatkan") || lower.includes("buat ") ||
+        lower.includes("bikin") || lower.includes("bikinkan") || lower.includes("bikin kan") ||
+        lower.includes("jadikan") || lower.includes("ubah ke") || lower.includes("konversi") ||
+        lower.includes("generate") || lower.includes("ekspor") || lower.includes("export") ||
+        lower.includes("unduh") || lower.includes("download") || lower.includes("simpan ke") ||
+        lower.includes("simpan jadi") || lower.includes("simpan sebagai") ||
+        lower.includes("susunkan") || lower.includes("tuliskan ke") ||
+        lower.includes("format file") || lower.includes("dalam bentuk") || lower.includes("dlm bentuk");
+
+    // Explicit Slides (PPTX / PowerPoint)
+    const hasSlidesExplicit =
+        lower.includes(".pptx") || lower.includes("file pptx") || lower.includes("format pptx") ||
+        lower.includes(".ppt") || lower.includes("file ppt") || lower.includes("format ppt") ||
+        lower.includes("file slide") || lower.includes("slide presentasi") || lower.includes("deck presentasi") ||
+        lower.includes("powerpoint") ||
+        (hasCreateVerb && (lower.includes("slide") || lower.includes("pptx") || lower.includes("ppt") || lower.includes("presentasi")));
+
+    // Explicit Spreadsheet (Excel / XLSX)
+    const hasXlsxExplicit =
+        lower.includes(".xlsx") || lower.includes("file xlsx") || lower.includes("format xlsx") ||
+        lower.includes(".xls") || lower.includes("file excel") || lower.includes("format excel") ||
+        lower.includes("file spreadsheet") || lower.includes("format spreadsheet") ||
+        (hasCreateVerb && (lower.includes("xlsx") || lower.includes("excel") || lower.includes("spreadsheet") || lower.includes("lembar kerja")));
+
+    // Explicit PDF
+    const hasPdfExplicit =
+        lower.includes(".pdf") || lower.includes("file pdf") || lower.includes("format pdf") ||
+        (hasCreateVerb && lower.includes("pdf"));
+
+    // Explicit Word / Document (.docx / makalah / laporan / generic dokumen / file)
+    const hasDocxExplicit =
+        !hasSlidesExplicit && !hasXlsxExplicit && (
+            lower.includes(".docx") || lower.includes("file docx") || lower.includes("format docx") ||
+            lower.includes("file word") || lower.includes("format word") ||
+            lower.includes("bikin jadi dokumen") || lower.includes("jadikan dokumen") || lower.includes("jadi dokumen") ||
+            lower.includes("buatkan dokumen") || lower.includes("buat dokumen") ||
+            lower.includes("bikin dokumen") || lower.includes("bikinkan dokumen") || lower.includes("bikin kan dokumen") ||
+            lower.includes("buatkan file") || lower.includes("bikin file") || lower.includes("bikinkan file") ||
+            lower.includes("jadikan file") || lower.includes("jadi file") ||
+            lower.includes("buatkan makalah") || lower.includes("bikin makalah") ||
+            lower.includes("buatkan laporan") || lower.includes("bikin laporan") ||
+            lower.includes("buatkan naskah") || lower.includes("bikin naskah") ||
+            (hasCreateVerb && (
+                lower.includes("dokumen") || lower.includes("document") ||
+                lower.includes("word") || lower.includes("docx") ||
+                lower.includes("makalah") || lower.includes("laporan") ||
+                lower.includes("naskah") || lower.includes("file")
+            ))
+        ) && !hasPdfExplicit;
+
+    return {
+        wantsDocx: hasDocxExplicit,
+        wantsPdf: hasPdfExplicit,
+        wantsXlsx: hasXlsxExplicit,
+        wantsSlides: hasSlidesExplicit,
+        hasAny: hasDocxExplicit || hasPdfExplicit || hasXlsxExplicit || hasSlidesExplicit,
+    };
+}
+
 function extractFallbackActions(
     lastUserMessage: string,
     replyText: string,
@@ -300,18 +461,17 @@ function extractFallbackActions(
         }
     }
 
-    // Check Document intent: "pdf", "word", "docx", "makalah", "dokumen", "excel", "xlsx", "spreadsheet"
-    const wantsDocx = lowerUser.includes("word") || lowerUser.includes("docx") || lowerUser.includes(".docx");
-    const wantsPdf = lowerUser.includes("pdf") || lowerUser.includes(".pdf");
-    const wantsXlsx = lowerUser.includes("excel") || lowerUser.includes("xlsx") || lowerUser.includes(".xlsx") || lowerUser.includes("spreadsheet") || lowerUser.includes("spredsheet") || lowerUser.includes("xlxs");
-    if (wantsDocx || wantsPdf || wantsXlsx) {
+    // Check Explicit File Creation Intent: ONLY create files if user explicitly asks for a file
+    const fileReq = isExplicitFileRequest(lastUserMessage);
+
+    if (fileReq.wantsDocx || fileReq.wantsPdf || fileReq.wantsXlsx) {
         const lines = replyText.split("\n").map((l) => l.trim()).filter(Boolean);
         const headingLine = lines.find((l) => l.startsWith("#"));
         const docTitle = headingLine
             ? headingLine.replace(/^[#\s*]+/, "").trim().slice(0, 80)
-            : taskContext?.title || (wantsXlsx ? "Tabel Data Spreadsheet" : "Dokumen Materi Belajar");
+            : taskContext?.title || (fileReq.wantsXlsx ? "Tabel Data Spreadsheet" : "Dokumen Materi Belajar");
 
-        const docType: "docx" | "pdf" | "xlsx" = wantsXlsx ? "xlsx" : wantsDocx ? "docx" : "pdf";
+        const docType: "docx" | "pdf" | "xlsx" = fileReq.wantsXlsx ? "xlsx" : fileReq.wantsDocx ? "docx" : "pdf";
 
         // Prevent conversational greeting from becoming the document content
         let docContent = replyText;
@@ -338,19 +498,7 @@ function extractFallbackActions(
         };
     }
 
-    // Check Presentation Slides intent: "slide", "presentasi", "ppt", "pptx", "powerpoint", "bahan tayang", "tayangan", "deck"
-    const wantsSlides =
-        lowerUser.includes("slide") ||
-        lowerUser.includes("presentasi") ||
-        lowerUser.includes("ppt") ||
-        lowerUser.includes("pptx") ||
-        lowerUser.includes("powerpoint") ||
-        lowerUser.includes("power point") ||
-        lowerUser.includes("bahan tayang") ||
-        lowerUser.includes("tayangan") ||
-        lowerUser.includes("deck");
-
-    if (wantsSlides) {
+    if (fileReq.wantsSlides) {
         // Multi-strategy section splitter: Slide headings, numbered parts, or any level 1-3 headings
         let rawSections = replyText.split(/(?:^|\n)(?=#+\s*(?:Slide|\d+|Bagian|Topik))/i);
         if (rawSections.length <= 1) {
@@ -448,7 +596,6 @@ function extractFallbackActions(
  */
 class StreamingJsonExtractor {
     private buffer = "";
-    private isRawMode = false;
     public thoughtText = "";
     public replyText = "";
     private activeField: "none" | "thoughtProcess" | "reply" = "none";
@@ -458,11 +605,6 @@ class StreamingJsonExtractor {
     processChunk(chunk: string): { type: "thought" | "chunk"; delta: string }[] {
         if (!chunk) return [];
         const events: { type: "thought" | "chunk"; delta: string }[] = [];
-
-        if (this.isRawMode) {
-            this.replyText += chunk;
-            return [{ type: "chunk", delta: chunk }];
-        }
 
         this.buffer += chunk;
 
@@ -490,13 +632,12 @@ class StreamingJsonExtractor {
                     }
                 }
 
-                // Fallback to raw mode if buffer is large and does not start as JSON object
+                // Never stream raw provider output. A malformed structured response may
+                // contain createdTodo/suggestedPrompts fields, which must not be rendered
+                // as the assistant's reply. The complete response is sanitized on `done`.
                 if (this.buffer.length > 80 && !this.buffer.trim().startsWith("{")) {
-                    this.isRawMode = true;
-                    const text = this.buffer;
-                    this.buffer = "";
-                    this.replyText += text;
-                    return [{ type: "chunk", delta: text }];
+                    this.buffer = this.buffer.slice(-4096);
+                    return [];
                 }
 
                 break;
@@ -552,8 +693,13 @@ class StreamingJsonExtractor {
                         this.thoughtText += delta;
                         events.push({ type: "thought", delta });
                     } else {
-                        this.replyText += delta;
-                        events.push({ type: "chunk", delta });
+                        // Guard against runaway emoji stream loops
+                        const isRunawayEmoji = /(?:[\uD83C-\uDBFF][\uDC00-\uDFFF]|[\u2600-\u27BF]|\uFE0F){5,}/.test(delta) ||
+                            (this.replyText.length > 200 && /(?:(?:[\uD83C-\uDBFF][\uDC00-\uDFFF]|[\u2600-\u27BF]|\uFE0F|\s)){10,}/.test(this.replyText.slice(-30) + delta));
+                        if (!isRunawayEmoji) {
+                            this.replyText += delta;
+                            events.push({ type: "chunk", delta });
+                        }
                     }
                 }
 
@@ -586,6 +732,7 @@ function processAiChatResponse(
     groundingQueries: any[] = []
 ) {
     let resultData: any = {};
+    let usedRawResponseFallback = false;
     try {
         const cleaned = responseText.replace(/^```json\s*/i, "").replace(/\s*```$/i, "").trim();
         resultData = JSON.parse(cleaned);
@@ -596,10 +743,17 @@ function processAiChatResponse(
                 resultData = JSON.parse(jsonMatch[0]);
             } catch {
                 resultData = { reply: responseText, suggestedPrompts: [] };
+                usedRawResponseFallback = true;
             }
         } else {
             resultData = { reply: responseText, suggestedPrompts: [] };
+            usedRawResponseFallback = true;
         }
+    }
+
+    // Do not show schema fields as chat content if a provider emits partial JSON.
+    if (usedRawResponseFallback && typeof resultData.reply === "string") {
+        resultData.reply = resultData.reply.split(AI_METADATA_FIELD_PATTERN)[0].trim();
     }
 
     const lastUserMsg = [...messages].reverse().find((m: any) => m.role === "user")?.content || "";
@@ -608,8 +762,15 @@ function processAiChatResponse(
     const finalNote = sanitizeNoteOutput(resultData.createdNote, resultData.reply || responseText, taskContext)
         || fallback.createdNote
         || undefined;
-    const finalTodo = resultData.createdTodo || (resultData.createdTodos && resultData.createdTodos.length > 0 ? undefined : fallback.createdTodo) || undefined;
-    const finalTodos = resultData.createdTodos || undefined;
+    const recoveredTodo = usedRawResponseFallback
+        ? extractEmbeddedJsonObject(responseText, "createdTodo")
+        : undefined;
+    const finalTodo = sanitizeTodoOutput(
+        resultData.createdTodo || recoveredTodo || (resultData.createdTodos && resultData.createdTodos.length > 0 ? undefined : fallback.createdTodo)
+    );
+    const finalTodos = Array.isArray(resultData.createdTodos)
+        ? resultData.createdTodos.map(sanitizeTodoOutput).filter(Boolean)
+        : undefined;
 
     const geminiDoc = resultData.createdDocument;
     let isGeminiDocValid = Boolean(geminiDoc && geminiDoc.title && geminiDoc.content && !isConversationalFiller(geminiDoc.content));
@@ -665,54 +826,20 @@ function processAiChatResponse(
     const isGeminiSlidesValid = geminiSlides && Array.isArray(geminiSlides.slides) && geminiSlides.slides.length > 0;
     const rawSlides = (isGeminiSlidesValid ? geminiSlides : fallback.createdSlides) || undefined;
 
-    const lowerMsg = lastUserMsg.toLowerCase();
-    const userWantsSlides =
-        lowerMsg.includes("slide") ||
-        lowerMsg.includes("presentasi") ||
-        lowerMsg.includes("ppt") ||
-        lowerMsg.includes("pptx") ||
-        lowerMsg.includes("powerpoint") ||
-        lowerMsg.includes("power point") ||
-        lowerMsg.includes("bahan tayang") ||
-        lowerMsg.includes("tayangan") ||
-        lowerMsg.includes("deck") ||
-        lowerMsg.includes("slides");
-    const userWantsXlsx =
-        lowerMsg.includes("excel") ||
-        lowerMsg.includes("xlsx") ||
-        lowerMsg.includes(".xlsx") ||
-        lowerMsg.includes("spreadsheet") ||
-        lowerMsg.includes("spredsheet") ||
-        lowerMsg.includes("xlxs") ||
-        lowerMsg.includes("lembar kerja") ||
-        lowerMsg.includes("tabel excel") ||
-        lowerMsg.includes("tabel data") ||
-        lowerMsg.includes("data tabel") ||
-        lowerMsg.includes("tabel statistik") ||
-        lowerMsg.includes("tabel") ||
-        lowerMsg.includes("data excel");
+    const fileReq = isExplicitFileRequest(lastUserMsg);
 
-    const userWantsDocument =
-        (lowerMsg.includes("dokumen") ||
-        lowerMsg.includes("word") ||
-        lowerMsg.includes("docx") ||
-        lowerMsg.includes("pdf") ||
-        lowerMsg.includes("makalah") ||
-        userWantsXlsx) &&
-        !userWantsSlides;
-
-    const userWantsAnyCreation = userWantsDocument || userWantsSlides;
-
-    let finalDocument = (rawDocument && rawDocument.title && (rawDocument.content || rawDocument.title))
-        ? (userWantsAnyCreation && !userWantsDocument ? undefined : rawDocument)
+    // ONLY provide createdDocument if the user explicitly requested a document file (word, docx, pdf, excel, xlsx)
+    let finalDocument = (rawDocument && rawDocument.title && (rawDocument.content || rawDocument.title) && (fileReq.wantsDocx || fileReq.wantsPdf || fileReq.wantsXlsx))
+        ? rawDocument
         : undefined;
 
-    const finalSlides = (rawSlides && Array.isArray(rawSlides.slides) && rawSlides.slides.length > 0)
-        ? (userWantsAnyCreation && !userWantsSlides ? undefined : rawSlides)
+    // ONLY provide createdSlides if the user explicitly requested a presentation/slides file
+    const finalSlides = (rawSlides && Array.isArray(rawSlides.slides) && rawSlides.slides.length > 0 && fileReq.wantsSlides)
+        ? rawSlides
         : undefined;
 
     if (finalDocument) {
-        if (userWantsXlsx) {
+        if (fileReq.wantsXlsx) {
             finalDocument.type = "xlsx";
             if (finalDocument.fileName) {
                 finalDocument.fileName = finalDocument.fileName.replace(/\.(docx|pdf)$/i, "") + ".xlsx";
@@ -758,9 +885,9 @@ function processAiChatResponse(
     const rawReplyText =
         resultData.reply ||
         (typeof responseText === "string" && !responseText.startsWith("{") ? responseText : "Tugas berhasil diproses.");
-    const cleanReply = cleanLatexMath(rawReplyText);
+    const cleanReply = cleanLatexMath(cleanRepetitiveLoops(rawReplyText));
 
-    if (!finalDocument && userWantsXlsx && cleanReply.includes("|")) {
+    if (!finalDocument && fileReq.wantsXlsx && cleanReply.includes("|")) {
         const tableLines = cleanReply.split("\n").filter(l => l.trim().startsWith("|"));
         if (tableLines.length >= 3) {
             const baseName = (taskContext?.title || "tabel_data").toLowerCase().replace(/[^a-z0-9]+/g, "_").slice(0, 40);
@@ -777,7 +904,7 @@ function processAiChatResponse(
 
     return {
         reply: cleanReply,
-        thoughtProcess: typeof resultData.thoughtProcess === "string" ? cleanLatexMath(resultData.thoughtProcess.trim()) : undefined,
+        thoughtProcess: typeof resultData.thoughtProcess === "string" ? cleanLatexMath(cleanRepetitiveLoops(resultData.thoughtProcess.trim())) : undefined,
         suggestedPrompts: Array.isArray(resultData.suggestedPrompts) ? resultData.suggestedPrompts : [],
         createdNote: finalNote,
         createdTodo: finalTodo,
@@ -813,12 +940,23 @@ export async function POST(req: Request) {
 
         let contextString = "";
         if (taskContext) {
-            contextString = `\n--- KONTEKS MATERI / TUGAS AKTIF ---
-Judul: ${taskContext.title || "-"}
-Mata Pelajaran / Topik: ${taskContext.courseName || "-"}
-Deskripsi / Materi: ${taskContext.description || "-"}
-${taskContext.dueDateStr ? `Deadline: ${taskContext.dueDateStr}` : ""}
-${taskContext.customNotes ? `Catatan Tambahan: ${taskContext.customNotes}` : ""}
+            contextString = `\n--- KONTEKS MATERI / TUGAS AKTIF (DARI GOOGLE CLASSROOM / DAFTAR TUGAS SISWA) ---
+Judul Tugas: ${taskContext.title || "-"}
+Mata Pelajaran / Kelas / Topik: ${taskContext.courseName || "-"}
+Deskripsi / Detail Tugas: ${taskContext.description || "Materi kurikulum sesuai judul tugas."}
+${taskContext.dueDateStr ? `Deadline Pengumpulan: ${taskContext.dueDateStr}` : ""}
+${taskContext.customNotes ? `Catatan Tambahan Siswa: ${taskContext.customNotes}` : ""}
+
+[ATURAN MUTLAK PENGERJAAN TUGAS AKTIF]:
+1. Pengguna telah memilih tugas ini sebagai konteks belajar. Anda SEBAGAI ASISTEN & TUTOR AHLI SUDAH MENGETAHUI DENGAN JELAS materi, kurikulum, dan kompetensi dasar yang diujikan dari Judul Tugas ("${taskContext.title || "-"}") dan Mata Pelajaran ("${taskContext.courseName || "-"}").
+2. KETIKA PENGGUNA MEMINTA: "Kerjakan", "Bantu kerjakan", "Selesaikan", "Bikin jadi dokumen", "Buatkan dokumennya", "Jawab tugas ini", atau instruksi serupa:
+   - DILARANG KERAS MEMINTA PENGGUNA MEMBERIKAN MATERI ATAU SOAL LAGI! (JANGAN PERNAH MENJAWAB: "Silakan berikan materi atau soal...", "Tolong kirimkan soalnya...", atau respons pasif serupa). Pengguna sudah memilih tugasnya, jadi tugas Anda adalah langsung mengerjakannya!
+   - JIKA DESKRIPSI TUGAS SUDAH MEMUAT BUTIR SOAL ATAU MATERI LENGKAP: Kerjakan dan jawab setiap nomor/butir soal tersebut secara mendalam, tepat, dan tuntas!
+   - JIKA DESKRIPSI TUGAS SINGKAT / HANYA BERUPA JUDUL / BELUM ADA RINCIAN NOMOR SOAL: Anda WAJIB SECARA PROAKTIF MENYUSUN DAN MENYELESAIKAN PENILAIAN / MATERI TUGAS TERSEBUT SECARA PARIPURNA SESUAI TINGKAT KELAS / JURUSAN:
+     • Konsep Esensial, Rumus & Kaidah Dasar Materi Lengkap.
+     • Contoh Kalimat / Kasus Kontekstual (relevan dengan jurusan siswa, misal RPL/Teknologi).
+     • Paket Butir Soal Latihan Asesmen (5-10 soal beragam: pilihan ganda & transformasi/esai) LENGKAP dengan Kunci Jawaban dan Pembahasan Analitis Langkah demi Langkah.
+   - JIKA PENGGUNA MEMINTA DOKUMEN / FILE: Tuliskan seluruh naskah lengkap ini ke field 'createdDocument' dan sajikan pula di field 'reply'!
 ------------------------------------`;
         }
 
@@ -826,7 +964,8 @@ ${taskContext.customNotes ? `Catatan Tambahan: ${taskContext.customNotes}` : ""}
         if (studyMode === "socratic") {
             modeInstruction = `\n--- MODE BELAJAR: TUTOR SOKRATIK ---
 Bimbing siswa untuk menemukan jawaban sendiri secara kritis dengan petunjuk bertahap (hints).
-PENGECUALIAN PENTING: Jika siswa secara spesifik meminta dokumen (Word, PDF, Excel, Slides) atau meminta format dokumen ("jawab dalam bentuk word/pdf"), Anda WAJIB MENGERJAKAN, MENGANALISIS, DAN MENULISKAN JAWABAN TUGAS TERSEBUT SECARA LENGKAP DAN TUNTAS DARI AWAL HINGGA AKHIR ke dalam dokumen dan chat, bukan hanya memberi petunjuk atau basa-basi!
+PENGECUALIAN PENTING: Jika siswa secara spesifik meminta dokumen (Word, PDF, Excel, Slides) atau meminta format dokumen ("jawab dalam bentuk word/pdf") ATAU meminta langsung mengerjakan tugas ("kerjakan tugas", "bantu kerjakan", "selesaikan", "bikin jadi dokumen"):
+Anda WAJIB MENGERJAKAN, MENGANALISIS, DAN MENULISKAN JAWABAN TUGAS TERSEBUT SECARA LENGKAP DAN TUNTAS DARI AWAL HINGGA AKHIR ke dalam dokumen dan chat, bukan hanya memberi petunjuk atau bertanya balik kepada siswa!
 ------------------------------------`;
         } else if (studyMode === "direct") {
             modeInstruction = `\n--- MODE BELAJAR: PENJELASAN RINGKAS & CEPAT ---
@@ -966,19 +1105,21 @@ ${personalizationInstruction}
    - **JIKA PENGGUNA MEMINTA "ALUR", "DIAGRAM ALUR", "FLOWCHART", ATAU "PROSES"**:
      WAJIB TULISKAN DIAGRAM ALUR TERSEBUT SECARA LENGKAP & VISUAL DI DALAM TEKS 'reply' menggunakan pemformatan visual Markdown yang rapi (misal: bagan kotak-kotak bertingkat dengan panah '->' atau 'v', atau tabel tahapan proses). Jelaskan setiap langkah dengan tuntas!
    - **JIKA PENGGUNA MEMINTA "TABEL", "TABEL DATA", "DATA STATISTIK", "GRAFIK TABEL"**:
-     1. WAJIB TULISKAN TABEL DATA LENGKAP SECARA TUNTAS DI DALAM TEKS 'reply' menggunakan tabel Markdown komprehensif (minimal 5-10 baris dengan 4-7 kolom detail: misal No, Variabel Penelitian, Kategori/Kelompok, Indikator Kuantitatif, Persentase/Skala, Dampak Teramati, Keterangan). Ulas data tersebut secara kritis dan ilmiah!
-     2. WAJIB ISI FIELD 'createdDocument' DENGAN TIPE "xlsx" yang memuat tabel data tersebut agar pengguna dapat langsung mengunduh dan mengeditnya sebagai file Excel (.xlsx)!
+     WAJIB TULISKAN TABEL DATA LENGKAP SECARA TUNTAS DI DALAM TEKS 'reply' menggunakan tabel Markdown komprehensif (minimal 5-10 baris dengan 4-7 kolom detail: misal No, Variabel Penelitian, Kategori/Kelompok, Indikator Kuantitatif, Persentase/Skala, Dampak Teramati, Keterangan). Ulas data tersebut secara kritis dan ilmiah!
+     PENTING: Tampilkan tabel data HANYA di dalam teks Markdown di field 'reply'. DILARANG membuat file createdDocument/xlsx KECUALI jika pengguna SECARA EKSPLISIT meminta file spreadsheet/excel/xlsx untuk diunduh!
 
 4. **CATATAN MATERI BARU (\`createdNote\`)**:
-   *Pemicu: Ketika pengguna meminta "simpan ke catatan", "catatkan materi ini", atau "buat catatan rangkuman".*
+   *Pemicu: Ketika pengguna secara eksplisit meminta "simpan ke catatan", "catatkan materi ini", atau "buat catatan rangkuman".*
    - \`title\`: HANYA judul topik catatan (maks 60 karakter tanpa awalan simbol/markdown).
    - \`content\`: Rangkuman materi Markdown terstruktur. Dilarang menulis \`### Tag:\` di dalam content.
    - \`subject\`: Mata kuliah / pelajaran asli.
    - \`tags\`: 1-3 kata kunci akademik relevan tanpa tagar.
 
 5. **RENCANA TO-DO TUNGGAL TERPADU (\`createdTodo\`)**:
-   *Pemicu: Ketika pengguna meminta "jadikan to-do", "buat jadwal belajar", atau "buat checklist tugas".*
+   *Pemicu: Ketika pengguna secara eksplisit meminta "jadikan to-do", "buat jadwal belajar", atau "buat checklist tugas".*
    - Buat 1 rencana terpadu dengan 3-7 \`subtasks\` yang realistis dan dapat dieksekusi secara terurut.
+   - Judul to-do dan setiap sub-langkah WAJIB berupa teks polos alfabet ringkas (maksimal 6-8 kata), to the point, dan langsung dapat dieksekusi tanpa karakter dekoratif repetitif.
+   - Pada teks 'reply': Berikan respon percakapan singkat yang menyemangati (1-2 kalimat) bahwa rencana to-do telah disiapkan.
 
 6. **ANALISIS VIDEO YOUTUBE & PEMBELAJARAN AUDIO-VISUAL**:
    *Pemicu: Ketika pengguna melampirkan tautan/video YouTube untuk ditonton, dianalisis, atau dirangkum.*
@@ -988,9 +1129,28 @@ ${personalizationInstruction}
      • **Poin-Poin Kunci & Garis Waktu (Timestamps)**: Petakan konsep-konsep krusial beserta penanda waktu format \`[MM:SS]\` atau \`[HH:MM:SS]\` (contoh: \`[02:15] Pembahasan Rumus Tekanan Hidrostatis\`) agar siswa dapat langsung melompat ke momen spesifik dalam video tersebut.
      • **Penjelasan Konseptual Mendalam**: Kupas tuntas penjelasan materi, logika kerja, analogi, atau formula yang diajarkan dalam video.
      • **Kuis & Pertanyaan Evaluasi Pemahaman**: Buat 1-2 pertanyaan reflektif atau kuis pilihan ganda interaktif dari materi video untuk menguji pemahaman siswa.
-   - Jika siswa meminta untuk merangkum ke dokumen (Word/PDF/Slides) atau membuat catatan/to-do dari video, sertakan juga field \`createdDocument\`, \`createdSlides\`, \`createdNote\`, atau \`createdTodo\` secara lengkap sesuai pedoman di atas.
 
-*PENTING: Jangan membuat atau menyertakan field objek pembuatan (document/slides/note/todo) jika pengguna tidak memintanya secara eksplisit. Jawablah pesan biasa dengan percakapan yang cerdas, suportif, dan kaya wawasan.*`;
+7. **REKOMENDASI VIDEO YOUTUBE (WAJIB TEPAT 4 VIDEO)**:
+   *Pemicu: Ketika pengguna meminta rekomendasi video YouTube, referensi video, tutorial visual, atau materi belajar dari YouTube.*
+   - Anda WAJIB memberikan TEPAT 4 REKOMENDASI VIDEO YOUTUBE (wajib 4 video, bukan hanya 1 atau 2).
+   - Format penyajian di dalam 'reply' WAJIB memuat 4 video dengan rincian terstruktur:
+     1. **[Judul Video Rekomendasi 1]** — Channel: *Nama Channel*
+        - Alasan Rekomendasi: Mengapa video ini sangat relevan dan membantu memahami materi.
+        - Poin Kunci yang Dipelajari: Konsep esensial yang dibahas dalam video.
+     2. **[Judul Video Rekomendasi 2]** — Channel: *Nama Channel*
+        - Alasan Rekomendasi: ...
+        - Poin Kunci yang Dipelajari: ...
+     3. **[Judul Video Rekomendasi 3]** — Channel: *Nama Channel*
+        - Alasan Rekomendasi: ...
+        - Poin Kunci yang Dipelajari: ...
+     4. **[Judul Video Rekomendasi 4]** — Channel: *Nama Channel*
+        - Alasan Rekomendasi: ...
+        - Poin Kunci yang Dipelajari: ...
+
+*ATURAN MUTLAK PALING KRUSIAL TENTANG PEMBUATAN FILE:
+- DILARANG KERAS membuat atau menyertakan field objek pembuatan ('createdDocument' atau 'createdSlides') jika pengguna TIDAK memintanya secara eksplisit!
+- Jika pengguna HANYA meminta penjelasan ("jelaskan...", "apa itu...", "bagaimana..."), analisis tugas/dokumen lampiran, pembahasan soal, pembuatan tabel, atau tanya jawab biasa:
+  JAWABLAH DENGAN TEKS PERCAKAPAN MARKDOWN DI FIELD 'reply' SAJA! Biarkan 'createdDocument' dan 'createdSlides' KOSONG/UNDEFINED!*`;
 
         const provider = aiConfig?.provider || process.env.AI_PROVIDER?.toLowerCase() || "gemini";
         const geminiApiKey = provider === "gemini_custom" ? aiConfig?.apiKey : (aiConfig?.apiKey || process.env.GEMINI_API_KEY);
@@ -1010,7 +1170,8 @@ ${personalizationInstruction}
             if (!apiKey) {
                 return NextResponse.json(
                     {
-                        error: "API Key OpenAI belum diisi. Silakan atur di menu Pengaturan Aplikasi.",
+                        error: "API Key OpenAI belum diisi. Silakan atur di menu Pengaturan > Penyedia AI > OpenAI / Custom.",
+                        code: "MISSING_API_KEY"
                     },
                     { status: 400 },
                 );
@@ -1021,11 +1182,25 @@ ${personalizationInstruction}
                     role: "system",
                     content:
                         systemInstruction +
-                        '\n\nKEMBALIKAN OUTPUT HARUS HANYA DALAM BENTUK JSON OBJECT YANG VALID SESUAI SKEMA BERIKUT:\n{\n  "thoughtProcess": "Penalaran kritis, verifikasi keabsahan data/rumus, langkah kalkulasi step-by-step, dan evaluasi anti-halusinasi sebelum menulis jawaban",\n  "reply": "Jawaban Markdown",\n  "suggestedPrompts": ["Pertanyaan 1", "Pertanyaan 2"],\n  "createdNote": { "title": "Judul Singkat", "content": "Isi Markdown", "subject": "Nama Mata Kuliah", "tags": ["Label"] },\n  "createdTodo": { "title": "Judul Rencana", "description": "Deskripsi", "priority": "medium", "category": "Materi", "subtasks": [{ "title": "Langkah 1" }] },\n  "createdDocument": { "type": "docx" | "pdf" | "xlsx", "title": "Judul Dokumen", "content": "Isi Markdown / Tabel Data Markdown", "fileName": "dokumen.docx/dokumen.pdf/tabel.xlsx" },\n  "createdSlides": { "title": "Judul Presentasi", "subtitle": "Subjudul Singkat", "theme": "indigo" | "dark" | "emerald" | "amber" | "slate" | "rose" | "teal" | "violet", "slides": [{ "title": "Slide 1", "bullets": ["Poin 1"], "notes": "Catatan" }], "fileName": "presentasi.pptx" }\n}',
+                        '\n\nKEMBALIKAN OUTPUT HARUS HANYA DALAM BENTUK JSON OBJECT YANG VALID SESUAI SKEMA BERIKUT:\n{\n  "thoughtProcess": "Penalaran kritis, verifikasi keabsahan data/rumus, langkah kalkulasi step-by-step, dan evaluasi anti-halusinasi sebelum menulis jawaban",\n  "reply": "Jawaban Markdown",\n  "suggestedPrompts": ["Pertanyaan 1", "Pertanyaan 2"],\n  "createdNote": { "title": "Judul Singkat teks polos (maks 60 char)", "content": "Isi Markdown", "subject": "Nama Mata Kuliah", "tags": ["Label"] },\n  "createdTodo": { "title": "Judul Rencana teks polos ringkas (maks 50 char)", "description": "Deskripsi singkat", "priority": "high" | "medium" | "low", "category": "Materi", "subtasks": [{ "title": "Langkah 1 (maks 50 char, actionable)" }] },\n  "createdDocument": { "type": "docx" | "pdf" | "xlsx", "title": "Judul Dokumen", "content": "Isi Markdown / Tabel Data Markdown", "fileName": "dokumen.docx/dokumen.pdf/tabel.xlsx" },\n  "createdSlides": { "title": "Judul Presentasi", "subtitle": "Subjudul Singkat", "theme": "indigo" | "dark" | "emerald" | "amber" | "slate" | "rose" | "teal" | "violet", "slides": [{ "title": "Slide 1", "bullets": ["Poin 1"], "notes": "Catatan" }], "fileName": "presentasi.pptx" }\n}',
                 },
-                ...messages.map((m: any) => {
+                ...messages.map((m: any, idx: number) => {
+                    let userText = m.content || "Analisis lampiran ini:";
+                    if (m.role === "user" && idx === messages.length - 1) {
+                        const fileReq = isExplicitFileRequest(userText);
+                        if (fileReq.hasAny) {
+                            userText += `\n\n[INSTRUKSI KHUSUS: Pengguna secara EKSPLISIT meminta pembuatan/ekspor file dokumen resmi atau slide${taskContext?.title ? ` untuk topik tugas: "${taskContext.title}" (${taskContext.courseName || "Umum"})` : ""}.
+TUGAS ANDA:
+1. Anda WAJIB MENGERJAKAN, MENGHITUNG/MENJELASKAN, DAN MENYELESAIKAN TUGAS INI SECARA SUBSTANTIF DARI AWAL HINGGA TUNTAS.
+2. DILARANG KERAS MEMINTA PENGGUNA MEMBERIKAN MATERI ATAU SOAL LAGI! Anda sudah tahu topiknya (${taskContext?.title || "tugas ini"} - ${taskContext?.courseName || "akademik"}). Langsung susun materi, rumus, kaidah, contoh soal, dan jawaban lengkapnya!
+3. TULISKAN SELURUH NASKAH JAWABAN LENGKAP INI (minimal 500 - 1500 kata) KE DALAM DUA TEMPAT:
+   - Ke dalam field 'createdDocument.content' atau 'createdSlides' (agar file yang diunduh berisi seluruh naskah lengkap).
+   - Ke dalam field 'reply' (tuliskan naskah jawaban lengkap ini dalam format Markdown agar bisa dibaca langsung oleh siswa di chat).
+4. DILARANG KERAS hanya menuliskan satu kalimat pengantar atau mengulang deskripsi tugas!]`;
+                        }
+                    }
                     if (m.attachments && Array.isArray(m.attachments) && m.attachments.length > 0) {
-                        const contentParts: any[] = [{ type: "text", text: m.content || "Analisis lampiran ini:" }];
+                        const contentParts: any[] = [{ type: "text", text: userText }];
                         for (const att of m.attachments) {
                             if (att.type === "youtube" && att.youtubeInfo) {
                                 contentParts.push({
@@ -1036,7 +1211,7 @@ ${personalizationInstruction}
                                 contentParts.push({
                                     type: "image_url",
                                     image_url: { url: att.dataUrl },
-                                });
+                                    });
                             } else if (att.extractedText) {
                                 contentParts.push({
                                     type: "text",
@@ -1051,7 +1226,7 @@ ${personalizationInstruction}
                     }
                     return {
                         role: m.role === "assistant" ? "assistant" : "user",
-                        content: m.content,
+                        content: userText,
                     };
                 }),
             ];
@@ -1086,8 +1261,9 @@ ${personalizationInstruction}
                     {
                         error:
                             provider === "gemini_custom"
-                                ? "API Key Google Gemini belum diisi. Silakan masukkan API Key Anda di menu Pengaturan."
-                                : "GEMINI_API_KEY environment variable belum diatur di server.",
+                                ? "API Key Google Gemini belum diisi. Silakan masukkan API Key Anda di menu Pengaturan > Penyedia AI > Gemini Pribadi."
+                                : "GEMINI_API_KEY environment variable belum diatur di server. Silakan atur API Key di Pengaturan > Penyedia AI, atau hubungi admin untuk menambahkan GEMINI_API_KEY ke environment variables.",
+                        code: "MISSING_API_KEY"
                     },
                     { status: 400 },
                 );
@@ -1102,18 +1278,18 @@ ${personalizationInstruction}
             const contents = messages.map(
                 (m: { role: string; content: string; attachments?: any[] }, idx: number) => {
                     let userText = m.content || "Tolong analisa lampiran ini:";
-                    // If this is the latest user message and asks for document/file output:
+                    // If this is the latest user message and explicitly asks for document/slide file output:
                     if (m.role === "user" && idx === messages.length - 1) {
-                        const lower = userText.toLowerCase();
-                        const isDocRequest = lower.includes("pdf") || lower.includes("word") || lower.includes("docx") || lower.includes("xlsx") || lower.includes("excel") || lower.includes("spreadsheet") || lower.includes("makalah") || lower.includes("dokumen") || lower.includes("slide") || lower.includes("ppt");
-                        if (isDocRequest) {
-                            userText += `\n\n[INSTRUKSI WAJIB UNTUK AI: Pengguna meminta jawaban/laporan dalam format dokumen resmi${taskContext?.title ? ` untuk topik tugas: "${taskContext.title}" (${taskContext.courseName || "Umum"})` : ""}.
+                        const fileReq = isExplicitFileRequest(userText);
+                        if (fileReq.hasAny) {
+                            userText += `\n\n[INSTRUKSI KHUSUS: Pengguna secara EKSPLISIT meminta pembuatan/ekspor file dokumen resmi atau slide${taskContext?.title ? ` untuk topik tugas: "${taskContext.title}" (${taskContext.courseName || "Umum"})` : ""}.
 TUGAS ANDA:
-1. Anda WAJIB MENGERJAKAN, MENGHITUNG/MENJELASKAN, DAN MENYELESAIKAN TUGAS INI SECARA SUBSTANTIF DARI AWAL HINGGA TUNTAS. Berikan naskah lengkap: landasan teori, rumus/prosedur teknis, langkah perhitungan step-by-step nyata, contoh data konkret, tabel analisis, dan kesimpulan menyeluruh.
-2. TULISKAN SELURUH NASKAH JAWABAN/DOKUMEN LENGKAP INI (minimal 500 - 1500 kata) KE DALAM DUA TEMPAT:
-   - Ke dalam field 'createdDocument.content' (agar file Word/PDF yang diunduh berisi seluruh naskah lengkap).
+1. Anda WAJIB MENGERJAKAN, MENGHITUNG/MENJELASKAN, DAN MENYELESAIKAN TUGAS INI SECARA SUBSTANTIF DARI AWAL HINGGA TUNTAS.
+2. DILARANG KERAS MEMINTA PENGGUNA MEMBERIKAN MATERI ATAU SOAL LAGI! Anda sudah tahu topiknya (${taskContext?.title || "tugas ini"} - ${taskContext?.courseName || "akademik"}). Langsung susun materi, rumus, kaidah, contoh soal, dan jawaban lengkapnya!
+3. TULISKAN SELURUH NASKAH JAWABAN LENGKAP INI (minimal 500 - 1500 kata) KE DALAM DUA TEMPAT:
+   - Ke dalam field 'createdDocument.content' atau 'createdSlides' (agar file yang diunduh berisi seluruh naskah lengkap).
    - Ke dalam field 'reply' (tuliskan naskah jawaban lengkap ini dalam format Markdown agar bisa dibaca langsung oleh siswa di chat).
-3. DILARANG KERAS hanya menuliskan satu kalimat pengantar atau mengulang deskripsi tugas!]`;
+4. DILARANG KERAS hanya menuliskan satu kalimat pengantar atau mengulang deskripsi tugas!]`;
                         }
                     }
                     const parts: any[] = [{ text: userText }];
@@ -1175,10 +1351,10 @@ TUGAS ANDA:
                 },
             );
 
-            // Build Gemini config with structured JSON output and low temperature for zero hallucination
+            // Build Gemini config with structured JSON output and moderate temperature to prevent repetition loops
             const generationConfig: any = {
                 systemInstruction,
-                temperature: 0.3,
+                temperature: 0.6,
                 responseMimeType: "application/json",
                 responseSchema: {
                     type: Type.OBJECT,
@@ -1204,7 +1380,7 @@ TUGAS ANDA:
                             description:
                                 "Catatan materi baru jika pengguna meminta catatan. Field 'title' HANYA judul singkat (maks 60 karakter), seluruh isi penjelasan masuk ke 'content'.",
                             properties: {
-                                title: { type: Type.STRING, description: "Judul singkat topik catatan (maks 60 karakter, HANYA judul)" },
+                                title: { type: Type.STRING, description: "Judul singkat topik catatan teks polos (maks 60 karakter, HANYA judul)" },
                                 content: { type: Type.STRING, description: "Isi lengkap catatan format Markdown terstruktur" },
                                 subject: { type: Type.STRING, description: "Mata kuliah atau topik materi" },
                                 tags: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Tag materi" },
@@ -1215,21 +1391,23 @@ TUGAS ANDA:
                             description:
                                 "1 tugas To-Do utama terpadu yang memuat kumpulan sub-langkah (subtasks) jika pengguna meminta membuat to-do list.",
                             properties: {
-                                title: { type: Type.STRING, description: "Judul utama rencana to-do" },
-                                description: { type: Type.STRING, description: "Deskripsi to-do" },
-                                priority: { type: Type.STRING, description: "Prioritas: high, medium, atau low" },
-                                category: { type: Type.STRING, description: "Kategori tugas" },
+                                title: { type: Type.STRING, description: "Judul utama rencana to-do teks polos ringkas, maksimal 50 karakter (contoh: Belajar Kinematika Fisika)" },
+                                description: { type: Type.STRING, description: "Deskripsi to-do (opsional, ringkas)" },
+                                priority: { type: Type.STRING, enum: ["high", "medium", "low"], description: "Prioritas: high, medium, atau low" },
+                                category: { type: Type.STRING, description: "Kategori tugas atau mata pelajaran" },
                                 subtasks: {
                                     type: Type.ARRAY,
-                                    description: "Daftar sub-langkah / checklist aksi",
+                                    description: "Daftar sub-langkah / checklist aksi (3-7 item realistis)",
                                     items: {
                                         type: Type.OBJECT,
                                         properties: {
-                                            title: { type: Type.STRING, description: "Judul sub-langkah" },
+                                            title: { type: Type.STRING, description: "Judul sub-langkah teks polos ringkas (maks 50 karakter, actionable)" },
                                         },
+                                        required: ["title"],
                                     },
                                 },
                             },
+                            required: ["title", "priority"],
                         },
                         createdDocument: {
                             type: Type.OBJECT,
@@ -1276,17 +1454,32 @@ TUGAS ANDA:
 
             if (wantStream) {
                 const encoder = new TextEncoder();
+                // The browser may cancel the SSE request while Gemini is still yielding.
+                // Track that state so a late chunk never writes to a closed controller.
+                let streamStopped = false;
                 const stream = new ReadableStream({
                     async start(controller) {
+                        const emit = (event: Record<string, any>): boolean => {
+                            if (streamStopped) return false;
+                            try {
+                                controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+                                return true;
+                            } catch (error: any) {
+                                if (error?.code === "ERR_INVALID_STATE" || error?.message?.includes("Controller is already closed")) {
+                                    streamStopped = true;
+                                    return false;
+                                }
+                                throw error;
+                            }
+                        };
+                        const close = () => {
+                            if (streamStopped) return;
+                            streamStopped = true;
+                            try { controller.close(); } catch { /* Client already disconnected. */ }
+                        };
                         try {
                             // Immediately signal analyzing stage
-                            controller.enqueue(
-                                encoder.encode(`data: ${JSON.stringify({
-                                    type: "status",
-                                    stage: "analyzing",
-                                    detail: "Menganalisis pertanyaan & konteks materi..."
-                                })}\n\n`)
-                            );
+                            if (!emit({ type: "status", stage: "analyzing", detail: "Menganalisis pertanyaan & konteks materi..." })) return;
 
                             let responseStream: any;
                             if (enableGrounding) {
@@ -1303,15 +1496,13 @@ TUGAS ANDA:
                                     console.warn("Grounding stream failed, retrying without grounding:", groundingError.message);
                                     // Notify client that grounding quota is exhausted or unavailable
                                     try {
-                                        controller.enqueue(
-                                            encoder.encode(`data: ${JSON.stringify({
-                                                type: "grounding_status",
-                                                available: false,
-                                                reason: groundingError?.message?.includes("RESOURCE_EXHAUSTED") || groundingError?.status === 429
-                                                    ? "quota_exhausted"
-                                                    : groundingError?.message || "unavailable"
-                                            })}\n\n`)
-                                        );
+                                        emit({
+                                            type: "grounding_status",
+                                            available: false,
+                                            reason: groundingError?.message?.includes("RESOURCE_EXHAUSTED") || groundingError?.status === 429
+                                                ? "quota_exhausted"
+                                                : groundingError?.message || "unavailable"
+                                        });
                                     } catch {}
                                     responseStream = await ai.models.generateContentStream({
                                         model: modelName,
@@ -1335,6 +1526,7 @@ TUGAS ANDA:
                             let hasEmittedAnsweringStatus = false;
 
                             for await (const chunk of responseStream) {
+                                if (streamStopped) return;
                                 const chunkText = chunk.text || "";
                                 fullResponseText += chunkText;
 
@@ -1345,14 +1537,7 @@ TUGAS ANDA:
                                             const queries = metadata.webSearchQueries.filter(Boolean).slice(0, 3);
                                             if (queries.length > 0) {
                                                 collectedGroundingQueries.push(...queries);
-                                                controller.enqueue(
-                                                    encoder.encode(`data: ${JSON.stringify({
-                                                        type: "status",
-                                                        stage: "searching",
-                                                        detail: "Mencari referensi & fakta terkini di web...",
-                                                        queries
-                                                    })}\n\n`)
-                                                );
+                                                emit({ type: "status", stage: "searching", detail: "Mencari referensi & fakta terkini di web...", queries });
                                             }
                                         }
                                         if (metadata.groundingChunks && Array.isArray(metadata.groundingChunks) && collectedGroundingSources.length === 0) {
@@ -1365,16 +1550,8 @@ TUGAS ANDA:
                                                 .slice(0, 5);
                                             if (sources.length > 0) {
                                                 collectedGroundingSources.push(...sources);
-                                                controller.enqueue(
-                                                    encoder.encode(`data: ${JSON.stringify({
-                                                        type: "status",
-                                                        stage: "analyzing",
-                                                        detail: `Mengevaluasi ${sources.length} sumber rujukan terverifikasi...`
-                                                    })}\n\n`)
-                                                );
-                                                controller.enqueue(
-                                                    encoder.encode(`data: ${JSON.stringify({ type: "grounding", sources })}\n\n`)
-                                                );
+                                                emit({ type: "status", stage: "analyzing", detail: `Mengevaluasi ${sources.length} sumber rujukan terverifikasi...` });
+                                                emit({ type: "grounding", sources });
                                             }
                                         }
                                     }
@@ -1385,31 +1562,15 @@ TUGAS ANDA:
                                     if (ev.type === "thought" && ev.delta) {
                                         if (!hasEmittedThinkingStatus) {
                                             hasEmittedThinkingStatus = true;
-                                            controller.enqueue(
-                                                encoder.encode(`data: ${JSON.stringify({
-                                                    type: "status",
-                                                    stage: "thinking",
-                                                    detail: "Memverifikasi data, menghitung, & merumuskan analisis..."
-                                                })}\n\n`)
-                                            );
+                                            emit({ type: "status", stage: "thinking", detail: "Memverifikasi data, menghitung, & merumuskan analisis..." });
                                         }
-                                        controller.enqueue(
-                                            encoder.encode(`data: ${JSON.stringify({ type: "thought", delta: ev.delta })}\n\n`)
-                                        );
+                                        if (!emit({ type: "thought", delta: ev.delta })) return;
                                     } else if (ev.type === "chunk" && ev.delta) {
                                         if (!hasEmittedAnsweringStatus) {
                                             hasEmittedAnsweringStatus = true;
-                                            controller.enqueue(
-                                                encoder.encode(`data: ${JSON.stringify({
-                                                    type: "status",
-                                                    stage: "answering",
-                                                    detail: "Menyusun jawaban terstruktur..."
-                                                })}\n\n`)
-                                            );
+                                            emit({ type: "status", stage: "answering", detail: "Menyusun jawaban terstruktur..." });
                                         }
-                                        controller.enqueue(
-                                            encoder.encode(`data: ${JSON.stringify({ type: "chunk", delta: ev.delta })}\n\n`)
-                                        );
+                                        if (!emit({ type: "chunk", delta: ev.delta })) return;
                                     }
                                 }
                             }
@@ -1426,17 +1587,17 @@ TUGAS ANDA:
                                 finalResult.thoughtProcess = cleanLatexMath(extractor.thoughtText.trim());
                             }
 
-                            controller.enqueue(
-                                encoder.encode(`data: ${JSON.stringify({ type: "done", ...finalResult })}\n\n`)
-                            );
-                            controller.close();
+                            emit({ type: "done", ...finalResult });
+                            close();
                         } catch (streamErr: any) {
+                            if (streamStopped) return;
                             console.error("Stream generation error:", streamErr);
-                            controller.enqueue(
-                                encoder.encode(`data: ${JSON.stringify({ type: "error", error: streamErr.message || "Gagal memproses streaming AI." })}\n\n`)
-                            );
-                            controller.close();
+                            emit({ type: "error", error: streamErr.message || "Gagal memproses streaming AI." });
+                            close();
                         }
+                    },
+                    cancel() {
+                        streamStopped = true;
                     },
                 });
 

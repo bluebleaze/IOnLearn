@@ -38,7 +38,7 @@ export function isOnboardingCompleted(userEmail?: string): boolean {
   const rawEmail = userEmail || profile?.email;
   const email = rawEmail ? rawEmail.toLowerCase().trim() : undefined;
 
-  // 1. If an account is logged in or userEmail is provided, check ONLY account-scoped records
+  // 1. If an account is logged in or userEmail is provided, check account-scoped records
   if (email) {
     const userKey = `${ONBOARDING_DONE_KEY}_${email}`;
     if (localStorage.getItem(userKey) === "true") return true;
@@ -54,6 +54,38 @@ export function isOnboardingCompleted(userEmail?: string): boolean {
       try {
         const parsed = JSON.parse(savedPrefs);
         if (parsed && (parsed.educationLevel || parsed.learningStyle || parsed.aiTone)) {
+          localStorage.setItem(userKey, "true");
+          return true;
+        }
+      } catch {}
+    }
+
+    // Also check if account has existing tasks, personal todos, or study notes
+    const tasksRaw = localStorage.getItem(`${TASKS_STORAGE_KEY}_${email}`);
+    if (tasksRaw && tasksRaw !== "[]") {
+      try {
+        const tasks = JSON.parse(tasksRaw);
+        if (Array.isArray(tasks) && tasks.length > 0) {
+          localStorage.setItem(userKey, "true");
+          return true;
+        }
+      } catch {}
+    }
+    const todosRaw = localStorage.getItem(`${TODOS_STORAGE_KEY}_${email}`);
+    if (todosRaw && todosRaw !== "[]") {
+      try {
+        const todos = JSON.parse(todosRaw);
+        if (Array.isArray(todos) && todos.length > 0) {
+          localStorage.setItem(userKey, "true");
+          return true;
+        }
+      } catch {}
+    }
+    const notesRaw = localStorage.getItem(`${NOTES_STORAGE_KEY}_${email}`);
+    if (notesRaw && notesRaw !== "[]") {
+      try {
+        const notes = JSON.parse(notesRaw);
+        if (Array.isArray(notes) && notes.length > 0) {
           localStorage.setItem(userKey, "true");
           return true;
         }
@@ -116,7 +148,13 @@ export function isSpotlightTourCompleted(userEmail?: string): boolean {
   const rawEmail = userEmail || profile?.email;
   const email = rawEmail ? rawEmail.toLowerCase().trim() : undefined;
   if (email) {
-    return localStorage.getItem(`${SPOTLIGHT_TOUR_DONE_KEY}_${email}`) === "true";
+    if (localStorage.getItem(`${SPOTLIGHT_TOUR_DONE_KEY}_${email}`) === "true") return true;
+    if (rawEmail && localStorage.getItem(`${SPOTLIGHT_TOUR_DONE_KEY}_${rawEmail}`) === "true") return true;
+    // Returning users who have already completed onboarding and don't have a pending spotlight should not see it
+    if (isOnboardingCompleted(email) && !isSpotlightPending(email)) {
+      return true;
+    }
+    return false;
   }
   if (rawEmail) {
     return localStorage.getItem(`${SPOTLIGHT_TOUR_DONE_KEY}_${rawEmail}`) === "true";
@@ -142,6 +180,10 @@ export function setSpotlightTourCompleted(completed: boolean = true, userEmail?:
   if (!email && !rawEmail) {
     localStorage.setItem(SPOTLIGHT_TOUR_DONE_KEY, val);
   }
+  if (completed) {
+    setSpotlightPending(false, email);
+  }
+  syncAllUserDataToCloud();
 }
 
 export function isSpotlightPending(userEmail?: string): boolean {
@@ -205,6 +247,7 @@ export function setOnboardingCompleted(completed: boolean = true, userEmail?: st
     localStorage.setItem(`${ONBOARDING_DONE_KEY}_${rawEmail}`, val);
   }
   localStorage.setItem(ONBOARDING_DONE_KEY, val);
+  syncAllUserDataToCloud();
   window.dispatchEvent(new Event("taskStoreChange"));
 }
 
@@ -220,7 +263,19 @@ export function syncAllUserDataToCloud(): void {
     const aiConfig = loadAIConfig();
     const todos = loadTodos();
     const notes = loadNotes();
-    DBService.saveUserData(tasks, prefs, aiConfig, profile.email, todos, notes).catch(() => {});
+    const onboardingDone = isOnboardingCompleted(profile.email);
+    const spotlightDone = isSpotlightTourCompleted(profile.email);
+    DBService.saveUserData(
+      tasks,
+      prefs,
+      aiConfig,
+      profile.email,
+      todos,
+      notes,
+      onboardingDone,
+      spotlightDone,
+      true
+    ).catch(() => {});
   }
 }
 

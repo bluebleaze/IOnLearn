@@ -28,7 +28,6 @@ import {
   CalendarDays,
   BookOpen,
   Cpu,
-  Sparkles,
   Key,
   Server,
   ExternalLink,
@@ -53,9 +52,9 @@ import {
   GraduationCap,
   Target,
   Layers,
-  Sparkle,
   Sliders,
 } from "lucide-react";
+import { IonLearnAIIcon } from "@/components/IonLearnAIIcon";
 import { Button } from "@/components/ui/button";
 import { toggleThemeWithCircularAnimation } from "@/lib/theme";
 import { toast } from "@/components/ui/sonner";
@@ -1434,7 +1433,7 @@ export default function SettingsPage() {
                   id: "gemini",
                   label: isEn ? "Built-in Gemini" : "Gemini Bawaan",
                   desc: isEn ? "Free & Ready to Use" : "Gratis & Langsung Siap Pakai",
-                  icon: Sparkles,
+                  icon: IonLearnAIIcon,
                 },
                 {
                   id: "gemini_custom",
@@ -1492,7 +1491,7 @@ export default function SettingsPage() {
             {config.provider === "gemini" && (
               <div className="p-3.5 rounded-xl bg-purple-50/60 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-900/40 text-xs text-purple-950 dark:text-purple-200 space-y-1">
                 <div className="font-semibold text-purple-900 dark:text-purple-300 flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                  <IonLearnAIIcon className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
                   <span>{isEn ? "Smart AI Tutor Active & Ready" : "AI Tutor Cerdas Aktif & Siap Pakai"}</span>
                 </div>
                 <p className="text-xs text-purple-900/80 dark:text-purple-300/80 leading-relaxed">
@@ -1738,7 +1737,7 @@ export default function SettingsPage() {
               <div className="flex flex-col justify-between gap-3 p-4 rounded-xl border border-slate-200/80 dark:border-white/[0.08] bg-slate-50/50 dark:bg-[#141414]/50">
                 <div className="flex items-center gap-2.5">
                   <div className="p-2 rounded-lg bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 shrink-0">
-                    <Sparkles className="w-4 h-4" />
+                    <IonLearnAIIcon className="w-4 h-4" />
                   </div>
                   <div>
                     <h3 className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-[#f5f5f5]">
@@ -1759,7 +1758,7 @@ export default function SettingsPage() {
                   onClick={() => router.push("/onboarding")}
                   className="text-xs h-8.5 px-3.5 rounded-[10px] border-orange-200 dark:border-orange-900/60 text-orange-700 dark:text-orange-300 hover:text-orange-900 dark:hover:text-orange-100 hover:bg-orange-50 dark:hover:bg-orange-950/60 gap-1.5 cursor-pointer self-start transition-colors"
                 >
-                  <Sparkle className="w-3.5 h-3.5" />
+                  <IonLearnAIIcon className="w-3.5 h-3.5" />
                   <span>{isEn ? "Open Questionnaire" : "Buka Kuesioner"}</span>
                 </Button>
               </div>

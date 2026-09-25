@@ -9,6 +9,9 @@ export interface FullUserData {
   aiConfig: AIConfig | null;
   todos: PersonalTodo[];
   notes: StudyNote[];
+  onboardingCompleted?: boolean;
+  spotlightCompleted?: boolean;
+  hasLoggedInBefore?: boolean;
   updatedAt?: string;
 }
 
@@ -38,7 +41,10 @@ export class DBService {
     aiConfig: AIConfig | null,
     userEmail?: string,
     todos?: PersonalTodo[],
-    notes?: StudyNote[]
+    notes?: StudyNote[],
+    onboardingCompleted?: boolean,
+    spotlightCompleted?: boolean,
+    hasLoggedInBefore?: boolean
   ): Promise<void> {
     const cleanTasks = JSON.parse(JSON.stringify(tasks || []));
     const cleanPrefs = preferences ? JSON.parse(JSON.stringify(preferences)) : null;
@@ -51,7 +57,7 @@ export class DBService {
       if (userEmail) {
         try {
           const controller = new AbortController();
-          const timer = setTimeout(() => controller.abort(), 1200);
+          const timer = setTimeout(() => controller.abort(), 1500);
           await fetch('/api/user-cache', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -62,6 +68,9 @@ export class DBService {
               aiConfig: cleanConfig,
               todos: cleanTodos,
               notes: cleanNotes,
+              onboardingCompleted,
+              spotlightCompleted,
+              hasLoggedInBefore,
             }),
             signal: controller.signal,
           });
@@ -73,7 +82,7 @@ export class DBService {
 
       // 2. Secondary: Firestore Cloud if configured and enabled
       try {
-        const uid = await withTimeout(this.getUserId(), 800, null);
+        const uid = await withTimeout(this.getUserId(), 1000, null);
         if (uid) {
           const userRef = doc(db, 'users', uid);
           await withTimeout(
@@ -83,9 +92,12 @@ export class DBService {
               aiConfig: cleanConfig,
               todos: cleanTodos,
               notes: cleanNotes,
+              ...(onboardingCompleted !== undefined ? { onboardingCompleted } : {}),
+              ...(spotlightCompleted !== undefined ? { spotlightCompleted } : {}),
+              ...(hasLoggedInBefore !== undefined ? { hasLoggedInBefore } : {}),
               updatedAt: new Date().toISOString()
             }, { merge: true }),
-            1000,
+            1200,
             undefined
           );
         }
@@ -94,16 +106,16 @@ export class DBService {
       }
     };
 
-    await withTimeout(saveOperation(), 1500, undefined);
+    await withTimeout(saveOperation(), 2000, undefined);
   }
 
   static async loadUserData(userEmail?: string): Promise<FullUserData | null> {
     const fetchCloud = async (): Promise<FullUserData | null> => {
-      // 1. Primary: Load from shared server API cache per account (with timeout 800ms)
+      // 1. Primary: Load from shared server API cache per account (with timeout 1500ms)
       if (userEmail) {
         try {
           const controller = new AbortController();
-          const timer = setTimeout(() => controller.abort(), 800);
+          const timer = setTimeout(() => controller.abort(), 1500);
           const res = await fetch(`/api/user-cache?email=${encodeURIComponent(userEmail)}`, {
             signal: controller.signal,
           });
@@ -111,13 +123,22 @@ export class DBService {
           if (res.ok) {
             const json = await res.json();
             if (json.data) {
+              const d = json.data;
+              const hasData =
+                (d.tasks && d.tasks.length > 0) ||
+                (d.todos && d.todos.length > 0) ||
+                (d.notes && d.notes.length > 0) ||
+                Boolean(d.preferences);
               return {
-                tasks: json.data.tasks || [],
-                preferences: json.data.preferences || null,
-                aiConfig: json.data.aiConfig || null,
-                todos: json.data.todos || [],
-                notes: json.data.notes || [],
-                updatedAt: json.data.updatedAt,
+                tasks: d.tasks || [],
+                preferences: d.preferences || null,
+                aiConfig: d.aiConfig || null,
+                todos: d.todos || [],
+                notes: d.notes || [],
+                onboardingCompleted: d.onboardingCompleted ?? hasData,
+                spotlightCompleted: d.spotlightCompleted ?? hasData,
+                hasLoggedInBefore: d.hasLoggedInBefore ?? hasData,
+                updatedAt: d.updatedAt,
               };
             }
           }
@@ -126,20 +147,28 @@ export class DBService {
         }
       }
 
-      // 2. Secondary: Load from Firestore Cloud (with timeout 800ms)
+      // 2. Secondary: Load from Firestore Cloud (with timeout 1500ms)
       try {
-        const uid = await withTimeout(this.getUserId(), 800, null);
+        const uid = await withTimeout(this.getUserId(), 1000, null);
         if (uid) {
           const userRef = doc(db, 'users', uid);
-          const snap = await withTimeout(getDoc(userRef), 800, null);
+          const snap = await withTimeout(getDoc(userRef), 1200, null);
           if (snap && snap.exists()) {
             const data = snap.data();
+            const hasData =
+              (data.tasks && data.tasks.length > 0) ||
+              (data.todos && data.todos.length > 0) ||
+              (data.notes && data.notes.length > 0) ||
+              Boolean(data.preferences);
             return {
               tasks: data.tasks || [],
               preferences: data.preferences || null,
               aiConfig: data.aiConfig || null,
               todos: data.todos || [],
               notes: data.notes || [],
+              onboardingCompleted: data.onboardingCompleted ?? hasData,
+              spotlightCompleted: data.spotlightCompleted ?? hasData,
+              hasLoggedInBefore: data.hasLoggedInBefore ?? hasData,
               updatedAt: data.updatedAt,
             };
           }
@@ -151,8 +180,8 @@ export class DBService {
       return null;
     };
 
-    // Global hard timeout of 1200ms: loadUserData will NEVER hang longer than 1.2s under any circumstances
-    return withTimeout(fetchCloud(), 1200, null);
+    // Global hard timeout of 2200ms: loadUserData will NEVER hang longer than 2.2s under any circumstances
+    return withTimeout(fetchCloud(), 2200, null);
   }
 
   static async deleteUserData(userEmail?: string): Promise<boolean> {
