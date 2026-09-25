@@ -172,6 +172,33 @@ function sanitizeTodoOutput(rawTodo: any): any | undefined {
     };
 }
 
+function sanitizeUpdatedTodoOutput(rawTodo: any): any | undefined {
+    if (!rawTodo || typeof rawTodo !== "object") return undefined;
+    const title = sanitizeTodoText(rawTodo.title, 80);
+    if (!title && !rawTodo.id) return undefined;
+
+    const subtasks = Array.isArray(rawTodo.subtasks)
+        ? rawTodo.subtasks
+            .slice(0, 15)
+            .map((subtask: any) => ({
+                id: typeof subtask?.id === "string" ? subtask.id : undefined,
+                title: sanitizeTodoText(subtask?.title, 60),
+                isCompleted: typeof subtask?.isCompleted === "boolean" ? subtask.isCompleted : undefined,
+            }))
+            .filter((subtask: { title: string }) => subtask.title.length >= 2)
+        : undefined;
+
+    return {
+        id: typeof rawTodo.id === "string" ? rawTodo.id.trim() : undefined,
+        title: title || undefined,
+        description: sanitizeTodoText(rawTodo.description, 200) || undefined,
+        category: sanitizeTodoText(rawTodo.category, 50) || undefined,
+        priority: ["high", "medium", "low"].includes(rawTodo.priority) ? rawTodo.priority : undefined,
+        isCompleted: typeof rawTodo.isCompleted === "boolean" ? rawTodo.isCompleted : undefined,
+        subtasks: subtasks && subtasks.length > 0 ? subtasks : undefined,
+    };
+}
+
 function sanitizeNoteOutput(
     rawNote: any,
     replyText?: string,
@@ -778,6 +805,7 @@ function processAiChatResponse(
     const finalTodos = Array.isArray(resultData.createdTodos)
         ? resultData.createdTodos.map(sanitizeTodoOutput).filter(Boolean)
         : undefined;
+    const finalUpdatedTodo = sanitizeUpdatedTodoOutput(resultData.updatedTodo);
 
     const geminiDoc = resultData.createdDocument;
     let isGeminiDocValid = Boolean(geminiDoc && geminiDoc.title && geminiDoc.content && !isConversationalFiller(geminiDoc.content));
@@ -926,6 +954,9 @@ function processAiChatResponse(
         createdNote: finalNote,
         createdTodo: finalTodo,
         createdTodos: finalTodos,
+        updatedTodo: finalUpdatedTodo,
+        deletedTodoId: typeof resultData.deletedTodoId === "string" ? resultData.deletedTodoId : undefined,
+        deletedTodoTitle: typeof resultData.deletedTodoTitle === "string" ? resultData.deletedTodoTitle : undefined,
         createdDocument: finalDocument,
         createdSlides: finalSlides,
         groundingSources: groundingSources.length > 0 ? groundingSources : undefined,
@@ -937,7 +968,7 @@ function processAiChatResponse(
 export async function POST(req: Request) {
     try {
         const reqJson = await req.json();
-        const { messages, taskContext, userPreferences, aiConfig, studyMode, stream: wantStream = true, enableGrounding = true } =
+        const { messages, taskContext, userPreferences, aiConfig, studyMode, stream: wantStream = true, enableGrounding = true, existingTodos } =
             reqJson as {
                 messages: { role: string; content: string }[];
                 taskContext?: any;
@@ -946,6 +977,7 @@ export async function POST(req: Request) {
                 studyMode?: "socratic" | "direct" | "quizzer";
                 stream?: boolean;
                 enableGrounding?: boolean;
+                existingTodos?: any[];
             };
 
         if (!Array.isArray(messages) || messages.length === 0) {
@@ -1039,8 +1071,22 @@ Sesuaikan gaya bahasa (tone), panjang penjelasan, dan metode penyampaian Anda (m
 --------------------------------------\n`;
         }
 
+        let todosContextString = "";
+        if (Array.isArray(existingTodos) && existingTodos.length > 0) {
+            todosContextString = `\n--- DAFTAR TO-DO LIST SISWA SAAT INI ---
+Berikut daftar to-do yang sudah dimiliki siswa:
+${existingTodos.map((t: any, idx: number) => {
+    const sub = Array.isArray(t.subtasks) && t.subtasks.length > 0
+        ? ` (Subtasks: ${t.subtasks.map((s: any) => `[${s.isCompleted ? '✓' : ' '}] ${s.title}`).join(", ")})`
+        : "";
+    return `${idx + 1}. [ID: "${t.id}"] "${t.title}" | Prioritas: ${t.priority || "medium"} | Status: ${t.isCompleted ? "Selesai" : "Belum Selesai"}${sub}`;
+}).join("\n")}
+--------------------------------------\n`;
+        }
+
         const systemInstruction = `Anda adalah "Asisten Belajar & Akademik Cerdas IOnLearn" — seorang mentor akademik ahli, tutor pribadi serbabisa, dan spesialis riset yang cerdas, sistematis, ramah, dan suportif. Anda membantu siswa sekolah hingga mahasiswa dan peneliti memahami konsep rumit, menyelesaikan tugas dengan integritas, dan menghasilkan karya akademik berstandar tinggi.
 ${contextString}
+${todosContextString}
 ${modeInstruction}
 ${personalizationInstruction}
 
@@ -1172,7 +1218,26 @@ ${personalizationInstruction}
    - Judul to-do dan setiap sub-langkah WAJIB berupa teks polos alfabet ringkas (maksimal 6-8 kata), to the point, dan langsung dapat dieksekusi tanpa karakter dekoratif repetitif.
    - Pada teks 'reply': Berikan respon percakapan singkat yang menyemangati (1-2 kalimat) bahwa rencana to-do telah disiapkan.
 
-6. **ANALISIS VIDEO YOUTUBE & PEMBELAJARAN AUDIO-VISUAL**:
+6. **MENGUBAH / MENGUPDATE TO-DO LIST YANG SUDAH ADA (\`updatedTodo\`)**:
+   *Pemicu: Ketika pengguna meminta untuk mengubah, mengedit, menambah subtask, menandai selesai/belum selesai, atau memperbarui to-do yang sudah ada di daftar to-do siswa.*
+   - Cocokkan to-do yang dimaksud berdasarkan judul atau kata kunci dari DAFTAR TO-DO LIST SISWA SAAT INI.
+   - Isi field \`updatedTodo\` dengan:
+     - \`id\`: ID to-do yang diubah (WAJIB sesuai ID dari daftar to-do siswa).
+     - \`title\`: Judul baru atau tetap (jika tidak diubah).
+     - \`description\`: Deskripsi baru/tetap.
+     - \`priority\`: "high" | "medium" | "low".
+     - \`isCompleted\`: true | false (jika status penyelesaian diubah).
+     - \`subtasks\`: Daftar subtask yang diperbarui atau ditambahkan (setiap subtask memiliki \`title\` dan opsional \`isCompleted\`).
+   - Pada teks 'reply': Jelaskan perubahan apa saja yang telah dilakukan secara ramah.
+
+7. **MENGHAPUS TO-DO LIST (\`deletedTodoId\`, \`deletedTodoTitle\`)**:
+   *Pemicu: Ketika pengguna meminta untuk menghapus suatu to-do dari daftar.*
+   - Cocokkan to-do yang dimaksud berdasarkan DAFTAR TO-DO LIST SISWA SAAT INI.
+   - Isi field \`deletedTodoId\` dengan ID to-do tersebut.
+   - Isi field \`deletedTodoTitle\` dengan judul to-do tersebut.
+   - Pada teks 'reply': Konfirmasikan bahwa to-do tersebut telah dihapus.
+
+8. **ANALISIS VIDEO YOUTUBE & PEMBELAJARAN AUDIO-VISUAL**:
    *Pemicu: Ketika pengguna melampirkan tautan/video YouTube untuk ditonton, dianalisis, atau dirangkum.*
    - Anda memiliki kemampuan memahami dan menganalisis video YouTube secara mendalam (alur narasi, konsep visual, transkrip, maupun poin-poin penjelasan penting di dalamnya).
    - Sajikan analisis terstruktur, elegan, dan siap dipelajari siswa:
@@ -1233,7 +1298,7 @@ ${personalizationInstruction}
                     role: "system",
                     content:
                         systemInstruction +
-                        '\n\nKEMBALIKAN OUTPUT HARUS HANYA DALAM BENTUK JSON OBJECT YANG VALID SESUAI SKEMA BERIKUT:\n{\n  "thoughtProcess": "Penalaran kritis, verifikasi keabsahan data/rumus, langkah kalkulasi step-by-step, dan evaluasi anti-halusinasi sebelum menulis jawaban",\n  "reply": "Jawaban Markdown",\n  "suggestedPrompts": ["Pertanyaan 1", "Pertanyaan 2"],\n  "createdNote": { "title": "Judul Singkat teks polos (maks 60 char)", "content": "Isi Markdown", "subject": "Nama Mata Kuliah", "tags": ["Label"] },\n  "createdTodo": { "title": "Judul Rencana teks polos ringkas (maks 50 char)", "description": "Deskripsi singkat", "priority": "high" | "medium" | "low", "category": "Materi", "subtasks": [{ "title": "Langkah 1 (maks 50 char, actionable)" }] },\n  "createdDocument": { "type": "docx" | "pdf" | "xlsx", "title": "Judul Dokumen", "content": "Isi Markdown / Tabel Data Markdown", "fileName": "dokumen.docx/dokumen.pdf/tabel.xlsx" },\n  "createdSlides": { "title": "Judul Presentasi", "subtitle": "Subjudul Singkat", "theme": "indigo" | "dark" | "emerald" | "amber" | "slate" | "rose" | "teal" | "violet", "slides": [{ "title": "Slide 1", "bullets": ["Poin 1"], "notes": "Catatan" }], "fileName": "presentasi.pptx" }\n}',
+                        '\n\nKEMBALIKAN OUTPUT HARUS HANYA DALAM BENTUK JSON OBJECT YANG VALID SESUAI SKEMA BERIKUT:\n{\n  "thoughtProcess": "Penalaran kritis, verifikasi keabsahan data/rumus, langkah kalkulasi step-by-step, dan evaluasi anti-halusinasi sebelum menulis jawaban",\n  "reply": "Jawaban Markdown",\n  "suggestedPrompts": ["Pertanyaan 1", "Pertanyaan 2"],\n  "createdNote": { "title": "Judul Singkat teks polos (maks 60 char)", "content": "Isi Markdown", "subject": "Nama Mata Kuliah", "tags": ["Label"] },\n  "createdTodo": { "title": "Judul Rencana teks polos ringkas (maks 50 char)", "description": "Deskripsi singkat", "priority": "high" | "medium" | "low", "category": "Materi", "subtasks": [{ "title": "Langkah 1 (maks 50 char, actionable)" }] },\n  "updatedTodo": { "id": "ID to-do asli", "title": "Judul Baru/Tetap", "description": "Deskripsi", "priority": "high" | "medium" | "low", "isCompleted": true | false, "subtasks": [{ "title": "Langkah", "isCompleted": false }] },\n  "deletedTodoId": "ID to-do yang dihapus",\n  "deletedTodoTitle": "Judul to-do yang dihapus",\n  "createdDocument": { "type": "docx" | "pdf" | "xlsx", "title": "Judul Dokumen", "content": "Isi Markdown / Tabel Data Markdown", "fileName": "dokumen.docx/dokumen.pdf/tabel.xlsx" },\n  "createdSlides": { "title": "Judul Presentasi", "subtitle": "Subjudul Singkat", "theme": "indigo" | "dark" | "emerald" | "amber" | "slate" | "rose" | "teal" | "violet", "slides": [{ "title": "Slide 1", "bullets": ["Poin 1"], "notes": "Catatan" }], "fileName": "presentasi.pptx" }\n}',
                 },
                 ...messages.map((m: any, idx: number) => {
                     let userText = m.content || "Analisis lampiran ini:";
@@ -1459,6 +1524,40 @@ TUGAS ANDA:
                                 },
                             },
                             required: ["title", "priority"],
+                        },
+                        updatedTodo: {
+                            type: Type.OBJECT,
+                            description:
+                                "Isi jika pengguna meminta mengubah, mengedit, menambah subtask, atau mencentang to-do yang sudah ada.",
+                            properties: {
+                                id: { type: Type.STRING, description: "ID to-do yang diubah dari daftar to-do siswa" },
+                                title: { type: Type.STRING, description: "Judul to-do baru atau tetap" },
+                                description: { type: Type.STRING, description: "Deskripsi to-do" },
+                                priority: { type: Type.STRING, enum: ["high", "medium", "low"], description: "Prioritas: high, medium, atau low" },
+                                isCompleted: { type: Type.BOOLEAN, description: "Status penyelesaian: true jika selesai, false jika belum" },
+                                category: { type: Type.STRING, description: "Kategori to-do" },
+                                subtasks: {
+                                    type: Type.ARRAY,
+                                    description: "Daftar subtask yang diperbarui atau ditambahkan",
+                                    items: {
+                                        type: Type.OBJECT,
+                                        properties: {
+                                            id: { type: Type.STRING, description: "ID subtask jika ada" },
+                                            title: { type: Type.STRING, description: "Judul subtask" },
+                                            isCompleted: { type: Type.BOOLEAN, description: "Status subtask selesai atau belum" },
+                                        },
+                                        required: ["title"],
+                                    },
+                                },
+                            },
+                        },
+                        deletedTodoId: {
+                            type: Type.STRING,
+                            description: "ID to-do yang ingin dihapus jika pengguna meminta menghapus to-do.",
+                        },
+                        deletedTodoTitle: {
+                            type: Type.STRING,
+                            description: "Judul to-do yang dihapus.",
                         },
                         createdDocument: {
                             type: Type.OBJECT,

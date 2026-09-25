@@ -112,7 +112,10 @@ import {
   loadNotes,
   loadPreferences,
   loadTasks,
+  loadTodos,
   updateTask,
+  updateTodo,
+  deleteTodo,
 } from "@/lib/taskStore";
 import { APP_NAME } from "@/lib/brand";
 import { toast } from "@/components/ui/sonner";
@@ -1123,8 +1126,8 @@ export const AIChat: React.FC<AIChatProps> = ({
         if (!silent) {
           toast.error(
             isEn
-              ? "Google Classroom session has expired (valid 1 hour). Please reconnect."
-              : "Sesi Google Classroom telah berakhir (berlaku 1 jam). Klik tombol di samping untuk login ulang Google.",
+              ? "Google Classroom connection has expired. Please reconnect."
+              : "Sesi koneksi Google Classroom perlu disambungkan kembali. Klik tombol di samping untuk menyambungkan ulang Google.",
             {
               action: {
                 label: isEn ? "Reconnect Google" : "Login Ulang Google",
@@ -2357,7 +2360,8 @@ export const AIChat: React.FC<AIChatProps> = ({
         isPersonalizationActive ? userPreferences : null,
         aiConfig,
         currentMode,
-        isGroundingEnabled && isGroundingAvailable
+        isGroundingEnabled && isGroundingAvailable,
+        loadTodos()
       );
 
       // Automatically handle Note creation if AI produced createdNote
@@ -2446,6 +2450,71 @@ export const AIChat: React.FC<AIChatProps> = ({
         };
       }
 
+      // Automatically handle editing/updating existing To-Do
+      let updatedTodoObj: any = res.updatedTodo;
+      if (updatedTodoObj) {
+        const currentTodos = loadTodos();
+        const targetId = updatedTodoObj.id;
+        const targetTitle = updatedTodoObj.title?.trim().toLowerCase();
+        const existing = currentTodos.find(
+          (t) => (targetId && t.id === targetId) || (targetTitle && t.title.trim().toLowerCase() === targetTitle)
+        );
+
+        if (existing) {
+          const updatedSubtasks = Array.isArray(updatedTodoObj.subtasks)
+            ? updatedTodoObj.subtasks.map((st: any, idx: number) => ({
+                id: st.id || `sub-${Date.now()}-${idx}`,
+                title: typeof st === "string" ? st : st.title || `Langkah ${idx + 1}`,
+                isCompleted: typeof st.isCompleted === "boolean" ? st.isCompleted : Boolean(st.completed),
+              }))
+            : existing.subtasks;
+
+          const patch: Partial<PersonalTodo> = {
+            title: updatedTodoObj.title || existing.title,
+            description: updatedTodoObj.description !== undefined ? updatedTodoObj.description : existing.description,
+            priority: updatedTodoObj.priority || existing.priority,
+            isCompleted: typeof updatedTodoObj.isCompleted === "boolean" ? updatedTodoObj.isCompleted : existing.isCompleted,
+            category: updatedTodoObj.category || existing.category,
+            subtasks: updatedSubtasks,
+          };
+
+          updateTodo(existing.id, patch);
+          try {
+            confetti({ particleCount: 30, spread: 45, origin: { y: 0.8 } });
+          } catch {}
+          toast.success(isEn ? "To-Do Successfully Updated!" : "To-Do Berhasil Diperbarui!", {
+            description: isEn
+              ? `"${patch.title}" has been updated by AI.`
+              : `"${patch.title}" telah diperbarui sesuai instruksi AI.`,
+            action: {
+              label: isEn ? "Open To-Do" : "Buka To-Do",
+              onClick: () => router.push("/todo"),
+            },
+          });
+
+          updatedTodoObj = {
+            ...updatedTodoObj,
+            id: existing.id,
+            title: patch.title,
+            subtasks: updatedSubtasks,
+          };
+        }
+      }
+
+      // Automatically handle deleting existing To-Do
+      if (res.deletedTodoId) {
+        const currentTodos = loadTodos();
+        const target = currentTodos.find((t) => t.id === res.deletedTodoId);
+        if (target) {
+          deleteTodo(target.id);
+          toast.info(isEn ? "To-Do Removed" : "To-Do Berhasil Dihapus", {
+            description: isEn
+              ? `"${target.title}" was removed from your to-do list.`
+              : `"${target.title}" telah dihapus dari daftar to-do.`,
+          });
+        }
+      }
+
       if (res.createdDocument) {
         toast.success(
           res.createdDocument.type === "pdf"
@@ -2472,6 +2541,9 @@ export const AIChat: React.FC<AIChatProps> = ({
         isStreaming: false,
         createdNote: res.createdNote ? { ...res.createdNote, id: noteCreatedId } : undefined,
         createdTodo: createdTodoObj || undefined,
+        updatedTodo: updatedTodoObj || undefined,
+        deletedTodoId: res.deletedTodoId || undefined,
+        deletedTodoTitle: res.deletedTodoTitle || undefined,
         createdDocument: res.createdDocument || undefined,
         createdSlides: res.createdSlides || undefined,
         groundingSources: res.groundingSources || undefined,
@@ -2715,7 +2787,8 @@ export const AIChat: React.FC<AIChatProps> = ({
         isPersonalizationActive ? userPreferences : null,
         aiConfig,
         currentMode,
-        isGroundingEnabled && isGroundingAvailable
+        isGroundingEnabled && isGroundingAvailable,
+        loadTodos()
       );
 
       let noteCreatedId: string | undefined = undefined;
@@ -2801,6 +2874,71 @@ export const AIChat: React.FC<AIChatProps> = ({
         };
       }
 
+      // Automatically handle editing/updating existing To-Do
+      let updatedTodoObj: any = res.updatedTodo;
+      if (updatedTodoObj) {
+        const currentTodos = loadTodos();
+        const targetId = updatedTodoObj.id;
+        const targetTitle = updatedTodoObj.title?.trim().toLowerCase();
+        const existing = currentTodos.find(
+          (t) => (targetId && t.id === targetId) || (targetTitle && t.title.trim().toLowerCase() === targetTitle)
+        );
+
+        if (existing) {
+          const updatedSubtasks = Array.isArray(updatedTodoObj.subtasks)
+            ? updatedTodoObj.subtasks.map((st: any, idx: number) => ({
+                id: st.id || `sub-${Date.now()}-${idx}`,
+                title: typeof st === "string" ? st : st.title || `Langkah ${idx + 1}`,
+                isCompleted: typeof st.isCompleted === "boolean" ? st.isCompleted : Boolean(st.completed),
+              }))
+            : existing.subtasks;
+
+          const patch: Partial<PersonalTodo> = {
+            title: updatedTodoObj.title || existing.title,
+            description: updatedTodoObj.description !== undefined ? updatedTodoObj.description : existing.description,
+            priority: updatedTodoObj.priority || existing.priority,
+            isCompleted: typeof updatedTodoObj.isCompleted === "boolean" ? updatedTodoObj.isCompleted : existing.isCompleted,
+            category: updatedTodoObj.category || existing.category,
+            subtasks: updatedSubtasks,
+          };
+
+          updateTodo(existing.id, patch);
+          try {
+            confetti({ particleCount: 30, spread: 45, origin: { y: 0.8 } });
+          } catch {}
+          toast.success(isEn ? "To-Do Successfully Updated!" : "To-Do Berhasil Diperbarui!", {
+            description: isEn
+              ? `"${patch.title}" has been updated by AI.`
+              : `"${patch.title}" telah diperbarui sesuai instruksi AI.`,
+            action: {
+              label: isEn ? "Open To-Do" : "Buka To-Do",
+              onClick: () => router.push("/todo"),
+            },
+          });
+
+          updatedTodoObj = {
+            ...updatedTodoObj,
+            id: existing.id,
+            title: patch.title,
+            subtasks: updatedSubtasks,
+          };
+        }
+      }
+
+      // Automatically handle deleting existing To-Do
+      if (res.deletedTodoId) {
+        const currentTodos = loadTodos();
+        const target = currentTodos.find((t) => t.id === res.deletedTodoId);
+        if (target) {
+          deleteTodo(target.id);
+          toast.info(isEn ? "To-Do Removed" : "To-Do Berhasil Dihapus", {
+            description: isEn
+              ? `"${target.title}" was removed from your to-do list.`
+              : `"${target.title}" telah dihapus dari daftar to-do.`,
+          });
+        }
+      }
+
       const assistantMessage: ChatMessage = {
         id: assistantMsgId,
         role: "assistant",
@@ -2809,6 +2947,9 @@ export const AIChat: React.FC<AIChatProps> = ({
         isStreaming: false,
         createdNote: res.createdNote ? { ...res.createdNote, id: noteCreatedId } : undefined,
         createdTodo: createdTodoObj || undefined,
+        updatedTodo: updatedTodoObj || undefined,
+        deletedTodoId: res.deletedTodoId || undefined,
+        deletedTodoTitle: res.deletedTodoTitle || undefined,
         createdDocument: res.createdDocument || undefined,
         createdSlides: res.createdSlides || undefined,
         groundingSources: res.groundingSources || undefined,
@@ -4807,6 +4948,93 @@ export const AIChat: React.FC<AIChatProps> = ({
                             </div>
                           );
                         })()}
+
+                        {/* Interactive Updated To-Do Card if AI edited an existing to-do */}
+                        {m.updatedTodo && (
+                          <div className="p-3.5 rounded-2xl bg-indigo-50/70 dark:bg-[#151824] border border-indigo-200/80 dark:border-indigo-900/50 shadow-2xs space-y-2.5">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-lg bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/50 flex items-center justify-center text-xs">
+                                  <Edit3 className="w-3.5 h-3.5" />
+                                </div>
+                                <span className="text-xs font-bold text-slate-900 dark:text-[#f3f3f3]">
+                                  {isEn ? "To-Do Updated by AI" : "To-Do Diperbarui oleh AI"}
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => router.push("/todo")}
+                                className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-0.5 cursor-pointer"
+                              >
+                                <span>{isEn ? "Open To-Do" : "Buka To-Do"}</span>
+                                <ChevronRight className="w-3 h-3" />
+                              </button>
+                            </div>
+
+                            <div className="bg-white dark:bg-[#1a1a1a] p-3 rounded-xl border border-indigo-100 dark:border-[#2b2b2b] space-y-2">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0">
+                                  <p className="text-xs font-bold text-slate-900 dark:text-[#eee]">
+                                    {m.updatedTodo.title}
+                                  </p>
+                                  {m.updatedTodo.description && (
+                                    <p className="text-xs text-slate-500 dark:text-[#888] mt-0.5 leading-relaxed">
+                                      {m.updatedTodo.description}
+                                    </p>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  {m.updatedTodo.priority && (
+                                    <span
+                                      className={`px-1.5 py-0.5 rounded text-xs font-bold uppercase ${
+                                        m.updatedTodo.priority === "high"
+                                          ? "bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300"
+                                          : m.updatedTodo.priority === "low"
+                                          ? "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                                          : "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300"
+                                      }`}
+                                    >
+                                      {m.updatedTodo.priority === "high" ? (isEn ? "High" : "Penting") : m.updatedTodo.priority === "low" ? (isEn ? "Low" : "Rendah") : (isEn ? "Medium" : "Sedang")}
+                                    </span>
+                                  )}
+                                  {typeof m.updatedTodo.isCompleted === "boolean" && (
+                                    <span
+                                      className={`px-1.5 py-0.5 rounded text-xs font-semibold ${
+                                        m.updatedTodo.isCompleted
+                                          ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300"
+                                          : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                                      }`}
+                                    >
+                                      {m.updatedTodo.isCompleted ? (isEn ? "Completed" : "Selesai") : (isEn ? "Active" : "Aktif")}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {Array.isArray(m.updatedTodo.subtasks) && m.updatedTodo.subtasks.length > 0 && (
+                                <div className="pt-2 border-t border-slate-100 dark:border-[#282828] space-y-1.5">
+                                  <p className="text-[11px] font-semibold text-slate-500 dark:text-[#888]">
+                                    {isEn ? "Subtasks:" : "Sub-langkah:"}
+                                  </p>
+                                  <div className="space-y-1">
+                                    {m.updatedTodo.subtasks.map((st, sIdx) => (
+                                      <div key={st.id || sIdx} className="flex items-center gap-1.5 text-xs text-slate-700 dark:text-[#ccc]">
+                                        <div className={`w-3.5 h-3.5 rounded flex items-center justify-center text-[9px] border ${
+                                          st.isCompleted
+                                            ? "bg-emerald-500 border-emerald-500 text-white"
+                                            : "border-slate-300 dark:border-slate-600"
+                                        }`}>
+                                          {st.isCompleted && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                                        </div>
+                                        <span className={st.isCompleted ? "line-through text-slate-400" : ""}>{st.title}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
 
                         {/* Interactive Created Document Card (PDF / DOCX / XLSX) */}
                         {m.createdDocument && (

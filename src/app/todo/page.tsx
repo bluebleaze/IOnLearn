@@ -98,6 +98,7 @@ export default function TodoPage() {
   // Classroom AI Breakdown Modal
   const [showClassroomModal, setShowClassroomModal] = useState(false);
   const [selectedClassroomId, setSelectedClassroomId] = useState("");
+  const [breakdownCount, setBreakdownCount] = useState<number>(8);
   const [isGeneratingBreakdown, setIsGeneratingBreakdown] = useState(false);
 
   useEffect(() => {
@@ -332,6 +333,8 @@ export default function TodoPage() {
           action: "breakdown_task",
           payload: target,
           task: target,
+          count: breakdownCount,
+          requestedCount: breakdownCount,
           preferences: loadPreferences(),
           aiConfig: loadAIConfig(),
         }),
@@ -1369,6 +1372,58 @@ export default function TodoPage() {
               )}
             </div>
 
+            {/* Menu Pilihan Jumlah To-Do (5 - 15) */}
+            <div className="space-y-2.5 pt-2.5 border-t border-slate-100 dark:border-[#262626]">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <label className="text-xs font-semibold text-slate-800 dark:text-[#ddd] block">
+                    {t.todo.modalClassroomCountLabel}
+                  </label>
+                  <p className="text-[11px] text-slate-500 dark:text-[#888]">
+                    {t.todo.modalClassroomCountHelper}
+                  </p>
+                </div>
+                <span className="text-xs font-bold px-2.5 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/40 shrink-0">
+                  {breakdownCount} {isEn ? "Items" : "To-Do"}
+                </span>
+              </div>
+
+              {/* Slider 5 - 15 */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-3">
+                  <span className="text-[11px] font-mono font-medium text-slate-400 dark:text-[#666]">5</span>
+                  <input
+                    type="range"
+                    min={5}
+                    max={15}
+                    step={1}
+                    value={breakdownCount}
+                    onChange={(e) => setBreakdownCount(Number(e.target.value))}
+                    className="flex-1 accent-indigo-600 dark:accent-indigo-400 h-1.5 bg-slate-200 dark:bg-[#2b2b2b] rounded-lg cursor-pointer"
+                  />
+                  <span className="text-[11px] font-mono font-medium text-slate-400 dark:text-[#666]">15</span>
+                </div>
+
+                {/* Preset Chips */}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {[5, 7, 8, 10, 12, 15].map((cnt) => (
+                    <button
+                      key={cnt}
+                      type="button"
+                      onClick={() => setBreakdownCount(cnt)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-medium transition cursor-pointer ${
+                        breakdownCount === cnt
+                          ? "bg-indigo-600 text-white shadow-2xs font-semibold"
+                          : "bg-slate-100 dark:bg-[#222] text-slate-600 dark:text-[#aaa] hover:bg-slate-200 dark:hover:bg-[#282828]"
+                      }`}
+                    >
+                      {cnt} {isEn ? "items" : "to-do"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-[#222]">
               <Button
                 variant="ghost"
@@ -1393,7 +1448,7 @@ export default function TodoPage() {
                 ) : (
                   <>
                     <IonLearnAIIcon className="w-3.5 h-3.5" />
-                    <span>{t.todo.modalClassroomBreakdownBtn}</span>
+                    <span>{t.todo.modalClassroomBreakdownBtn} ({breakdownCount})</span>
                   </>
                 )}
               </Button>

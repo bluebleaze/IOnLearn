@@ -227,10 +227,10 @@ flowchart TD
 
   node_start --> node_landing
 
-  node_landing -->|"Akun Classroom"| node_auth_google["<b>Masuk dengan Akun Google</b><br/>Otorisasi Izin Strictly Read-Only<br/>Google Classroom & Drive"]
+  node_landing -->|"Akun Classroom"| node_auth_google["<b>Masuk dengan Akun Google</b><br/>Otorisasi Izin Strictly Read-Only<br/>Google Classroom & Drive API"]
   node_landing -->|"Mode Simulasi"| node_auth_demo["<b>Coba Mode Simulasi (Guest)</b><br/>Akses Evaluasi Cepat 1-Klik<br/>dengan Data Akademik Bawaan"]
 
-  node_sync["<b>Sesi Sinkronisasi Tugas dari Classroom</b>"]
+  node_sync["<b>Sinkronisasi Classroom & Background Ingestion</b><br/>• Impor Kelas, Tugas, & Tenggat Waktu<br/>• Ekstraksi Otomatis Lampiran di Background<br/>• Multi-Format: PDF (unpdf), Word, PPTX, Excel"]
   node_auth_google --> node_sync
   node_auth_demo --> node_sync
 
@@ -249,10 +249,10 @@ flowchart TD
   node_dashboard["<b>Dasbor Akademik Terpadu (Academic Dashboard)</b><br/>Pusat Kendali Penugasan, Notifikasi Tenggat Waktu, & Status Pembelajaran"]
 
   subgraph group_features["Ruang Kerja & Fitur Pembelajaran Siswa"]
-    feat_tasks["<b>1. Manajemen Tugas</b><br/>• Prioritas Urgensi Waktu<br/>• To-Do, Upcoming, Late, Done<br/>• Filter Berdasarkan Kelas/Mapel<br/>• Analisis Beban Belajar Harian"]
-    feat_ai["<b>2. Socratic AI Companion</b><br/>• Ekstraksi Otomatis Modul/PDF<br/>• Bimbingan Penalaran Dialogis<br/>• Anti-Cognitive Atrophy (No Copas)<br/>• Kurasi Video Edukasi YouTube"]
-    feat_notes["<b>3. Study Notes & Doc Studio</b><br/>• Catatan Kuliah/Sekolah (Markdown)<br/>• Rangkuman Otomatis Hasil Diskusi<br/>• Kustomisasi Draf GUI Interaktif<br/>• Ekspor Dokumen .docx, .pptx, .xlsx"]
-    feat_todo["<b>4. To-Do List Personal & AI</b><br/>• Bebas Menambahkan Tugas Mandiri<br/>• Auto-Generated AI Task Checklist<br/>• Tingkat Prioritas & Kebutuhan<br/>• Fleksibilitas Manajemen Belajar"]
+    feat_tasks["<b>1. Manajemen Tugas & Lampiran</b><br/>• Prioritas Urgensi (To-Do, Upcoming, Late, Done)<br/>• Filter Berdasarkan Kelas & Mapel<br/>• Pratinjau Deskripsi & Lampiran Asli Guru<br/>• Terhubung Langsung ke Konteks AI"]
+    feat_ai["<b>2. Socratic AI Companion</b><br/>• Otomatis Membaca Isi Dokumen Lampiran Tugas<br/>• Anti-Halusinasi (Merujuk Nomor Soal Asli)<br/>• Penalaran Dialogis (Anti-Cognitive Atrophy)<br/>• Kurasi Video Edukasi YouTube Terkait"]
+    feat_notes["<b>3. Study Notes & Doc Studio</b><br/>• Catatan Kuliah/Sekolah (Markdown)<br/>• Rangkuman Otomatis Hasil Diskusi AI<br/>• Kustomisasi Draf GUI (Kop Surat & Margin)<br/>• Kompilasi Client-Side (.docx, .pptx, .xlsx)"]
+    feat_todo["<b>4. To-Do List Personal & AI</b><br/>• Manajemen Tugas Mandiri & Proyek<br/>• Auto-Generated AI Task Checklist<br/>• Tingkat Prioritas & Sub-task Step<br/>• Terpadu dengan Kalender Akademik"]
   end
 
   node_dashboard --> feat_tasks

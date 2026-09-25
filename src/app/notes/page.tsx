@@ -713,6 +713,16 @@ export default function NotesPage() {
     if (!activeNote) return;
     setIsSummarizing(true);
     try {
+      confetti({
+        particleCount: 22,
+        spread: 50,
+        startVelocity: 16,
+        origin: { y: 0.65 },
+        colors: ["#6366f1", "#8b5cf6", "#ec4899", "#38bdf8"],
+        ticks: 60,
+      });
+    } catch {}
+    try {
       const prefs = loadPreferences();
       const aiConf = loadAIConfig();
       const res = await fetch("/api/ai/chat", {
@@ -1277,7 +1287,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                     size="sm"
                     onClick={handleAISummarize}
                     disabled={isSummarizing}
-                    className="h-7 text-xs font-semibold bg-white hover:bg-slate-50 text-indigo-700 shadow-sm border border-transparent dark:border-[#2b2b2b] dark:bg-[#222] dark:hover:bg-[#282828] dark:text-indigo-300 rounded-lg gap-1.5 cursor-pointer"
+                    className="h-7 text-xs font-semibold bg-white hover:bg-slate-50 text-indigo-700 shadow-sm border border-transparent dark:border-[#2b2b2b] dark:bg-[#222] dark:hover:bg-[#282828] dark:text-indigo-300 rounded-lg gap-1.5 cursor-pointer active:scale-90 hover:scale-105 transition-all duration-200 select-none"
                   >
                     {isSummarizing ? (
                       <Loader2 className="w-3 h-3 animate-spin" />
@@ -1618,7 +1628,7 @@ KEMBALIKAN HANYA ARRAY JSON VALID tanpa backtick markdown tambahan, dengan forma
                     size="sm"
                     onClick={handleAISummarize}
                     disabled={isSummarizing}
-                    className="h-6.5 text-[11px] font-semibold bg-white hover:bg-slate-50 text-indigo-700 shadow-2xs border border-transparent dark:border-[#2b2b2b] dark:bg-[#222] dark:hover:bg-[#282828] dark:text-indigo-300 rounded-lg gap-1 px-2.5 cursor-pointer"
+                    className="h-6.5 text-[11px] font-semibold bg-white hover:bg-slate-50 text-indigo-700 shadow-2xs border border-transparent dark:border-[#2b2b2b] dark:bg-[#222] dark:hover:bg-[#282828] dark:text-indigo-300 rounded-lg gap-1 px-2.5 cursor-pointer active:scale-90 hover:scale-105 transition-all duration-200 select-none"
                   >
                     {isSummarizing ? (
                       <Loader2 className="w-3 h-3 animate-spin" />

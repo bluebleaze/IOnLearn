@@ -58,11 +58,9 @@ export class ClassroomService {
         };
         safeSetItem(USER_PROFILE_KEY, JSON.stringify(profile));
         
-        // Persistent session storage
+        // Persistent session storage (30 hari sesi aktif)
         safeSetItem(TOKEN_KEY, credential.accessToken);
-        // Google OAuth access tokens have a lifetime of 1 hour (3600 seconds).
-        // Set expiry to 58 minutes so the app can proactively handle expiration before hard 401.
-        safeSetItem(TOKEN_EXPIRY_KEY, (Date.now() + 58 * 60 * 1000).toString());
+        safeSetItem(TOKEN_EXPIRY_KEY, (Date.now() + 30 * 24 * 60 * 60 * 1000).toString());
         return { token: credential.accessToken, profile };
       }
     } catch (e: any) {
@@ -79,16 +77,38 @@ export class ClassroomService {
     return null;
   }
 
-  // Check if current stored token has exceeded its validity window
+  // Check if current stored token has exceeded its validity window (default 30 days)
   public static isTokenExpired(): boolean {
     const token = safeGetItem(TOKEN_KEY);
     if (!token) return true;
     if (token === 'DEMO_TOKEN') return false;
     const expiryStr = safeGetItem(TOKEN_EXPIRY_KEY);
-    if (!expiryStr) return false;
+    if (!expiryStr) {
+      safeSetItem(TOKEN_EXPIRY_KEY, (Date.now() + 30 * 24 * 60 * 60 * 1000).toString());
+      return false;
+    }
     const expiry = Number(expiryStr);
     if (isNaN(expiry)) return false;
+
+    // Otomatis upgrade sesi lama (yang dulunya 58 menit) ke 30 hari jika user memiliki profil aktif
+    if (expiry < Date.now() + 2 * 24 * 60 * 60 * 1000 && safeGetItem(USER_PROFILE_KEY)) {
+      safeSetItem(TOKEN_EXPIRY_KEY, (Date.now() + 30 * 24 * 60 * 60 * 1000).toString());
+      return false;
+    }
+
     return Date.now() >= expiry;
+  }
+
+  // Perpanjang masa aktif sesi secara dinamis (sliding expiration) selama user aktif belajar
+  public static renewSession(): void {
+    const token = safeGetItem(TOKEN_KEY);
+    if (!token || token === 'DEMO_TOKEN') return;
+    const targetExpiry = Date.now() + 30 * 24 * 60 * 60 * 1000;
+    const currentExpiry = Number(safeGetItem(TOKEN_EXPIRY_KEY) || 0);
+    // Jika sisa waktu berkurang lebih dari 1 hari, perpanjang kembali ke 30 hari penuh
+    if (targetExpiry - currentExpiry > 24 * 60 * 60 * 1000) {
+      safeSetItem(TOKEN_EXPIRY_KEY, targetExpiry.toString());
+    }
   }
 
   // Check if current stored token is available
@@ -98,6 +118,19 @@ export class ClassroomService {
     return token;
   }
 
+  // Notifikasi jika token Google Classroom API kadaluwarsa tanpa me-logout aplikasi siswa
+  public static handleClassroomTokenExpired(reason?: string): void {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('ionlearn:classroom-token-expired', {
+          detail: {
+            reason: reason || 'Koneksi Google Classroom perlu disambungkan kembali untuk sinkronisasi tugas.',
+          },
+        })
+      );
+    }
+  }
+
   // Centrally handles expired/invalid session: clears storage and dispatches global event
   public static handleSessionExpired(reason?: string): void {
     this.logout();
@@ -105,7 +138,7 @@ export class ClassroomService {
       window.dispatchEvent(
         new CustomEvent('ionlearn:session-expired', {
           detail: {
-            reason: reason || 'Sesi Google Classroom telah berakhir. Silakan masuk kembali.',
+            reason: reason || 'Sesi akun Anda telah berakhir. Silakan masuk kembali.',
           },
         })
       );
@@ -142,8 +175,8 @@ export class ClassroomService {
 
     if (!response.ok) {
       if (response.status === 401) {
-        this.handleSessionExpired('Sesi token Google Classroom telah kadaluwarsa (401 Unauthorized). Silakan masuk ulang dengan akun Google Anda.');
-        throw new Error('Sesi token Google Classroom telah kadaluwarsa (401 Unauthorized). Silakan masuk ulang dengan akun Google Anda.');
+        this.handleClassroomTokenExpired('Sesi token Google Classroom telah kadaluwarsa (401 Unauthorized). Silakan sambungkan ulang akun Google Anda.');
+        throw new Error('Sesi token Google Classroom telah kadaluwarsa (401 Unauthorized). Silakan sambungkan ulang akun Google Anda.');
       }
       throw new Error(`Google Classroom API error (${response.status}): ${response.statusText}`);
     }
@@ -165,8 +198,8 @@ export class ClassroomService {
 
     if (!response.ok) {
       if (response.status === 401) {
-        this.handleSessionExpired('Sesi token Google Classroom telah kadaluwarsa (401 Unauthorized). Silakan masuk ulang dengan akun Google Anda.');
-        throw new Error('Sesi token Google Classroom telah kadaluwarsa (401 Unauthorized). Silakan masuk ulang dengan akun Google Anda.');
+        this.handleClassroomTokenExpired('Sesi token Google Classroom telah kadaluwarsa (401 Unauthorized). Silakan sambungkan ulang akun Google Anda.');
+        throw new Error('Sesi token Google Classroom telah kadaluwarsa (401 Unauthorized). Silakan sambungkan ulang akun Google Anda.');
       }
       if (response.status === 404 || response.status === 403) {
         return [];
@@ -191,8 +224,8 @@ export class ClassroomService {
       );
       if (!response.ok) {
         if (response.status === 401) {
-          this.handleSessionExpired('Sesi token Google Classroom telah kadaluwarsa (401 Unauthorized). Silakan masuk ulang dengan akun Google Anda.');
-          throw new Error('Sesi token Google Classroom telah kadaluwarsa (401 Unauthorized). Silakan masuk ulang dengan akun Google Anda.');
+          this.handleClassroomTokenExpired('Sesi token Google Classroom telah kadaluwarsa (401 Unauthorized). Silakan sambungkan ulang akun Google Anda.');
+          throw new Error('Sesi token Google Classroom telah kadaluwarsa (401 Unauthorized). Silakan sambungkan ulang akun Google Anda.');
         }
         console.warn(`Could not fetch submissions for course ${courseId}: ${response.status} ${response.statusText}`);
         return {};

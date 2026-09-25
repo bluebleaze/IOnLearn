@@ -178,6 +178,8 @@ export interface TranslationDictionary {
     modalClassroomDesc: string;
     modalClassroomSelect: string;
     modalClassroomEmpty: string;
+    modalClassroomCountLabel: string;
+    modalClassroomCountHelper: string;
     modalClassroomBreakdownBtn: string;
     modalClassroomAnalyzing: string;
     dialogEditTitle: string;
@@ -511,6 +513,8 @@ export const translations: Record<Language, TranslationDictionary> = {
       modalClassroomDesc: "Pilih tugas kuliah dan AI akan memecahnya menjadi langkah kerja harian.",
       modalClassroomSelect: "Pilih Tugas dari Classroom:",
       modalClassroomEmpty: "Tidak ada tugas pending di Classroom.",
+      modalClassroomCountLabel: "Target Jumlah To-Do / Langkah (5 - 15):",
+      modalClassroomCountHelper: "Sesuaikan jumlah pecahan langkah kerja sesuai kompleksitas tugas.",
       modalClassroomBreakdownBtn: "Pecah dengan AI",
       modalClassroomAnalyzing: "Sedang Menganalisis...",
       dialogEditTitle: "Edit To-Do & Sub-langkah",
@@ -842,6 +846,8 @@ export const translations: Record<Language, TranslationDictionary> = {
       modalClassroomDesc: "Select a course task and AI will decompose it into manageable daily steps.",
       modalClassroomSelect: "Select Classroom Task:",
       modalClassroomEmpty: "No pending tasks in Classroom.",
+      modalClassroomCountLabel: "Target To-Do / Steps (5 - 15):",
+      modalClassroomCountHelper: "Customize how many sub-steps AI should generate based on task complexity.",
       modalClassroomBreakdownBtn: "Break Down with AI",
       modalClassroomAnalyzing: "Analyzing...",
       dialogEditTitle: "Edit To-Do & Sub-steps",
