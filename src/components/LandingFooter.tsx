@@ -63,10 +63,10 @@ export function LandingFooter({ onConnectGoogle, language = "ENG" }: LandingFoot
 
   return (
     <footer className="w-full max-w-6xl mx-auto px-4 sm:px-6 pt-12 pb-10 border-t border-slate-200/80 dark:border-white/10 text-slate-600 dark:text-zinc-400 font-inter text-sm">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8 lg:gap-10 mb-10">
+      <div className="flex flex-col lg:flex-row justify-between gap-10 lg:gap-16 mb-10">
 
         {/* COLUMN 1: Brand & Identity */}
-        <div className="lg:col-span-5 flex flex-col items-start space-y-3">
+        <div className="flex flex-col items-start space-y-3 max-w-sm">
           <Link href="#home" className="inline-block transition-opacity hover:opacity-90">
             {/* Light Mode Logo */}
             <img
@@ -82,116 +82,119 @@ export function LandingFooter({ onConnectGoogle, language = "ENG" }: LandingFoot
             />
           </Link>
 
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-zinc-400 leading-relaxed max-w-sm">
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-zinc-400 leading-relaxed">
             {copy.quote}
           </p>
         </div>
 
-        {/* COLUMN 2: Navigation */}
-        <div className="lg:col-span-2 sm:col-span-1 flex flex-col space-y-2.5">
-          <h4 className="font-semibold text-xs uppercase tracking-wider text-slate-900 dark:text-white">
-            {copy.quickNav}
-          </h4>
-          <ul className="flex flex-col space-y-2 text-xs sm:text-sm">
-            <li>
-              <a href="#home" className="hover:text-[#4838cc] dark:hover:text-indigo-400 transition-colors">
-                {copy.home}
-              </a>
-            </li>
-            <li>
-              <a href="#features" className="hover:text-[#4838cc] dark:hover:text-indigo-400 transition-colors">
-                {copy.featureList}
-              </a>
-            </li>
-            <li>
-              <a href="#demo" className="hover:text-[#4838cc] dark:hover:text-indigo-400 transition-colors">
-                {copy.demo}
-              </a>
-            </li>
-            <li>
-              <a href="#faq" className="hover:text-[#4838cc] dark:hover:text-indigo-400 transition-colors">
-                {copy.faq}
-              </a>
-            </li>
-          </ul>
-        </div>
+        {/* COLUMNS 2-4: Navigation, Features, Legal (Equal Gaps) */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-8 sm:gap-12 lg:gap-14 xl:gap-16">
+          {/* COLUMN 2: Navigation */}
+          <div className="flex flex-col space-y-2.5">
+            <h4 className="font-semibold text-xs uppercase tracking-wider text-slate-900 dark:text-white">
+              {copy.quickNav}
+            </h4>
+            <ul className="flex flex-col space-y-2 text-xs sm:text-sm">
+              <li>
+                <a href="#home" className="hover:text-[#4838cc] dark:hover:text-indigo-400 transition-colors">
+                  {copy.home}
+                </a>
+              </li>
+              <li>
+                <a href="#features" className="hover:text-[#4838cc] dark:hover:text-indigo-400 transition-colors">
+                  {copy.featureList}
+                </a>
+              </li>
+              <li>
+                <a href="#demo" className="hover:text-[#4838cc] dark:hover:text-indigo-400 transition-colors">
+                  {copy.demo}
+                </a>
+              </li>
+              <li>
+                <a href="#faq" className="hover:text-[#4838cc] dark:hover:text-indigo-400 transition-colors">
+                  {copy.faq}
+                </a>
+              </li>
+            </ul>
+          </div>
 
-        {/* COLUMN 3: Features */}
-        <div className="lg:col-span-3 sm:col-span-1 flex flex-col space-y-2.5">
-          <h4 className="font-semibold text-xs uppercase tracking-wider text-slate-900 dark:text-white">
-            {copy.features}
-          </h4>
-          <ul className="flex flex-col space-y-2 text-xs sm:text-sm">
-            <li>
-              <button
-                onClick={onConnectGoogle}
-                className="hover:text-[#4838cc] dark:hover:text-indigo-400 transition-colors text-left cursor-pointer"
-              >
-                {copy.classroomSync}
-              </button>
-            </li>
-            <li>
-              <button
-                onClick={onConnectGoogle}
-                className="hover:text-[#4838cc] dark:hover:text-indigo-400 transition-colors text-left cursor-pointer"
-              >
-                {copy.aiTutor}
-              </button>
-            </li>
-            <li>
-              <button
-                onClick={onConnectGoogle}
-                className="hover:text-[#4838cc] dark:hover:text-indigo-400 transition-colors text-left cursor-pointer"
-              >
-                {copy.flashcardGen}
-              </button>
-            </li>
-            <li>
-              <button
-                onClick={onConnectGoogle}
-                className="hover:text-[#4838cc] dark:hover:text-indigo-400 transition-colors text-left cursor-pointer"
-              >
-                {copy.smartExport}
-              </button>
-            </li>
-          </ul>
-        </div>
+          {/* COLUMN 3: Features */}
+          <div className="flex flex-col space-y-2.5">
+            <h4 className="font-semibold text-xs uppercase tracking-wider text-slate-900 dark:text-white">
+              {copy.features}
+            </h4>
+            <ul className="flex flex-col space-y-2 text-xs sm:text-sm">
+              <li>
+                <button
+                  onClick={onConnectGoogle}
+                  className="hover:text-[#4838cc] dark:hover:text-indigo-400 transition-colors text-left cursor-pointer"
+                >
+                  {copy.classroomSync}
+                </button>
+              </li>
+              <li>
+                <button
+                  onClick={onConnectGoogle}
+                  className="hover:text-[#4838cc] dark:hover:text-indigo-400 transition-colors text-left cursor-pointer"
+                >
+                  {copy.aiTutor}
+                </button>
+              </li>
+              <li>
+                <button
+                  onClick={onConnectGoogle}
+                  className="hover:text-[#4838cc] dark:hover:text-indigo-400 transition-colors text-left cursor-pointer"
+                >
+                  {copy.flashcardGen}
+                </button>
+              </li>
+              <li>
+                <button
+                  onClick={onConnectGoogle}
+                  className="hover:text-[#4838cc] dark:hover:text-indigo-400 transition-colors text-left cursor-pointer"
+                >
+                  {copy.smartExport}
+                </button>
+              </li>
+            </ul>
+          </div>
 
-        {/* COLUMN 4: Legal & Contact */}
-        <div className="lg:col-span-2 sm:col-span-1 flex flex-col space-y-2.5">
-          <h4 className="font-semibold text-xs uppercase tracking-wider text-slate-900 dark:text-white">
-            {copy.legals}
-          </h4>
-          <ul className="flex flex-col space-y-2 text-xs sm:text-sm">
-            <li>
-              <Link href="/terms" className="hover:text-[#4838cc] dark:hover:text-indigo-400 transition-colors">
-                {copy.terms}
-              </Link>
-            </li>
-            <li>
-              <Link href="/privacy" className="hover:text-[#4838cc] dark:hover:text-indigo-400 transition-colors">
-                {copy.privacy}
-              </Link>
-            </li>
-            <li>
-              <a
-                href="https://github.com/bluebleaze/IOnLearn"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-[#4838cc] dark:hover:text-indigo-400 transition-colors"
-              >
-                {copy.github}
-              </a>
-            </li>
-            <li>
-              <a
-                href="mailto:wangywangy9999@gmail.com"
-                className="hover:text-[#4838cc] dark:hover:text-indigo-400 transition-colors"
-              >
-                {copy.contact}
-              </a>
-            </li>
-          </ul>
+          {/* COLUMN 4: Legal & Contact */}
+          <div className="flex flex-col space-y-2.5">
+            <h4 className="font-semibold text-xs uppercase tracking-wider text-slate-900 dark:text-white">
+              {copy.legals}
+            </h4>
+            <ul className="flex flex-col space-y-2 text-xs sm:text-sm">
+              <li>
+                <Link href="/terms" className="hover:text-[#4838cc] dark:hover:text-indigo-400 transition-colors">
+                  {copy.terms}
+                </Link>
+              </li>
+              <li>
+                <Link href="/privacy" className="hover:text-[#4838cc] dark:hover:text-indigo-400 transition-colors">
+                  {copy.privacy}
+                </Link>
+              </li>
+              <li>
+                <a
+                  href="https://github.com/bluebleaze/IOnLearn"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-[#4838cc] dark:hover:text-indigo-400 transition-colors"
+                >
+                  {copy.github}
+                </a>
+              </li>
+              <li>
+                <a
+                  href="mailto:wangywangy9999@gmail.com"
+                  className="hover:text-[#4838cc] dark:hover:text-indigo-400 transition-colors"
+                >
+                  {copy.contact}
+                </a>
+              </li>
+            </ul>
+          </div>
         </div>
 
       </div>
