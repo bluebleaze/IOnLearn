@@ -1,0 +1,51 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.js';
+
+@theme {
+    --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+    /* Voltiva Brand Color Palette */
+    --color-volt-50: #f0f9ff;
+    --color-volt-100: #e0f2fe;
+    --color-volt-200: #bae6fd;
+    --color-volt-300: #7dd3fc;
+    --color-volt-400: #38bdf8;
+    --color-volt-500: #0ea5e9;
+    --color-volt-600: #0284c7;
+    --color-volt-700: #0369a1;
+    --color-volt-800: #075985;
+    --color-volt-900: #0c4a6e;
+    --color-volt-950: #082f49;
+
+    --color-primary-50: #eff6ff;
+    --color-primary-100: #dbeafe;
+    --color-primary-200: #bfdbfe;
+    --color-primary-300: #93c5fd;
+    --color-primary-400: #60a5fa;
+    --color-primary-500: #2563eb;
+    --color-primary-600: #1d4ed8;
+    --color-primary-700: #1e40af;
+    --color-primary-800: #1e3a8a;
+    --color-primary-900: #172554;
+}
+
+/* Custom Base Utilities for Voltiva */
+.btn-volt {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-medium text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 shadow-sm shadow-blue-500/20 transition-all duration-200;
+}
+
+.btn-volt-secondary {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 transition-all duration-200;
+}
+
+.card-volt {
+    @apply bg-white border border-slate-200/80 rounded-2xl shadow-sm transition-all duration-200;
+}
+
+.badge-volt {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800;
+}
